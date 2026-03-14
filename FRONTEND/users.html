@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioAccess Secure - Utilisateurs</title>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .sidebar-item.active { background: #4f46e5; color: white; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen">
+        <!-- SIDEBAR (identique à dashboard) -->
+        <div class="w-64 bg-white shadow-lg flex flex-col">
+            <div class="p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <div class="bg-indigo-600 w-8 h-8 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-fingerprint text-white text-sm"></i>
+                    </div>
+                    <span class="font-bold text-gray-800">BioAccess Secure</span>
+                </div>
+                <div class="mt-1 text-xs text-gray-400">Administration</div>
+            </div>
+            
+            <div class="flex-1 py-4">
+                <div class="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase">Principal</div>
+                <a href="dashboard.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-chart-pie w-5 text-gray-500"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="users.html" class="sidebar-item active flex items-center gap-3 px-6 py-3">
+                    <i class="fas fa-users w-5 text-white"></i>
+                    <span>Utilisateurs</span>
+                </a>
+                <a href="logs.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-history w-5 text-gray-500"></i>
+                    <span>Logs</span>
+                </a>
+                <a href="alerts.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-bell w-5 text-gray-500"></i>
+                    <span>Alertes</span>
+                </a>
+                <a href="reports.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-file-alt w-5 text-gray-500"></i>
+                    <span>Rapports</span>
+                </a>
+                <a href="config.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-sliders-h w-5 text-gray-500"></i>
+                    <span>Configuration</span>
+                </a>
+                <a href="audit.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-shield-alt w-5 text-gray-500"></i>
+                    <span>Audit</span>
+                </a>
+                <a href="profile.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-user-circle w-5 text-gray-500"></i>
+                    <span>Profil</span>
+                </a>
+            </div>
+            
+            <div class="p-4 border-t">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                        <span class="text-indigo-600 font-bold text-sm">AD</span>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm font-medium">Admin Système</div>
+                        <div class="text-xs text-gray-400">Super Admin</div>
+                    </div>
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CONTENU PRINCIPAL -->
+        <div class="flex-1 overflow-auto">
+            <div class="bg-white shadow-sm p-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-800">Gestion des utilisateurs</h1>
+                <div class="flex items-center gap-4">
+                    <a href="user-form.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        Nouvel utilisateur
+                    </a>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <!-- Filtres -->
+                <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Recherche</label>
+                            <div class="relative">
+                                <i class="fas fa-search absolute left-3 top-3 text-gray-400 text-sm"></i>
+                                <input type="text" placeholder="Nom, email, département..." 
+                                       class="w-full pl-9 pr-4 py-2 border rounded-lg text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Département</label>
+                            <select class="w-full p-2 border rounded-lg text-sm">
+                                <option>Tous</option>
+                                <option>Informatique</option>
+                                <option>RH</option>
+                                <option>Comptabilité</option>
+                                <option>Direction</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Rôle</label>
+                            <select class="w-full p-2 border rounded-lg text-sm">
+                                <option>Tous</option>
+                                <option>Admin</option>
+                                <option>Employé</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Statut</label>
+                            <select class="w-full p-2 border rounded-lg text-sm">
+                                <option>Tous</option>
+                                <option>Actif</option>
+                                <option>Inactif</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Auth</label>
+                            <select class="w-full p-2 border rounded-lg text-sm">
+                                <option>Tous</option>
+                                <option>Facial</option>
+                                <option>Vocal</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tableau des utilisateurs -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 border-b">
+                            <tr>
+                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Utilisateur</th>
+                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Département</th>
+                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Rôle</th>
+                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Dernière connexion</th>
+                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-mono">#001</td>
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                                            <span class="text-indigo-600 font-bold">JD</span>
+                                        </div>
+                                        <span class="font-medium">Jean Dupont</span>
+                                    </div>
+                                </td>
+                                <td class="p-4">jean.dupont@bioaccess.com</td>
+                                <td class="p-4">Informatique</td>
+                                <td class="p-4">Admin</td>
+                                <td class="p-4">10/03/2026 09:34</td>
+                                <td class="p-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Actif</span></td>
+                                <td class="p-4">
+                                    <div class="flex gap-2">
+                                        <a href="user-detail.html?id=1" class="text-indigo-600 hover:text-indigo-800">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="user-form.html?id=1" class="text-blue-600 hover:text-blue-800">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button class="text-red-600 hover:text-red-800">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-mono">#002</td>
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                            <span class="text-purple-600 font-bold">CM</span>
+                                        </div>
+                                        <span class="font-medium">Claire Martin</span>
+                                    </div>
+                                </td>
+                                <td class="p-4">claire.martin@bioaccess.com</td>
+                                <td class="p-4">RH</td>
+                                <td class="p-4">Employé</td>
+                                <td class="p-4">10/03/2026 08:15</td>
+                                <td class="p-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Actif</span></td>
+                                <td class="p-4"><i class="fas fa-eye text-indigo-600"></i></td>
+                            </tr>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-mono">#003</td>
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                            <span class="text-green-600 font-bold">TP</span>
+                                        </div>
+                                        <span class="font-medium">Thomas Petit</span>
+                                    </div>
+                                </td>
+                                <td class="p-4">thomas.petit@bioaccess.com</td>
+                                <td class="p-4">Informatique</td>
+                                <td class="p-4">Admin</td>
+                                <td class="p-4">09/03/2026 14:20</td>
+                                <td class="p-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Actif</span></td>
+                                <td class="p-4"><i class="fas fa-eye text-indigo-600"></i></td>
+                            </tr>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-mono">#004</td>
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                                            <span class="text-gray-600 font-bold">LB</span>
+                                        </div>
+                                        <span class="font-medium">Lucas Bernard</span>
+                                    </div>
+                                </td>
+                                <td class="p-4">lucas.bernard@bioaccess.com</td>
+                                <td class="p-4">Direction</td>
+                                <td class="p-4">Employé</td>
+                                <td class="p-4">08/03/2026 11:30</td>
+                                <td class="p-4"><span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs">Inactif</span></td>
+                                <td class="p-4"><i class="fas fa-eye text-indigo-600"></i></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Pagination -->
+                    <div class="p-4 border-t flex justify-between items-center">
+                        <span class="text-sm text-gray-500">1-4 sur 124</span>
+                        <div class="flex gap-2">
+                            <button class="px-3 py-1 border rounded hover:bg-gray-50">◀</button>
+                            <button class="px-3 py-1 bg-indigo-600 text-white rounded">1</button>
+                            <button class="px-3 py-1 border rounded hover:bg-gray-50">2</button>
+                            <button class="px-3 py-1 border rounded hover:bg-gray-50">3</button>
+                            <button class="px-3 py-1 border rounded hover:bg-gray-50">4</button>
+                            <button class="px-3 py-1 border rounded hover:bg-gray-50">5</button>
+                            <button class="px-3 py-1 border rounded hover:bg-gray-50">▶</button>
+                        </div>
+                        <select class="border rounded px-2 py-1 text-sm">
+                            <option>15 par page</option>
+                            <option>30 par page</option>
+                            <option>50 par page</option>
+                            <option>100 par page</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Boutons d'export -->
+                <div class="flex justify-end gap-3 mt-4">
+                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
+                        <i class="fas fa-file-csv mr-2"></i>CSV
+                    </button>
+                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
+                        <i class="fas fa-file-excel mr-2"></i>Excel
+                    </button>
+                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
+                        <i class="fas fa-file-pdf mr-2"></i>PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('logoutBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>

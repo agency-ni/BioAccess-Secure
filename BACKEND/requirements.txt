@@ -1,0 +1,34 @@
+# Framework
+Flask==2.3.3
+Flask-CORS==4.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.5
+
+# Base de données
+psycopg2-binary==2.9.9
+SQLAlchemy==2.0.23
+
+# Sécurité
+python-dotenv==1.0.0
+bcrypt==4.0.1
+PyJWT==2.8.0
+cryptography==41.0.7
+
+# Validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+email-validator==2.1.0
+
+# Rate limiting
+Flask-Limiter==3.5.0
+
+# Logging
+python-json-logger==2.0.7
+
+# Utilitaires
+uuid==1.30
+requests==2.31.0
+
+# Tests (dev)
+pytest==7.4.3
+pytest-cov==4.1.0

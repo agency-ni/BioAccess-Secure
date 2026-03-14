@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioAccess Secure - Audit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>* { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white shadow-lg flex flex-col">
+            <div class="p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <div class="bg-indigo-600 w-8 h-8 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-fingerprint text-white text-sm"></i>
+                    </div>
+                    <span class="font-bold text-gray-800">BioAccess Secure</span>
+                </div>
+                <div class="mt-1 text-xs text-red-400 font-semibold">Super Admin</div>
+            </div>
+            <div class="flex-1 py-4">
+                <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">📊 Dashboard</a>
+                <a href="users.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">👥 Utilisateurs</a>
+                <a href="logs.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">📋 Logs</a>
+                <a href="alerts.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">⚠️ Alertes</a>
+                <a href="reports.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">📊 Rapports</a>
+                <a href="config.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">⚙️ Configuration</a>
+                <a href="audit.html" class="flex items-center gap-3 px-6 py-3 bg-indigo-600 text-white">🔍 Audit</a>
+                <a href="profile.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">👤 Profil</a>
+            </div>
+        </div>
+        
+        <!-- Contenu -->
+        <div class="flex-1 overflow-auto">
+            <div class="bg-white shadow-sm p-4">
+                <h1 class="text-2xl font-bold text-gray-800">Module d'audit</h1>
+                <p class="text-sm text-gray-500">Traçabilité complète des actions administrateurs</p>
+            </div>
+            
+            <div class="p-6">
+                <!-- Vérification d'intégrité -->
+                <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle text-green-500 mr-3 text-xl"></i>
+                        <div>
+                            <p class="font-medium text-green-800">Intégrité des logs vérifiée</p>
+                            <p class="text-sm text-green-600">Chaîne de hash valide - Aucune modification détectée</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Logs des admins -->
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                    <h3 class="font-medium mb-4">Actions des administrateurs</h3>
+                    
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-500 border-b">
+                                <th class="pb-2">Date</th>
+                                <th class="pb-2">Admin</th>
+                                <th class="pb-2">Action</th>
+                                <th class="pb-2">IP</th>
+                                <th class="pb-2">Détails</th>
+                                <th class="pb-2">Hash</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-t">
+                                <td class="py-2">10/03 09:30</td>
+                                <td>Admin Système</td>
+                                <td>Modification config</td>
+                                <td>192.168.1.100</td>
+                                <td>Seuil facial: 0.65 → 0.60</td>
+                                <td class="font-mono text-xs text-gray-400">a1b2c3...</td>
+                            </tr>
+                            <tr class="border-t">
+                                <td class="py-2">10/03 08:45</td>
+                                <td>Thomas Petit</td>
+                                <td>Ajout utilisateur</td>
+                                <td>192.168.1.105</td>
+                                <td>Sophie Martin (Comptabilité)</td>
+                                <td class="font-mono text-xs text-gray-400">d4e5f6...</td>
+                            </tr>
+                            <tr class="border-t">
+                                <td class="py-2">09/03 17:20</td>
+                                <td>Admin Système</td>
+                                <td>Export logs</td>
+                                <td>192.168.1.100</td>
+                                <td>Période: 01/03-09/03 (PDF)</td>
+                                <td class="font-mono text-xs text-gray-400">g7h8i9...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Connexions admin -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="font-medium mb-4">Connexions administrateurs</h3>
+                    
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-500 border-b">
+                                <th class="pb-2">Date</th>
+                                <th class="pb-2">Admin</th>
+                                <th class="pb-2">IP</th>
+                                <th class="pb-2">Navigateur</th>
+                                <th class="pb-2">Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-t">
+                                <td class="py-2">10/03 09:34</td>
+                                <td>Admin Système</td>
+                                <td>192.168.1.100</td>
+                                <td>Chrome 122</td>
+                                <td><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Succès</span></td>
+                            </tr>
+                            <tr class="border-t">
+                                <td class="py-2">10/03 08:15</td>
+                                <td>Thomas Petit</td>
+                                <td>192.168.1.105</td>
+                                <td>Firefox 123</td>
+                                <td><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Succès</span></td>
+                            </tr>
+                            <tr class="border-t">
+                                <td class="py-2">09/03 22:10</td>
+                                <td>Inconnu</td>
+                                <td>45.123.45.67</td>
+                                <td>Edge 120</td>
+                                <td><span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs">Échec</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Export légal -->
+                <div class="mt-6 flex justify-end">
+                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                        <i class="fas fa-file-pdf mr-2"></i>Export signé pour usage légal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

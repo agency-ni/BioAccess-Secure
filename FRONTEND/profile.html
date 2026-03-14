@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioAccess Secure - Profil</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>* { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white shadow-lg flex flex-col">
+            <div class="p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <div class="bg-indigo-600 w-8 h-8 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-fingerprint text-white text-sm"></i>
+                    </div>
+                    <span class="font-bold text-gray-800">BioAccess Secure</span>
+                </div>
+            </div>
+            <div class="flex-1 py-4">
+                <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">📊 Dashboard</a>
+                <a href="users.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">👥 Utilisateurs</a>
+                <a href="logs.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">📋 Logs</a>
+                <a href="alerts.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">⚠️ Alertes</a>
+                <a href="reports.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">📊 Rapports</a>
+                <a href="config.html" class="flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100">⚙️ Configuration</a>
+                <a href="profile.html" class="flex items-center gap-3 px-6 py-3 bg-indigo-600 text-white">👤 Profil</a>
+            </div>
+        </div>
+        
+        <!-- Contenu -->
+        <div class="flex-1 overflow-auto">
+            <div class="bg-white shadow-sm p-4">
+                <h1 class="text-2xl font-bold text-gray-800">Mon profil</h1>
+            </div>
+            
+            <div class="p-6">
+                <div class="grid grid-cols-3 gap-6">
+                    <!-- Colonne gauche : Photo -->
+                    <div>
+                        <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+                            <div class="w-32 h-32 bg-indigo-100 rounded-full mx-auto flex items-center justify-center text-4xl font-bold text-indigo-600 mb-4">
+                                AD
+                            </div>
+                            <h2 class="text-xl font-bold">Admin Système</h2>
+                            <p class="text-gray-500">Super Admin</p>
+                            <p class="text-sm text-gray-400 mt-2">Membre depuis mars 2026</p>
+                            <button class="mt-4 border px-4 py-2 rounded-lg text-sm w-full hover:bg-gray-50">
+                                Changer photo
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Colonne droite : Infos -->
+                    <div class="col-span-2">
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="font-medium mb-4">Informations personnelles</h3>
+                            
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">Nom</label>
+                                    <input type="text" value="Système" class="w-full p-2 border rounded-lg bg-gray-50" readonly>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">Prénom</label>
+                                    <input type="text" value="Admin" class="w-full p-2 border rounded-lg bg-gray-50" readonly>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">Email</label>
+                                    <input type="email" value="admin@bioaccess.com" class="w-full p-2 border rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">Département</label>
+                                    <input type="text" value="Informatique" class="w-full p-2 border rounded-lg bg-gray-50" readonly>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">Téléphone</label>
+                                    <input type="tel" value="+229 01 23 45 67" class="w-full p-2 border rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">Rôle</label>
+                                    <input type="text" value="Super Admin" class="w-full p-2 border rounded-lg bg-gray-50" readonly>
+                                </div>
+                            </div>
+                            
+                            <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                                Enregistrer les modifications
+                            </button>
+                        </div>
+                        
+                        <!-- Sécurité -->
+                        <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
+                            <h3 class="font-medium mb-4">Sécurité</h3>
+                            
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="font-medium">Mot de passe</p>
+                                        <p class="text-sm text-gray-500">Dernière modification: il y a 30 jours</p>
+                                    </div>
+                                    <button class="border px-4 py-2 rounded-lg text-sm">Changer</button>
+                                </div>
+                                
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="font-medium">Double authentification (2FA)</p>
+                                        <p class="text-sm text-gray-500">Sécurisez votre compte avec 2FA</p>
+                                    </div>
+                                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">Activer</button>
+                                </div>
+                                
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="font-medium">Sessions actives</p>
+                                        <p class="text-sm text-gray-500">2 sessions actives</p>
+                                    </div>
+                                    <button class="border px-4 py-2 rounded-lg text-sm">Voir</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Dernières actions -->
+                        <div class="bg-white rounded-xl shadow-sm p-6 mt-6">
+                            <h3 class="font-medium mb-4">Mes dernières actions</h3>
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="text-left text-gray-500">
+                                        <th class="pb-2">Date</th>
+                                        <th class="pb-2">Action</th>
+                                        <th class="pb-2">IP</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-t">
+                                        <td class="py-2">09:45</td>
+                                        <td>Connexion</td>
+                                        <td>192.168.1.100</td>
+                                    </tr>
+                                    <tr class="border-t">
+                                        <td class="py-2">09:30</td>
+                                        <td>Ajout utilisateur - Sophie Martin</td>
+                                        <td>192.168.1.100</td>
+                                    </tr>
+                                    <tr class="border-t">
+                                        <td class="py-2">08:15</td>
+                                        <td>Modification configuration seuils</td>
+                                        <td>192.168.1.100</td>
+                                    </tr>
+                                    <tr class="border-t">
+                                        <td class="py-2">Hier 17:20</td>
+                                        <td>Export rapport PDF</td>
+                                        <td>192.168.1.100</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

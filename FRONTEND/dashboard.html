@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioAccess Secure - Dashboard</title>
+    
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%234f46e5'/%3E%3Cpath d='M30 40 L45 70 L60 40' stroke='white' stroke-width='8' fill='none' stroke-linecap='round' /%3E%3Ccircle cx='35' cy='35' r='6' fill='white'/%3E%3Ccircle cx='65' cy='35' r='6' fill='white'/%3E%3C/svg%3E">
+    
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        
+        /* Style sidebar avec scroll */
+        .sidebar {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        }
+        
+        .sidebar-menu {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem 0;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f1f5f9;
+        }
+        
+        .sidebar-menu::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .sidebar-menu::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        
+        .sidebar-menu::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        .sidebar-menu::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            color: #4b5563;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+        
+        .sidebar-item:hover:not(.active) {
+            background: #f3f4f6;
+            border-left-color: #9ca3af;
+        }
+        
+        .sidebar-item.active {
+            background: #4f46e5;
+            color: white;
+            border-left-color: #1e1b4b;
+        }
+        
+        .sidebar-item.active i {
+            color: white;
+        }
+        
+        .sidebar-footer {
+            padding: 1rem;
+            border-top: 1px solid #e5e7eb;
+            background: white;
+        }
+        
+        /* Style pour le conteneur principal */
+        .main-content {
+            height: 100vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+        
+        /* Style pour les tooltips du graphique */
+        .chart-tooltip {
+            background: #1f2937 !important;
+            color: white !important;
+            padding: 8px 12px !important;
+            border-radius: 6px !important;
+            font-size: 0.875rem !important;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1) !important;
+        }
+        
+        /* Style pour la plage horaire */
+        .time-range {
+            background: #f3f4f6;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: #4b5563;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .time-range i {
+            color: #4f46e5;
+            font-size: 0.7rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+        <!-- SIDEBAR (avec scroll corrigé) -->
+        <div class="w-64 sidebar">
+            <!-- Logo - fixe en haut -->
+            <div class="p-6 border-b flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <div class="bg-indigo-600 w-8 h-8 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-fingerprint text-white text-sm"></i>
+                    </div>
+                    <span class="font-bold text-gray-800">BioAccess Secure</span>
+                </div>
+                <div class="mt-1 text-xs text-gray-400">Administration</div>
+            </div>
+            
+            <!-- Menu avec scroll -->
+            <div class="sidebar-menu">
+                <div class="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase">Principal</div>
+                <a href="dashboard.html" class="sidebar-item active">
+                    <i class="fas fa-chart-pie w-5"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="users.html" class="sidebar-item">
+                    <i class="fas fa-users w-5"></i>
+                    <span>Utilisateurs</span>
+                </a>
+                <a href="logs.html" class="sidebar-item">
+                    <i class="fas fa-history w-5"></i>
+                    <span>Logs</span>
+                </a>
+                <a href="alerts.html" class="sidebar-item">
+                    <i class="fas fa-bell w-5"></i>
+                    <span>Alertes</span>
+                    <span class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">3</span>
+                </a>
+                
+                <div class="px-4 mt-6 mb-2 text-xs font-semibold text-gray-400 uppercase">Gestion</div>
+                <a href="reports.html" class="sidebar-item">
+                    <i class="fas fa-file-alt w-5"></i>
+                    <span>Rapports</span>
+                </a>
+                <a href="config.html" class="sidebar-item">
+                    <i class="fas fa-sliders-h w-5"></i>
+                    <span>Configuration</span>
+                </a>
+                <a href="audit.html" class="sidebar-item">
+                    <i class="fas fa-shield-alt w-5"></i>
+                    <span>Audit</span>
+                </a>
+                
+                <div class="px-4 mt-6 mb-2 text-xs font-semibold text-gray-400 uppercase">Compte</div>
+                <a href="profile.html" class="sidebar-item">
+                    <i class="fas fa-user-circle w-5"></i>
+                    <span>Profil</span>
+                </a>
+                <a href="login.html" class="sidebar-item" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt w-5"></i>
+                    <span>Déconnexion</span>
+                </a>
+            </div>
+            
+            <!-- Footer sidebar - fixe en bas -->
+            <div class="sidebar-footer flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                        <span class="text-indigo-600 font-bold text-sm" id="userInitials">AD</span>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm font-medium" id="adminName">Admin Système</div>
+                        <div class="text-xs text-gray-400" id="adminRole">Super Admin</div>
+                    </div>
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CONTENU PRINCIPAL -->
+        <div class="flex-1 main-content">
+            <!-- Top bar -->
+            <div class="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800" id="greeting"></h1>
+                    <div class="flex items-center gap-3 mt-1 flex-wrap">
+                        <p class="text-sm text-gray-500" id="previousConnection"></p>
+                        <span class="time-range" id="connectionRange">
+                            <i class="fas fa-clock"></i>
+                            <span id="rangeText"></span>
+                        </span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <i class="fas fa-bell text-gray-400 text-xl cursor-pointer hover:text-indigo-600"></i>
+                        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">3</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Contenu dashboard -->
+            <div class="p-6">
+                <!-- Sélecteur de période style Shopify -->
+                <div class="flex flex-wrap items-center gap-4 mb-6">
+                    <div class="relative">
+                        <button id="periodSelector" class="flex items-center gap-2 bg-white border rounded-lg px-4 py-2 text-sm hover:bg-gray-50 shadow-sm">
+                            <i class="fas fa-calendar-alt text-indigo-500"></i>
+                            <span id="selectedPeriod">7 derniers jours</span>
+                            <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                        </button>
+                        
+                        <!-- Dropdown menu -->
+                        <div id="periodMenu" class="absolute mt-1 w-64 bg-white border rounded-lg shadow-lg hidden z-20">
+                            <div class="py-1 max-h-96 overflow-y-auto">
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="today">Aujourd'hui</a>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="yesterday">Hier</a>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="7days">7 derniers jours</a>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="30days">30 derniers jours</a>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="3months">3 derniers mois</a>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="6months">6 derniers mois</a>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="12months">12 derniers mois</a>
+                                <div class="border-t my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="custom">Personnalisé...</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Comparaison -->
+                    <div class="relative">
+                        <button id="compareSelector" class="flex items-center gap-2 bg-white border rounded-lg px-4 py-2 text-sm hover:bg-gray-50 shadow-sm">
+                            <span>Comparer à : Période précédente</span>
+                            <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Calendrier personnalisé (caché par défaut) -->
+                    <div id="customRange" class="hidden items-center gap-2">
+                        <input type="date" id="startDate" class="border rounded-lg px-3 py-2 text-sm">
+                        <span class="text-gray-400">—</span>
+                        <input type="date" id="endDate" class="border rounded-lg px-3 py-2 text-sm">
+                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
+                            Appliquer
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPIs -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-indigo-500 hover:shadow-md transition">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-1">Employés actifs</p>
+                                <h3 class="text-3xl font-bold text-gray-800">124</h3>
+                                <p class="text-xs text-green-600 mt-2">+3 cette semaine</p>
+                            </div>
+                            <div class="bg-indigo-100 p-3 rounded-lg">
+                                <i class="fas fa-users text-indigo-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500 hover:shadow-md transition">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-1">Tentatives aujourd'hui</p>
+                                <h3 class="text-3xl font-bold text-gray-800">1,547</h3>
+                                <p class="text-xs text-green-600 mt-2">+12% vs hier</p>
+                            </div>
+                            <div class="bg-green-100 p-3 rounded-lg">
+                                <i class="fas fa-key text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500 hover:shadow-md transition">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-1">Taux de succès</p>
+                                <h3 class="text-3xl font-bold text-gray-800">94%</h3>
+                                <p class="text-xs text-green-600 mt-2">Objectif 95%</p>
+                            </div>
+                            <div class="bg-blue-100 p-3 rounded-lg">
+                                <i class="fas fa-check-circle text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-red-500 hover:shadow-md transition">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-1">Alertes non traitées</p>
+                                <h3 class="text-3xl font-bold text-gray-800">3</h3>
+                                <p class="text-xs text-red-600 mt-2">+2 depuis hier</p>
+                            </div>
+                            <div class="bg-red-100 p-3 rounded-lg">
+                                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Graphiques -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <!-- Graphique activité avec échelle dynamique -->
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-semibold text-gray-800">Activité</h3>
+                            <span class="text-sm text-gray-500" id="chartPeriod">1 - 31 mars 2026</span>
+                        </div>
+                        <div class="relative h-80">
+                            <canvas id="activityChart"></canvas>
+                        </div>
+                        
+                        <!-- Totaux avec variation -->
+                        <div class="flex justify-between items-center mt-4 p-4 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="text-sm text-gray-500">TOTAL</p>
+                                <p class="text-2xl font-bold" id="totalValue">1,547 tentatives</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-500">Variation</p>
+                                <p class="text-lg font-medium text-green-600" id="variationValue">▲ +12%</p>
+                                <p class="text-xs text-gray-400" id="comparePeriod">vs période précédente</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Camembert répartition -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="font-semibold text-gray-800 mb-4">Répartition</h3>
+                        <div class="relative h-64">
+                            <canvas id="pieChart"></canvas>
+                        </div>
+                        <div class="flex justify-center gap-4 mt-4 text-sm">
+                            <div class="flex items-center gap-1">
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <span>Succès (94%)</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                <span>Échecs (6%)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Alertes récentes et Top échecs -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- Alertes récentes -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="font-semibold text-gray-800 mb-4">Alertes récentes</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
+                                <div class="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">Tentative d'usurpation</p>
+                                    <p class="text-xs text-gray-500">Jean Dupont - 3 échecs consécutifs</p>
+                                    <p class="text-xs text-gray-400 mt-1" id="alertTime1"></p>
+                                </div>
+                                <span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">Haute</span>
+                            </div>
+                            
+                            <div class="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
+                                <div class="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">Accès hors horaire</p>
+                                    <p class="text-xs text-gray-500">Claire Martin - Salle serveur</p>
+                                    <p class="text-xs text-gray-400 mt-1" id="alertTime2"></p>
+                                </div>
+                                <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full">Moyenne</span>
+                            </div>
+                            
+                            <div class="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                                <div class="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">Nouvel employé</p>
+                                    <p class="text-xs text-gray-500">Sophie Martin - Enrôlement réussi</p>
+                                    <p class="text-xs text-gray-400 mt-1" id="alertTime3"></p>
+                                </div>
+                                <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Basse</span>
+                            </div>
+                            
+                            <div class="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
+                                <div class="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">Accès non autorisé</p>
+                                    <p class="text-xs text-gray-500">Pierre Moreau - Département Compta</p>
+                                    <p class="text-xs text-gray-400 mt-1" id="alertTime4"></p>
+                                </div>
+                                <span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">Haute</span>
+                            </div>
+                        </div>
+                        <a href="alerts.html" class="block text-center text-sm text-indigo-600 hover:text-indigo-800 mt-4">
+                            Voir toutes les alertes →
+                        </a>
+                    </div>
+                    
+                    <!-- Top 5 échecs -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="font-semibold text-gray-800 mb-4">Top 5 échecs</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Pierre Martin (Compta)</span>
+                                    <span class="font-medium">12 échecs</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-red-500 h-2 rounded-full" style="width: 80%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Sophie Dubois (RH)</span>
+                                    <span class="font-medium">8 échecs</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-red-500 h-2 rounded-full" style="width: 60%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Thomas Petit (Info)</span>
+                                    <span class="font-medium">5 échecs</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-red-500 h-2 rounded-full" style="width: 40%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Julie Moreau (Mkt)</span>
+                                    <span class="font-medium">4 échecs</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-red-500 h-2 rounded-full" style="width: 30%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Lucas Bernard (Dir)</span>
+                                    <span class="font-medium">3 échecs</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-red-500 h-2 rounded-full" style="width: 20%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Santé système -->
+                        <div class="mt-6 pt-4 border-t">
+                            <h4 class="text-sm font-medium mb-3">Santé système</h4>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <span class="text-xs">Serveur</span>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <span class="text-xs">Base données</span>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <span class="text-xs">API</span>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                        <span class="text-xs">Borne 1</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dernières connexions admin avec secondes -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="font-semibold text-gray-800 mb-4">Historique des connexions</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-left text-gray-500 border-b">
+                                    <th class="pb-2">Admin</th>
+                                    <th class="pb-2">Date (de - à)</th>
+                                    <th class="pb-2">IP</th>
+                                    <th class="pb-2">Durée</th>
+                                    <th class="pb-2">Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminConnections">
+                                <!-- Rempli par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === FONCTIONS UTILITAIRES ===
+        
+        // Formater la date avec fuseau horaire
+        function formatDateTime(date, includeSeconds = true) {
+            const options = {
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: includeSeconds ? '2-digit' : undefined,
+                hour12: false
+            };
+            return new Intl.DateTimeFormat('fr-FR', options).format(date).replace(',', '');
+        }
+        
+        // Formater uniquement l'heure
+        function formatTime(date) {
+            const options = {
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+            return new Intl.DateTimeFormat('fr-FR', options).format(date);
+        }
+        
+        // Obtenir le message de salutation
+        function getGreeting() {
+            const hour = new Date().getHours();
+            if (hour >= 5 && hour < 12) return "Bonjour";
+            if (hour >= 12 && hour < 17) return "Bon après-midi";
+            if (hour >= 17 && hour < 22) return "Bonsoir";
+            return "Bonne nuit";
+        }
+        
+        // Calculer la durée écoulée
+        function getTimeElapsed(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMins / 60);
+            const diffDays = Math.floor(diffHours / 24);
+            
+            if (diffDays > 0) return `il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+            if (diffHours > 0) return `il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
+            if (diffMins > 0) return `il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
+            return "à l'instant";
+        }
+        
+        // Générer une heure de déconnexion aléatoire (1-3h après connexion)
+        function generateLogoutTime(loginDate) {
+            const logoutDate = new Date(loginDate);
+            // Ajouter entre 1 et 3 heures
+            const sessionHours = 1 + Math.random() * 2;
+            logoutDate.setHours(logoutDate.getHours() + sessionHours);
+            return logoutDate;
+        }
+        
+        // Obtenir le fuseau horaire
+        function getTimezone() {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+        
+        // Fonction pour générer une échelle dynamique
+        function calculateDynamicScale(maxValue) {
+            const scales = [
+                { max: 100, step: 20 },
+                { max: 500, step: 100 },
+                { max: 1000, step: 200 },
+                { max: 5000, step: 1000 },
+                { max: 10000, step: 2000 },
+                { max: 50000, step: 10000 },
+                { max: 100000, step: 20000 },
+                { max: Infinity, step: 50000 }
+            ];
+            
+            for (const scale of scales) {
+                if (maxValue <= scale.max) {
+                    const steps = [];
+                    for (let i = 0; i <= scale.max; i += scale.step) {
+                        steps.push(i);
+                    }
+                    return { max: scale.max, steps, stepSize: scale.step };
+                }
+            }
+        }
+        
+        // === INITIALISATION DES DONNÉES ===
+        
+        // Récupérer les infos admin depuis sessionStorage
+        let userData = { nom: 'Admin', prenom: 'Système', role: 'super_admin' };
+        try {
+            const storedUser = sessionStorage.getItem('user');
+            if (storedUser) {
+                userData = JSON.parse(atob(storedUser));
+            }
+        } catch (e) {
+            console.log('Utilisation des données par défaut');
+        }
+        
+        // Afficher la salutation
+        const greeting = getGreeting();
+        document.getElementById('greeting').textContent = `${greeting}, ${userData.prenom} ${userData.nom}`;
+        
+        // Initiales pour l'avatar
+        const initials = (userData.prenom[0] + userData.nom[0]).toUpperCase();
+        document.getElementById('userInitials').textContent = initials;
+        
+        document.getElementById('adminName').textContent = `${userData.prenom} ${userData.nom}`;
+        document.getElementById('adminRole').textContent = userData.role === 'super_admin' ? 'Super Admin' : 'Admin';
+        
+        // Afficher la précédente connexion avec plage horaire
+        function displayPreviousConnection() {
+            const previousConnectionElement = document.getElementById('previousConnection');
+            const rangeTextElement = document.getElementById('rangeText');
+            const previousLoginTime = sessionStorage.getItem('previous_login_time');
+            const currentLoginTime = sessionStorage.getItem('current_login_time');
+            
+            if (previousLoginTime) {
+                const loginDate = new Date(previousLoginTime);
+                const logoutDate = generateLogoutTime(loginDate);
+                
+                const formattedDate = formatDateTime(loginDate, false).split(' ')[0]; // Juste la date
+                const loginTime = formatTime(loginDate);
+                const logoutTime = formatTime(logoutDate);
+                const elapsed = getTimeElapsed(loginDate);
+                
+                previousConnectionElement.innerHTML = `Précédente connexion : ${formattedDate}`;
+                rangeTextElement.innerHTML = `${loginTime} → ${logoutTime} (${elapsed})`;
+            } else if (currentLoginTime) {
+                const date = new Date(currentLoginTime);
+                const formattedDate = formatDateTime(date, false).split(' ')[0];
+                const loginTime = formatTime(date);
+                
+                previousConnectionElement.innerHTML = `Première connexion : ${formattedDate}`;
+                rangeTextElement.innerHTML = `${loginTime} (en cours)`;
+            } else {
+                const now = new Date();
+                const formattedDate = formatDateTime(now, false).split(' ')[0];
+                const currentTime = formatTime(now);
+                
+                previousConnectionElement.innerHTML = `Connexion actuelle : ${formattedDate}`;
+                rangeTextElement.innerHTML = `${currentTime} (en cours)`;
+            }
+        }
+        
+        displayPreviousConnection();
+        
+        // Générer des données de tentatives réalistes
+        function generateAttemptData(days = 7) {
+            const labels = [];
+            const attempts = [];
+            const successes = [];
+            const now = new Date();
+            let maxValue = 0;
+            
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }));
+                
+                const attemptValue = Math.floor(Math.random() * 300) + 50;
+                const successValue = Math.floor(attemptValue * (0.85 + Math.random() * 0.1));
+                
+                attempts.push(attemptValue);
+                successes.push(successValue);
+                maxValue = Math.max(maxValue, attemptValue);
+            }
+            
+            return { labels, attempts, successes, maxValue };
+        }
+        
+        // Mettre à jour les alertes avec heures réelles
+        function updateAlertTimes() {
+            const now = new Date();
+            const times = [
+                new Date(now.setHours(9, 45, 23, 0)),
+                new Date(now.setHours(22, 30, 15, 0)),
+                new Date(new Date().setDate(now.getDate() - 1)).setHours(14, 20, 45, 0),
+                new Date(new Date().setDate(now.getDate() - 1)).setHours(15, 10, 30, 0)
+            ];
+            
+            document.getElementById('alertTime1').textContent = formatDateTime(new Date(times[0]), true);
+            document.getElementById('alertTime2').textContent = formatDateTime(new Date(times[1]), true);
+            document.getElementById('alertTime3').textContent = formatDateTime(new Date(times[2]), true);
+            document.getElementById('alertTime4').textContent = formatDateTime(new Date(times[3]), true);
+        }
+        
+        // Générer les connexions admin
+        function generateAdminConnections() {
+            const admins = [
+                { name: 'Thomas Petit', ip: '192.168.1.105', success: true },
+                { name: userData.prenom + ' ' + userData.nom, ip: '192.168.1.100', success: true },
+                { name: 'Marie Claire', ip: '192.168.1.110', success: true },
+                { name: 'Pierre Durand', ip: '192.168.1.115', success: false }
+            ];
+            
+            const tbody = document.getElementById('adminConnections');
+            tbody.innerHTML = '';
+            
+            admins.forEach((admin, index) => {
+                const loginDate = new Date();
+                loginDate.setHours(loginDate.getHours() - index * 3);
+                loginDate.setMinutes(Math.floor(Math.random() * 60));
+                loginDate.setSeconds(Math.floor(Math.random() * 60));
+                
+                const logoutDate = generateLogoutTime(loginDate);
+                
+                const formattedDate = formatDateTime(loginDate, false).split(' ')[0];
+                const loginTime = formatTime(loginDate);
+                const logoutTime = formatTime(logoutDate);
+                const elapsed = getTimeElapsed(loginDate);
+                
+                const row = document.createElement('tr');
+                row.className = 'border-b hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="py-2 font-medium">${admin.name}</td>
+                    <td class="py-2">
+                        ${formattedDate}<br>
+                        <span class="text-xs text-indigo-600">${loginTime} → ${logoutTime}</span>
+                    </td>
+                    <td class="py-2 font-mono text-xs">${admin.ip}</td>
+                    <td class="py-2"><span class="text-${admin.success ? 'green' : 'red'}-600">${elapsed}</span></td>
+                    <td class="py-2"><span class="bg-${admin.success ? 'green' : 'red'}-100 text-${admin.success ? 'green' : 'red'}-700 px-2 py-1 rounded-full text-xs font-medium">${admin.success ? 'Succès' : 'Échec'}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // === GRAPHIQUE AVEC ÉCHELLE DYNAMIQUE ===
+        function initChart() {
+            const data = generateAttemptData(7);
+            const scale = calculateDynamicScale(data.maxValue);
+            
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            
+            // Détruire l'ancien graphique s'il existe
+            if (window.activityChart) {
+                window.activityChart.destroy();
+            }
+            
+            window.activityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Tentatives',
+                            data: data.attempts,
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Succès',
+                            data: data.successes,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: scale.max,
+                            ticks: {
+                                stepSize: scale.stepSize,
+                                callback: function(value) {
+                                    return value.toLocaleString('fr-FR');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.y.toLocaleString('fr-FR');
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Mettre à jour les totaux
+            const total = data.attempts.reduce((a, b) => a + b, 0);
+            document.getElementById('totalValue').textContent = total.toLocaleString('fr-FR') + ' tentatives';
+            
+            // Mettre à jour la période
+            const now = new Date();
+            const startDate = new Date(now);
+            startDate.setDate(now.getDate() - 7);
+            document.getElementById('chartPeriod').textContent = 
+                `${startDate.toLocaleDateString('fr-FR')} - ${now.toLocaleDateString('fr-FR')}`;
+        }
+        
+        // Camembert
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Succès', 'Échecs'],
+                datasets: [{
+                    data: [94, 6],
+                    backgroundColor: ['#10b981', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                cutout: '70%',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        // === GESTION DU SÉLECTEUR DE PÉRIODE ===
+        document.getElementById('periodSelector').addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.getElementById('periodMenu').classList.toggle('hidden');
+        });
+        
+        document.querySelectorAll('[data-period]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const period = this.dataset.period;
+                const text = this.textContent;
+                document.getElementById('selectedPeriod').textContent = text;
+                document.getElementById('periodMenu').classList.add('hidden');
+                
+                if (period === 'custom') {
+                    document.getElementById('customRange').classList.remove('hidden');
+                } else {
+                    document.getElementById('customRange').classList.add('hidden');
+                    // Simuler le changement de données
+                    const days = period === 'today' ? 1 : 
+                                period === 'yesterday' ? 1 :
+                                period === '7days' ? 7 :
+                                period === '30days' ? 30 :
+                                period === '3months' ? 90 : 180;
+                    const data = generateAttemptData(days);
+                    updateChartData(data);
+                }
+            });
+        });
+        
+        // Fermer le menu en cliquant ailleurs
+        document.addEventListener('click', function() {
+            document.getElementById('periodMenu').classList.add('hidden');
+        });
+        
+        function updateChartData(data) {
+            if (window.activityChart) {
+                window.activityChart.data.labels = data.labels;
+                window.activityChart.data.datasets[0].data = data.attempts;
+                window.activityChart.data.datasets[1].data = data.successes;
+                
+                const scale = calculateDynamicScale(data.maxValue);
+                window.activityChart.options.scales.y.max = scale.max;
+                window.activityChart.options.scales.y.ticks.stepSize = scale.stepSize;
+                
+                window.activityChart.update();
+                
+                const total = data.attempts.reduce((a, b) => a + b, 0);
+                document.getElementById('totalValue').textContent = total.toLocaleString('fr-FR') + ' tentatives';
+            }
+        }
+        
+        // === INITIALISATION ===
+        updateAlertTimes();
+        generateAdminConnections();
+        initChart();
+        
+        // === DÉCONNEXION ===
+        document.getElementById('logoutBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Enregistrer l'heure de déconnexion
+            const logoutTime = new Date();
+            sessionStorage.setItem('logout_time', logoutTime.toISOString());
+            
+            // Nettoyer
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
+            
+            // Redirection
+            window.location.href = 'login.html';
+        });
+        
+        // Rafraîchir les données toutes les 30 secondes
+        setInterval(() => {
+            const newData = generateAttemptData(7);
+            updateChartData(newData);
+            generateAdminConnections();
+        }, 30000);
+    </script>
+</body>
+</html>
