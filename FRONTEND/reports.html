@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BioAccess Secure - Rapports</title>
+    
+    <!-- Tailwind via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Flatpickr pour calendrier -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
+    
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .sidebar-item.active {
+            background: #4f46e5;
+            color: white;
+        }
+        
+        .sidebar-item.active i {
+            color: white;
+        }
+        
+        .sidebar-item:hover:not(.active) {
+            background: #f3f4f6;
+        }
+        
+        /* Style pour les cartes de rapport */
+        .report-card {
+            transition: all 0.3s ease;
+        }
+        
+        .report-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        /* Style pour les graphiques */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen">
+        <!-- SIDEBAR (Navigation principale) -->
+        <div class="w-64 bg-white shadow-lg flex flex-col">
+            <!-- Logo -->
+            <div class="p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <div class="bg-indigo-600 w-8 h-8 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-fingerprint text-white text-sm"></i>
+                    </div>
+                    <span class="font-bold text-gray-800">BioAccess Secure</span>
+                </div>
+                <div class="mt-1 text-xs text-gray-400">Administration</div>
+            </div>
+            
+            <!-- Menu -->
+            <div class="flex-1 py-4">
+                <div class="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase">Principal</div>
+                <a href="dashboard.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-chart-pie w-5 text-gray-500"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="users.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-users w-5 text-gray-500"></i>
+                    <span>Utilisateurs</span>
+                </a>
+                <a href="logs.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-history w-5 text-gray-500"></i>
+                    <span>Logs</span>
+                </a>
+                <a href="alerts.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-bell w-5 text-gray-500"></i>
+                    <span>Alertes</span>
+                </a>
+                
+                <div class="px-4 mt-6 mb-2 text-xs font-semibold text-gray-400 uppercase">Gestion</div>
+                <a href="reports.html" class="sidebar-item active flex items-center gap-3 px-6 py-3">
+                    <i class="fas fa-file-alt w-5 text-white"></i>
+                    <span>Rapports</span>
+                </a>
+                <a href="config.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-sliders-h w-5 text-gray-500"></i>
+                    <span>Configuration</span>
+                </a>
+                <a href="audit.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-shield-alt w-5 text-gray-500"></i>
+                    <span>Audit</span>
+                </a>
+                
+                <div class="px-4 mt-6 mb-2 text-xs font-semibold text-gray-400 uppercase">Compte</div>
+                <a href="profile.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fas fa-user-circle w-5 text-gray-500"></i>
+                    <span>Profil</span>
+                </a>
+                <a href="login.html" class="sidebar-item flex items-center gap-3 px-6 py-3 text-gray-700 hover:bg-gray-100 transition" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt w-5 text-gray-500"></i>
+                    <span>Déconnexion</span>
+                </a>
+            </div>
+            
+            <!-- Footer sidebar -->
+            <div class="p-4 border-t">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                        <span class="text-indigo-600 font-bold text-sm">AD</span>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm font-medium">Admin Système</div>
+                        <div class="text-xs text-gray-400">Super Admin</div>
+                    </div>
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CONTENU PRINCIPAL -->
+        <div class="flex-1 overflow-auto">
+            <!-- Top bar -->
+            <div class="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
+                <h1 class="text-2xl font-bold text-gray-800">Génération de rapports</h1>
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <i class="fas fa-bell text-gray-400 text-xl cursor-pointer hover:text-indigo-600"></i>
+                        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">3</span>
+                    </div>
+                    <div class="text-sm">
+                        <span class="text-gray-500">Dernier rapport:</span>
+                        <span class="font-medium ml-1">15 mars 2026</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Contenu principal -->
+            <div class="p-6">
+                <!-- Section: Types de rapports prédéfinis -->
+                <div class="mb-8">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Rapports prédéfinis</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Rapport journalier -->
+                        <div class="report-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500 cursor-pointer hover:shadow-md transition" onclick="selectReportType('journalier')">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center mb-3">
+                                        <i class="fas fa-calendar-day text-blue-600 text-xl"></i>
+                                    </div>
+                                    <h3 class="font-semibold text-gray-800">Rapport journalier</h3>
+                                    <p class="text-xs text-gray-500 mt-1">Activités du jour, synthèse rapide</p>
+                                </div>
+                                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Aujourd'hui</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Rapport hebdomadaire -->
+                        <div class="report-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500 cursor-pointer hover:shadow-md transition" onclick="selectReportType('hebdomadaire')">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="bg-green-100 w-10 h-10 rounded-lg flex items-center justify-center mb-3">
+                                        <i class="fas fa-calendar-week text-green-600 text-xl"></i>
+                                    </div>
+                                    <h3 class="font-semibold text-gray-800">Rapport hebdomadaire</h3>
+                                    <p class="text-xs text-gray-500 mt-1">Tendances sur 7 jours</p>
+                                </div>
+                                <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">7 jours</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Rapport mensuel -->
+                        <div class="report-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-purple-500 cursor-pointer hover:shadow-md transition" onclick="selectReportType('mensuel')">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="bg-purple-100 w-10 h-10 rounded-lg flex items-center justify-center mb-3">
+                                        <i class="fas fa-calendar-alt text-purple-600 text-xl"></i>
+                                    </div>
+                                    <h3 class="font-semibold text-gray-800">Rapport mensuel</h3>
+                                    <p class="text-xs text-gray-500 mt-1">Statistiques mensuelles détaillées</p>
+                                </div>
+                                <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">30 jours</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Rapport personnalisé -->
+                        <div class="report-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-orange-500 cursor-pointer hover:shadow-md transition" onclick="selectReportType('personnalise')">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="bg-orange-100 w-10 h-10 rounded-lg flex items-center justify-center mb-3">
+                                        <i class="fas fa-sliders-h text-orange-600 text-xl"></i>
+                                    </div>
+                                    <h3 class="font-semibold text-gray-800">Rapport personnalisé</h3>
+                                    <p class="text-xs text-gray-500 mt-1">Choix libre de la période</p>
+                                </div>
+                                <span class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">Personnalisé</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section: Configuration du rapport -->
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Configurer votre rapport</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Type de rapport -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-chart-line text-indigo-500 mr-2"></i>Type de rapport
+                            </label>
+                            <select id="reportType" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                                <option value="journalier">Rapport journalier</option>
+                                <option value="hebdomadaire">Rapport hebdomadaire</option>
+                                <option value="mensuel">Rapport mensuel</option>
+                                <option value="personnalise" selected>Rapport personnalisé</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Période (pour personnalisé) -->
+                        <div id="periodContainer" class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-calendar-alt text-indigo-500 mr-2"></i>Période
+                            </label>
+                            <div class="flex flex-wrap gap-3 items-center">
+                                <div class="flex-1 min-w-[200px]">
+                                    <input type="text" id="dateRange" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" placeholder="Sélectionner une période">
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition" onclick="setQuickPeriod('today')">
+                                        Aujourd'hui
+                                    </button>
+                                    <button class="px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition" onclick="setQuickPeriod('yesterday')">
+                                        Hier
+                                    </button>
+                                    <button class="px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition" onclick="setQuickPeriod('7days')">
+                                        7 jours
+                                    </button>
+                                    <button class="px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition" onclick="setQuickPeriod('30days')">
+                                        30 jours
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Options avancées (collapsible) -->
+                    <div class="mt-6 pt-4 border-t">
+                        <button class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-indigo-600 transition" onclick="toggleAdvancedOptions()">
+                            <i class="fas fa-cog" id="advancedIcon"></i>
+                            <span>Options avancées</span>
+                            <i class="fas fa-chevron-down text-xs ml-1 transition-transform" id="advancedChevron"></i>
+                        </button>
+                        
+                        <div id="advancedOptions" class="hidden mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm text-gray-600 mb-1">Inclure les graphiques</label>
+                                <select class="w-full p-2 border rounded-lg text-sm">
+                                    <option>Tous les graphiques</option>
+                                    <option>Évolution uniquement</option>
+                                    <option>Répartition uniquement</option>
+                                    <option>Aucun graphique</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-600 mb-1">Inclure les tableaux</label>
+                                <select class="w-full p-2 border rounded-lg text-sm">
+                                    <option>Tous les tableaux</option>
+                                    <option>Logs uniquement</option>
+                                    <option>Utilisateurs uniquement</option>
+                                    <option>Aucun tableau</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-600 mb-1">Filtres supplémentaires</label>
+                                <select class="w-full p-2 border rounded-lg text-sm">
+                                    <option>Aucun filtre</option>
+                                    <option>Par département</option>
+                                    <option>Par type d'accès</option>
+                                    <option>Par utilisateur</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section: Aperçu du rapport -->
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800">Aperçu du rapport</h2>
+                        <div class="flex gap-2">
+                            <span class="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full flex items-center gap-1">
+                                <i class="far fa-clock"></i>
+                                <span id="previewPeriod">01/03/2026 - 15/03/2026</span>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- KPIs aperçu -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <p class="text-xs text-gray-500">Total tentatives</p>
+                            <p class="text-2xl font-bold text-gray-800">1,547</p>
+                            <p class="text-xs text-green-600 mt-1">+12% vs période préc.</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <p class="text-xs text-gray-500">Taux de succès</p>
+                            <p class="text-2xl font-bold text-gray-800">94.2%</p>
+                            <p class="text-xs text-green-600 mt-1">Objectif 95%</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <p class="text-xs text-gray-500">Échecs</p>
+                            <p class="text-2xl font-bold text-gray-800">90</p>
+                            <p class="text-xs text-red-600 mt-1">5.8% du total</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <p class="text-xs text-gray-500">Alertes générées</p>
+                            <p class="text-2xl font-bold text-gray-800">23</p>
+                            <p class="text-xs text-yellow-600 mt-1">12 non traitées</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Graphiques aperçu -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <!-- Graphique évolution -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h3 class="text-sm font-medium text-gray-700 mb-3">Évolution des tentatives</h3>
+                            <div class="chart-container">
+                                <canvas id="previewChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Graphique répartition -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h3 class="text-sm font-medium text-gray-700 mb-3">Répartition par type</h3>
+                            <div class="chart-container">
+                                <canvas id="pieChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tableau récapitulatif -->
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h3 class="text-sm font-medium text-gray-700 mb-3">Récapitulatif par département</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="text-left text-gray-500 border-b">
+                                        <th class="pb-2">Département</th>
+                                        <th class="pb-2">Tentatives</th>
+                                        <th class="pb-2">Succès</th>
+                                        <th class="pb-2">Échecs</th>
+                                        <th class="pb-2">Taux succès</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b">
+                                        <td class="py-2 font-medium">Informatique</td>
+                                        <td>487</td>
+                                        <td>453</td>
+                                        <td>34</td>
+                                        <td><span class="text-green-600">93%</span></td>
+                                    </tr>
+                                    <tr class="border-b">
+                                        <td class="py-2 font-medium">Ressources Humaines</td>
+                                        <td>312</td>
+                                        <td>284</td>
+                                        <td>28</td>
+                                        <td><span class="text-green-600">91%</span></td>
+                                    </tr>
+                                    <tr class="border-b">
+                                        <td class="py-2 font-medium">Comptabilité</td>
+                                        <td>298</td>
+                                        <td>262</td>
+                                        <td>36</td>
+                                        <td><span class="text-yellow-600">88%</span></td>
+                                    </tr>
+                                    <tr class="border-b">
+                                        <td class="py-2 font-medium">Direction</td>
+                                        <td>156</td>
+                                        <td>148</td>
+                                        <td>8</td>
+                                        <td><span class="text-green-600">95%</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2 font-medium">Marketing</td>
+                                        <td>294</td>
+                                        <td>268</td>
+                                        <td>26</td>
+                                        <td><span class="text-green-600">91%</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Recommandations -->
+                    <div class="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-lightbulb text-blue-500 mt-1"></i>
+                            <div>
+                                <h4 class="font-medium text-blue-800">Recommandations</h4>
+                                <ul class="text-sm text-blue-700 mt-2 space-y-1">
+                                    <li>• Revoir la luminosité de la borne en salle serveur (taux d'échec élevé)</li>
+                                    <li>• Formation supplémentaire pour le département Comptabilité (88% de succès)</li>
+                                    <li>• Vérifier le micro du poste PC-105 (échecs répétés)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section: Export et actions -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Exporter le rapport</h2>
+                    
+                    <div class="flex flex-wrap gap-4 items-center justify-between">
+                        <div class="flex gap-3">
+                            <button class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-lg transition shadow-sm" onclick="exportReport('pdf')">
+                                <i class="fas fa-file-pdf"></i>
+                                <span>PDF</span>
+                            </button>
+                            <button class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg transition shadow-sm" onclick="exportReport('excel')">
+                                <i class="fas fa-file-excel"></i>
+                                <span>Excel</span>
+                            </button>
+                            <button class="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-lg transition shadow-sm" onclick="exportReport('csv')">
+                                <i class="fas fa-file-csv"></i>
+                                <span>CSV</span>
+                            </button>
+                            <button class="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-5 py-3 rounded-lg transition shadow-sm" onclick="exportReport('json')">
+                                <i class="fas fa-code"></i>
+                                <span>JSON</span>
+                            </button>
+                        </div>
+                        
+                        <div class="flex gap-3">
+                            <button class="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 px-5 py-3 rounded-lg transition" onclick="scheduleReport()">
+                                <i class="fas fa-clock text-gray-600"></i>
+                                <span>Planifier</span>
+                            </button>
+                            <button class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-lg transition shadow-md" onclick="generateReport()">
+                                <i class="fas fa-play"></i>
+                                <span>Générer maintenant</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Historique des exports -->
+                    <div class="mt-6 pt-4 border-t">
+                        <h3 class="text-sm font-medium text-gray-700 mb-3">Derniers exports</h3>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between text-sm p-2 hover:bg-gray-50 rounded">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-file-pdf text-red-500"></i>
+                                    <span>rapport_mensuel_mars_2026.pdf</span>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-gray-400 text-xs">15/03/2026 09:34</span>
+                                    <i class="fas fa-download text-gray-400 hover:text-indigo-600 cursor-pointer"></i>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between text-sm p-2 hover:bg-gray-50 rounded">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-file-excel text-green-500"></i>
+                                    <span>donnees_hebdo_08-15_mars.xlsx</span>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-gray-400 text-xs">14/03/2026 17:20</span>
+                                    <i class="fas fa-download text-gray-400 hover:text-indigo-600 cursor-pointer"></i>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between text-sm p-2 hover:bg-gray-50 rounded">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-file-csv text-purple-500"></i>
+                                    <span>logs_complets_2026-03-13.csv</span>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-gray-400 text-xs">13/03/2026 11:05</span>
+                                    <i class="fas fa-download text-gray-400 hover:text-indigo-600 cursor-pointer"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de planification -->
+    <div id="scheduleModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50" role="dialog" aria-modal="true">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Planifier l'envoi du rapport</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fréquence</label>
+                    <select class="w-full p-3 border rounded-lg">
+                        <option>Quotidienne</option>
+                        <option>Hebdomadaire</option>
+                        <option>Mensuelle</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Format</label>
+                    <select class="w-full p-3 border rounded-lg">
+                        <option>PDF</option>
+                        <option>Excel</option>
+                        <option>CSV</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Destinataires (email)</label>
+                    <input type="email" class="w-full p-3 border rounded-lg" placeholder="rssi@bioaccess.com" value="rssi@bioaccess.com">
+                    <p class="text-xs text-gray-400 mt-1">Séparez les emails par des virgules</p>
+                </div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg transition" onclick="scheduleConfirm()">
+                        Confirmer
+                    </button>
+                    <button class="flex-1 border border-gray-300 hover:bg-gray-50 py-3 rounded-lg transition" onclick="closeScheduleModal()">
+                        Annuler
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialisation
+        let selectedReportType = 'personnalise';
+        let advancedVisible = false;
+        
+        // Initialisation du calendrier Flatpickr
+        flatpickr("#dateRange", {
+            mode: "range",
+            locale: "fr",
+            dateFormat: "d/m/Y",
+            defaultDate: ["01/03/2026", "15/03/2026"],
+            onChange: function(selectedDates, dateStr, instance) {
+                document.getElementById('previewPeriod').textContent = dateStr.replace('to', '-');
+            }
+        });
+        
+        // Initialisation des graphiques
+        const ctx = document.getElementById('previewChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['01/03', '02/03', '03/03', '04/03', '05/03', '06/03', '07/03', '08/03', '09/03', '10/03', '11/03', '12/03', '13/03', '14/03', '15/03'],
+                datasets: [{
+                    label: 'Tentatives',
+                    data: [98, 105, 112, 108, 115, 95, 87, 102, 118, 124, 119, 113, 107, 98, 92],
+                    borderColor: '#4f46e5',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }, {
+                    label: 'Succès',
+                    data: [92, 99, 105, 101, 108, 89, 82, 96, 111, 117, 112, 106, 101, 93, 87],
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        
+        // Camembert
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Postes', 'Portes'],
+                datasets: [{
+                    data: [78, 22],
+                    backgroundColor: ['#4f46e5', '#f59e0b'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                cutout: '70%',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        
+        // Fonctions
+        function selectReportType(type) {
+            selectedReportType = type;
+            document.getElementById('reportType').value = type;
+            
+            if (type === 'personnalise') {
+                document.getElementById('periodContainer').classList.remove('hidden');
+            } else {
+                document.getElementById('periodContainer').classList.add('hidden');
+                
+                let periodText = '';
+                switch(type) {
+                    case 'journalier':
+                        periodText = 'Aujourd\'hui - 15/03/2026';
+                        break;
+                    case 'hebdomadaire':
+                        periodText = '09/03/2026 - 15/03/2026';
+                        break;
+                    case 'mensuel':
+                        periodText = '01/03/2026 - 31/03/2026';
+                        break;
+                }
+                document.getElementById('previewPeriod').textContent = periodText;
+            }
+        }
+        
+        function setQuickPeriod(period) {
+            let start, end = new Date();
+            end = new Date();
+            
+            switch(period) {
+                case 'today':
+                    start = new Date();
+                    break;
+                case 'yesterday':
+                    start = new Date();
+                    start.setDate(start.getDate() - 1);
+                    end = new Date(start);
+                    break;
+                case '7days':
+                    start = new Date();
+                    start.setDate(start.getDate() - 7);
+                    break;
+                case '30days':
+                    start = new Date();
+                    start.setDate(start.getDate() - 30);
+                    break;
+            }
+            
+            const formatDate = (date) => {
+                const d = date.getDate().toString().padStart(2, '0');
+                const m = (date.getMonth() + 1).toString().padStart(2, '0');
+                const y = date.getFullYear();
+                return `${d}/${m}/${y}`;
+            };
+            
+            document.getElementById('previewPeriod').textContent = `${formatDate(start)} - ${formatDate(end)}`;
+        }
+        
+        function toggleAdvancedOptions() {
+            advancedVisible = !advancedVisible;
+            const options = document.getElementById('advancedOptions');
+            const chevron = document.getElementById('advancedChevron');
+            
+            if (advancedVisible) {
+                options.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                options.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+        
+        function exportReport(format) {
+            let message = '';
+            switch(format) {
+                case 'pdf':
+                    message = '✅ Rapport PDF généré avec succès !';
+                    break;
+                case 'excel':
+                    message = '📊 Fichier Excel exporté !';
+                    break;
+                case 'csv':
+                    message = '📁 Fichier CSV prêt !';
+                    break;
+                case 'json':
+                    message = '🔧 Données JSON exportées !';
+                    break;
+            }
+            alert(message + '\n(Période: ' + document.getElementById('previewPeriod').textContent + ')');
+        }
+        
+        function generateReport() {
+            alert('🔄 Génération du rapport en cours...\nPériode: ' + document.getElementById('previewPeriod').textContent);
+        }
+        
+        function scheduleReport() {
+            document.getElementById('scheduleModal').classList.remove('hidden');
+        }
+        
+        function closeScheduleModal() {
+            document.getElementById('scheduleModal').classList.add('hidden');
+        }
+        
+        function scheduleConfirm() {
+            alert('✅ Rapport planifié avec succès !');
+            closeScheduleModal();
+        }
+        
+        // Gestion du changement de type de rapport
+        document.getElementById('reportType').addEventListener('change', function(e) {
+            selectReportType(e.target.value);
+        });
+        
+        // Déconnexion
+        document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = 'login.html';
+        });
+        
+        // Fermeture du modal en cliquant à l'extérieur
+        window.addEventListener('click', function(e) {
+            const modal = document.getElementById('scheduleModal');
+            if (e.target === modal) {
+                closeScheduleModal();
+            }
+        });
+    </script>
+</body>
+</html>
