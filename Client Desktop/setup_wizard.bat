@@ -1,78 +1,187 @@
 @echo off
 REM Assistant d'installation complet - Pour UTILISATEURS FINAUX
 REM BioAccess Secure Client Desktop v1.0
-REM Installation automatique de A à Z
+REM Installation automatique de A à Z avec suivi en direct
 
 setlocal enabledelayedexpansion
 
 color 0A
+title BioAccess Secure - Installation [0%%]
+
+cls
 echo.
 echo ╔════════════════════════════════════════════════════════╗
 echo ║    🔐 BioAccess Secure - Installation Complète         ║
 echo ║    Assistant Installation Utilisateur v1.0             ║
 echo ╚════════════════════════════════════════════════════════╝
 echo.
+echo 📊 Suivi en DIRECT du processus d'installation
+echo.
+timeout /t 2 /nobreak >nul
+
+REM Initialiser le compteur de progression
+set TOTAL_STEPS=5
+set CURRENT_STEP=0
+
 
 REM ========== ÉTAPE 1: Vérifier Python ==========
-echo 📋 ÉTAPE 1/5: Vérification de Python...
+set /a CURRENT_STEP=1
+set /a PROGRESS=CURRENT_STEP*100/TOTAL_STEPS
+title BioAccess Secure - Installation [%PROGRESS%%%]
+cls
+echo ╔════════════════════════════════════════════════════════╗
+echo ║    🔐 BioAccess Secure - Installation Complète         ║
+echo ║    Progression: [1/5]                                 ║
+echo ╚════════════════════════════════════════════════════════╝
+echo.
+echo ┌──────────────────────────────────────────────────────┐
+echo │█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 20%%│
+echo └──────────────────────────────────────────────────────┘
+echo.
+echo 📋 ÉTAPE 1/5: Vérification de Python
+echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo.
+
 python --version >nul 2>&1
 if errorlevel 1 (
+    echo ❌ ERREUR CRITIQUE: Python n'est pas installé
     echo.
-    echo ❌ ERREUR: Python n'est pas installé
-    echo.
-    echo 🔧 Pour corriger le problème:
-    echo    1. Ouvrir: https://www.python.org/downloads/
+    echo 🔧 POUR CORRIGER:
+    echo    1. Allez sur https://www.python.org/downloads/
     echo    2. Télécharger Python 3.9 ou plus récent
-    echo    3. IMPORTANT: Cocher "Add Python to PATH"
-    echo    4. Finir l'installation
-    echo    5. Relancer ce script
+    echo    3. 🔴 IMPORTANT: Cocher "Add Python to PATH"
+    echo    4. Cliquer "Install Now"
+    echo    5. Attendre la fin de l'installation
+    echo    6. Relancer ce script (setup_wizard.bat)
     echo.
     pause
     exit /b 1
 )
 for /f "tokens=2" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
-echo ✅ Python %PYTHON_VERSION% détecté
+echo ✅ Python %PYTHON_VERSION% trouvé
 echo.
+timeout /t 2 /nobreak >nul
+
 
 REM ========== ÉTAPE 2: Créer environnement virtuel ==========
-echo 📋 ÉTAPE 2/5: Préparation de l'environnement...
+set /a CURRENT_STEP=2
+set /a PROGRESS=CURRENT_STEP*100/TOTAL_STEPS
+title BioAccess Secure - Installation [%PROGRESS%%%]
+cls
+echo ╔════════════════════════════════════════════════════════╗
+echo ║    🔐 BioAccess Secure - Installation Complète         ║
+echo ║    Progression: [2/5]                                 ║
+echo ╚════════════════════════════════════════════════════════╝
+echo.
+echo ┌──────────────────────────────────────────────────────┐
+echo │██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 40%%│
+echo └──────────────────────────────────────────────────────┘
+echo.
+echo 📋 ÉTAPE 2/5: Configuration de l'environnement
+echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo.
+
+echo ⏳ Étape 1/4: Vérification d'un environnement existant...
 if exist venv (
-    echo    ⚠️  Environnement existant détecté - réinitialisation...
-    rmdir /s /q venv
+    echo ⏳ Étape 2/4: Suppression de l'ancienne installation...
+    rmdir /s /q venv >nul 2>&1
+) else (
+    echo ⏳ Étape 2/4: Aucun ancien environnement trouvé
 )
+
+echo ⏳ Étape 3/4: Création de l'environnement virtuel...
 python -m venv venv >nul 2>&1
 if errorlevel 1 (
     echo ❌ Erreur lors de la création de l'environnement
     pause
     exit /b 1
 )
-call venv\Scripts\activate.bat
+
+echo ⏳ Étape 4/4: Activation et mise à jour de pip...
+call venv\Scripts\activate.bat >nul 2>&1
 python -m pip install --upgrade pip >nul 2>&1
-echo ✅ Environnement prêt
+
+echo ✅ Environnement configuré avec succès
 echo.
+timeout /t 2 /nobreak >nul
+
 
 REM ========== ÉTAPE 3: Installer dépendances ==========
-echo 📋 ÉTAPE 3/5: Installation des dépendances (2-3 minutes)...
+set /a CURRENT_STEP=3
+set /a PROGRESS=CURRENT_STEP*100/TOTAL_STEPS
+title BioAccess Secure - Installation [%PROGRESS%%%]
+cls
+echo ╔════════════════════════════════════════════════════════╗
+echo ║    🔐 BioAccess Secure - Installation Complète         ║
+echo ║    Progression: [3/5]                                 ║
+echo ╚════════════════════════════════════════════════════════╝
+echo.
+echo ┌──────────────────────────────────────────────────────┐
+echo │███████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 60%%│
+echo └──────────────────────────────────────────────────────┘
+echo.
+echo 📋 ÉTAPE 3/5: Installation des dépendances (2-3 minutes)
+echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo.
+echo ⏳ Installation en cours:
+echo.
+echo    Packages à télécharger:
+echo    • Pillow (interface graphique)
+echo    • OpenCV (traitement d'image - ~200MB)
+echo    • NumPy (calculs numériques)
+echo    • Requests (communication API)
+echo    • SoundDevice + SoundFile (audio)
+echo    • SciPy (traitement signal)
+echo    • Python-dotenv (configuration)
+echo.
+echo ⏳ Téléchargement et installation en cours...
+echo    (cela peut prendre 2-3 minutes avec votre connexion)
+echo.
+
 pip install -r requirements.txt >nul 2>&1
 if errorlevel 1 (
     echo ❌ Erreur lors de l'installation des dépendances
+    echo.
+    echo 💡 Solution: Vérifier votre connexion internet
     pause
     exit /b 1
 )
-echo ✅ Dépendances installées
+
+echo ✅ Dépendances installées (environ 200-300 MB)
+echo.
+timeout /t 2 /nobreak >nul
+
+
+REM ========== ÉTAPE 4: Compiler en .exe ==========
+set /a CURRENT_STEP=4
+set /a PROGRESS=CURRENT_STEP*100/TOTAL_STEPS
+title BioAccess Secure - Installation [%PROGRESS%%%]
+cls
+echo ╔════════════════════════════════════════════════════════╗
+echo ║    🔐 BioAccess Secure - Installation Complète         ║
+echo ║    Progression: [4/5]                                 ║
+echo ╚════════════════════════════════════════════════════════╝
+echo.
+echo ┌──────────────────────────────────────────────────────┐
+echo │████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 80%%│
+echo └──────────────────────────────────────────────────────┘
+echo.
+echo 📋 ÉTAPE 4/5: Création de l'exécutable (1-2 minutes)
+echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
 
-REM ========== ÉTAPE 4: Installer PyInstaller et compiler ==========
-echo 📋 ÉTAPE 4/5: Création de l'exécutable (1-2 minutes)...
-echo    Installation de PyInstaller...
-pip install pyinstaller>=5.0.0 >nul 2>&1
+echo ⏳ Étape 1/3: Installation de PyInstaller...
+pip install pyinstaller^>^=5.0.0 >nul 2>&1
 
-REM Nettoyer anciens builds
+echo ⏳ Étape 2/3: Nettoyage des builds précédents...
 if exist build rmdir /s /q build >nul 2>&1
 if exist dist rmdir /s /q dist >nul 2>&1
 if exist main.spec del main.spec >nul 2>&1
 
-echo    Compilation en cours...
+echo ⏳ Étape 3/3: Compilation en cours...
+echo     (cela peut prendre 1-2 minutes, soyez patient...)
+echo.
+
 pyinstaller ^
     --onefile ^
     --windowed ^
@@ -88,23 +197,41 @@ pyinstaller ^
 
 if not exist dist\BioAccessSecure.exe (
     echo ❌ Erreur lors de la compilation
+    echo.
+    echo 💡 Assurez-vous qu'aucun antivirus ne bloque le processus
     pause
     exit /b 1
 )
-echo ✅ Exécutable créé
-echo.
 
-REM ========== ÉTAPE 5: Demander emplacement d'installation ==========
-echo 📋 ÉTAPE 5/5: Installation finale...
+echo ✅ Exécutable créé: BioAccessSecure.exe
 echo.
-echo Où voulez-vous installer l'application?
+timeout /t 2 /nobreak >nul
+
+
+REM ========== ÉTAPE 5: Destination d'installation ==========
+set /a CURRENT_STEP=5
+set /a PROGRESS=CURRENT_STEP*100/TOTAL_STEPS
+title BioAccess Secure - Installation [%PROGRESS%%%]
+cls
+echo ╔════════════════════════════════════════════════════════╗
+echo ║    🔐 BioAccess Secure - Installation Complète         ║
+echo ║    Progression: [5/5]                                 ║
+echo ╚════════════════════════════════════════════════════════╝
 echo.
-echo Options:
-echo   1 - C:\Program Files\BioAccessSecure (recommandé)
+echo ┌──────────────────────────────────────────────────────┐
+echo │█████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░ 90%%│
+echo └──────────────────────────────────────────────────────┘
+echo.
+echo 📋 ÉTAPE 5/5: Destination d'installation
+echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo.
+echo Où voulez-vous installer BioAccessSecure?
+echo.
+echo   1 - C:\Program Files\BioAccessSecure [RECOMMANDÉ]
 echo   2 - Bureau (facile d'accès)
-echo   3 - Emplacement personnalisé
+echo   3 - Dossier personnalisé (entrez le chemin)
 echo.
-set /p INSTALL_CHOICE="Votre choix (1-3) [1]: "
+set /p INSTALL_CHOICE="Choisissez (1-3) [1]: "
 if "%INSTALL_CHOICE%"=="" set INSTALL_CHOICE=1
 
 if "%INSTALL_CHOICE%"=="1" (
@@ -113,25 +240,29 @@ if "%INSTALL_CHOICE%"=="1" (
     set "INSTALL_PATH=%USERPROFILE%\Desktop\BioAccessSecure"
 ) else if "%INSTALL_CHOICE%"=="3" (
     echo.
-    set /p INSTALL_PATH="Entrez le chemin complet: "
+    set /p INSTALL_PATH="Chemin complet: "
 ) else (
     set "INSTALL_PATH=C:\Program Files\BioAccessSecure"
 )
 
-REM Créer le dossier d'installation
-if not exist "!INSTALL_PATH!" (
-    mkdir "!INSTALL_PATH!"
-)
+echo.
+echo ⏳ Création des dossiers...
+if not exist "!INSTALL_PATH!" mkdir "!INSTALL_PATH!"
+if not exist "!INSTALL_PATH!\logs" mkdir "!INSTALL_PATH!\logs"
+if not exist "!INSTALL_PATH!\temp" mkdir "!INSTALL_PATH!\temp"
 
-REM Copier l'exe et les fichiers de configuration
-echo Copie des fichiers...
+echo ⏳ Copie de l'exécutable...
 copy "dist\BioAccessSecure.exe" "!INSTALL_PATH!" >nul 2>&1
+
+echo ⏳ Copie des fichiers de configuration...
 if exist ".env.example" copy ".env.example" "!INSTALL_PATH!\.env" >nul 2>&1
+
+echo ⏳ Copie de la documentation...
 if exist "README.md" copy "README.md" "!INSTALL_PATH!" >nul 2>&1
 if exist "QUICKSTART.md" copy "QUICKSTART.md" "!INSTALL_PATH!" >nul 2>&1
+if exist "DEBUG.md" copy "DEBUG.md" "!INSTALL_PATH!" >nul 2>&1
 
-REM Créer raccourci desktop
-echo Création du raccourci...
+echo ⏳ Création du raccourci sur le Bureau...
 powershell -Command ^
     "$WshShell = New-Object -ComObject WScript.Shell; " ^
     "$Shortcut = $WshShell.CreateShortcut([System.Environment]::GetFolderPath('Desktop') + '\BioAccessSecure.lnk'); " ^
@@ -141,25 +272,42 @@ powershell -Command ^
     "$Shortcut.Save()" >nul 2>&1
 
 echo.
+
+cls
+title BioAccess Secure - Installation [100%%]
 echo ╔════════════════════════════════════════════════════════╗
-echo ║         ✅ Installation réussie!                      ║
+echo ║    🔐 BioAccess Secure - Installation Complète         ║
+echo ║    Progression: [5/5] - TERMINÉE!                     ║
 echo ╚════════════════════════════════════════════════════════╝
 echo.
-echo 📍 Emplacement: !INSTALL_PATH!
+echo ┌──────────────────────────────────────────────────────┐
+echo │█████████████████████████████████████████████████ 100%%│
+echo └──────────────────────────────────────────────────────┘
 echo.
-echo 🎯 Votre application est prête!
+echo ✅ INSTALLATION 100%% RÉUSSIE!
+echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
-echo 📝 Avant de lancer:
-echo    1. Ouvrir: !INSTALL_PATH!\.env
-echo    2. Vérifier/modifier API_BASE_URL (adresse du serveur)
+echo 📍 Emplacement d'installation: !INSTALL_PATH!
 echo.
-echo 🚀 Pour démarrer:
-echo    • Double-cliquer sur l'icône "BioAccessSecure" sur le Bureau
-echo    OU
-echo    • Ouvrir !INSTALL_PATH!
-echo    • Double-cliquer sur BioAccessSecure.exe
+echo 🎯 PROCHAINES ÉTAPES:
 echo.
-echo 📚 Documentation disponible dans le dossier d'installation
+echo 1️⃣  CONFIGURATION IMPORTANTE:
+echo     • Ouvrir le fichier: !INSTALL_PATH!\.env
+echo     • Modifier la ligne: API_BASE_URL=...
+echo     • Entrer l'adresse CORRECTE de votre serveur
 echo.
-echo Appuyez sur une touche pour fermer...
+echo 2️⃣  DÉMARRAGE DE L'APPLICATION:
+echo     • Double-cliquer "BioAccessSecure" sur le Bureau
+echo     OU
+echo     • Ouvrir le dossier: !INSTALL_PATH!
+echo     • Double-cliquer sur BioAccessSecure.exe
+echo.
+echo 📚 DOCUMENTATION DISPONIBLE:
+echo     • README.md - Guide complet et détaillé
+echo     • QUICKSTART.md - Démarrage rapide
+echo     • DEBUG.md - Résolution de problèmes
+echo.
+echo ═════════════════════════════════════════════════════════
+echo Appuyez sur une touche pour terminer...
 pause
+exit /b 0
