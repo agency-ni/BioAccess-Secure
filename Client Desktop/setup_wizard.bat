@@ -2,11 +2,12 @@
 REM Assistant d'installation complet - Pour UTILISATEURS FINAUX
 REM BioAccess Secure Client Desktop v1.0
 REM Installation automatique de A à Z avec suivi en direct
+REM VERSION: 1.1 - Gestion d'erreur améliorée
 
 setlocal enabledelayedexpansion
 
 color 0A
-title BioAccess Secure - Installation [0%%]
+title BioAccess Secure - Installation
 
 cls
 echo.
@@ -44,7 +45,7 @@ echo.
 
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ❌ ERREUR CRITIQUE: Python n'est pas installé
+    echo ❌ ERREUR CRITIQUE: Python n'est pas installé ou non accessible
     echo.
     echo 🔧 POUR CORRIGER:
     echo    1. Allez sur https://www.python.org/downloads/
@@ -84,23 +85,30 @@ echo.
 echo ⏳ Étape 1/4: Vérification d'un environnement existant...
 if exist venv (
     echo ⏳ Étape 2/4: Suppression de l'ancienne installation...
-    rmdir /s /q venv >nul 2>&1
+    rmdir /s /q venv 2>nul
+    if errorlevel 1 echo ⚠️  Avertissement: Impossible de supprimer ancien venv
 ) else (
     echo ⏳ Étape 2/4: Aucun ancien environnement trouvé
 )
 
 echo ⏳ Étape 3/4: Création de l'environnement virtuel...
-python -m venv venv >nul 2>&1
+python -m venv venv
 if errorlevel 1 (
-    echo ❌ Erreur lors de la création de l'environnement
+    echo ❌ ERREUR: Création de l'environnement échouée
+    echo.
     pause
     exit /b 1
 )
 
 echo ⏳ Étape 4/4: Activation et mise à jour de pip...
-call venv\Scripts\activate.bat >nul 2>&1
-python -m pip install --upgrade pip >nul 2>&1
+call venv\Scripts\activate.bat
+if errorlevel 1 (
+    echo ❌ ERREUR: Activation de l'environnement échouée
+    pause
+    exit /b 1
+)
 
+python -m pip install --upgrade pip 2>&1 | find /V "Running setup.py" >nul
 echo ✅ Environnement configuré avec succès
 echo.
 timeout /t 2 /nobreak >nul
@@ -120,10 +128,10 @@ echo ┌────────────────────────
 echo │███████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 60%%│
 echo └──────────────────────────────────────────────────────┘
 echo.
-echo 📋 ÉTAPE 3/5: Installation des dépendances (2-3 minutes)
+echo 📋 ÉTAPE 3/5: Installation des dépendances
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
-echo ⏳ Installation en cours:
+echo ⏳ Installation en cours (3-5 minutes):
 echo.
 echo    Packages à télécharger:
 echo    • Pillow (interface graphique)
@@ -134,15 +142,17 @@ echo    • SoundDevice + SoundFile (audio)
 echo    • SciPy (traitement signal)
 echo    • Python-dotenv (configuration)
 echo.
-echo ⏳ Téléchargement et installation en cours...
-echo    (cela peut prendre 2-3 minutes avec votre connexion)
-echo.
 
-pip install -r requirements.txt >nul 2>&1
+pip install -r requirements.txt 2>&1 | find /V "Running setup.py" >nul
 if errorlevel 1 (
-    echo ❌ Erreur lors de l'installation des dépendances
     echo.
-    echo 💡 Solution: Vérifier votre connexion internet
+    echo ❌ ERREUR: Installation des dépendances échouée
+    echo.
+    echo 💡 Vérifier:
+    echo    - Votre connexion internet
+    echo    - L'espace disque disponible (~500MB)
+    echo    - Que le fichier requirements.txt existe
+    echo.
     pause
     exit /b 1
 )
@@ -166,39 +176,32 @@ echo ┌────────────────────────
 echo │████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 80%%│
 echo └──────────────────────────────────────────────────────┘
 echo.
-echo 📋 ÉTAPE 4/5: Création de l'exécutable (1-2 minutes)
+echo 📋 ÉTAPE 4/5: Création de l'exécutable
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
 
 echo ⏳ Étape 1/3: Installation de PyInstaller...
-pip install pyinstaller^>^=5.0.0 >nul 2>&1
+pip install pyinstaller^>^=5.0.0 2>&1 | find /V "Running setup.py" >nul
 
 echo ⏳ Étape 2/3: Nettoyage des builds précédents...
-if exist build rmdir /s /q build >nul 2>&1
-if exist dist rmdir /s /q dist >nul 2>&1
-if exist main.spec del main.spec >nul 2>&1
+if exist build rmdir /s /q build 2>nul
+if exist dist rmdir /s /q dist 2>nul
+if exist main.spec del main.spec 2>nul
 
 echo ⏳ Étape 3/3: Compilation en cours...
-echo     (cela peut prendre 1-2 minutes, soyez patient...)
+echo     (cela peut prendre 2-3 minutes, soyez patient...)
 echo.
 
-pyinstaller ^
-    --onefile ^
-    --windowed ^
-    --name "BioAccessSecure" ^
-    --add-data "ui;ui" ^
-    --add-data "biometric;biometric" ^
-    --add-data "services;services" ^
-    --hidden-import=cv2 ^
-    --hidden-import=sounddevice ^
-    --hidden-import=soundfile ^
-    --hidden-import=scipy ^
-    main.py >nul 2>&1
+pyinstaller --onefile --windowed --name "BioAccessSecure" --distpath "dist" --add-data "ui;ui" --add-data "biometric;biometric" --add-data "services;services" --hidden-import=cv2 --hidden-import=sounddevice --hidden-import=soundfile --hidden-import=scipy --hidden-import=PIL main.py >nul 2>&1
 
 if not exist dist\BioAccessSecure.exe (
-    echo ❌ Erreur lors de la compilation
+    echo ❌ ERREUR: Compilation échouée
     echo.
-    echo 💡 Assurez-vous qu'aucun antivirus ne bloque le processus
+    echo 💡 Vérifier:
+    echo    - Aucun antivirus bloque pyinstaller
+    echo    - Les fichiers ui/, biometric/, services/ existent
+    echo    - Espace disque suffisant
+    echo.
     pause
     exit /b 1
 )
@@ -219,7 +222,7 @@ echo ║    Progression: [5/5]                                 ║
 echo ╚════════════════════════════════════════════════════════╝
 echo.
 echo ┌──────────────────────────────────────────────────────┐
-echo │█████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░ 90%%│
+echo │████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 90%%│
 echo └──────────────────────────────────────────────────────┘
 echo.
 echo 📋 ÉTAPE 5/5: Destination d'installation
@@ -247,29 +250,43 @@ if "%INSTALL_CHOICE%"=="1" (
 
 echo.
 echo ⏳ Création des dossiers...
-if not exist "!INSTALL_PATH!" mkdir "!INSTALL_PATH!"
+if not exist "!INSTALL_PATH!" (
+    mkdir "!INSTALL_PATH!"
+    if errorlevel 1 (
+        echo ❌ ERREUR: Impossible de créer !INSTALL_PATH!
+        echo.
+        echo 💡 Solution: Vérifier les permissions ou choisir un autre dossier
+        pause
+        exit /b 1
+    )
+)
+
 if not exist "!INSTALL_PATH!\logs" mkdir "!INSTALL_PATH!\logs"
 if not exist "!INSTALL_PATH!\temp" mkdir "!INSTALL_PATH!\temp"
 
 echo ⏳ Copie de l'exécutable...
-copy "dist\BioAccessSecure.exe" "!INSTALL_PATH!" >nul 2>&1
+if not exist "dist\BioAccessSecure.exe" (
+    echo ❌ ERREUR: dist\BioAccessSecure.exe non trouvé!
+    pause
+    exit /b 1
+)
+copy "dist\BioAccessSecure.exe" "!INSTALL_PATH!" 2>nul
+if errorlevel 1 (
+    echo ❌ ERREUR: Impossible de copier BioAccessSecure.exe
+    pause
+    exit /b 1
+)
 
 echo ⏳ Copie des fichiers de configuration...
-if exist ".env.example" copy ".env.example" "!INSTALL_PATH!\.env" >nul 2>&1
+if exist ".env.example" copy ".env.example" "!INSTALL_PATH!\.env" 2>nul
 
 echo ⏳ Copie de la documentation...
-if exist "README.md" copy "README.md" "!INSTALL_PATH!" >nul 2>&1
-if exist "QUICKSTART.md" copy "QUICKSTART.md" "!INSTALL_PATH!" >nul 2>&1
-if exist "DEBUG.md" copy "DEBUG.md" "!INSTALL_PATH!" >nul 2>&1
+if exist "README.md" copy "README.md" "!INSTALL_PATH!" 2>nul
+if exist "QUICKSTART.md" copy "QUICKSTART.md" "!INSTALL_PATH!" 2>nul
+if exist "DEBUG.md" copy "DEBUG.md" "!INSTALL_PATH!" 2>nul
 
 echo ⏳ Création du raccourci sur le Bureau...
-powershell -Command ^
-    "$WshShell = New-Object -ComObject WScript.Shell; " ^
-    "$Shortcut = $WshShell.CreateShortcut([System.Environment]::GetFolderPath('Desktop') + '\BioAccessSecure.lnk'); " ^
-    "$Shortcut.TargetPath = '!INSTALL_PATH!\BioAccessSecure.exe'; " ^
-    "$Shortcut.WorkingDirectory = '!INSTALL_PATH!'; " ^
-    "$Shortcut.Description = 'BioAccess Secure - Authentification Biométrique'; " ^
-    "$Shortcut.Save()" >nul 2>&1
+powershell -NoProfile -Command "try { $WshShell = New-Object -ComObject WScript.Shell; $DesktopPath = [System.Environment]::GetFolderPath('Desktop'); $ShortcutPath = Join-Path $DesktopPath 'BioAccessSecure.lnk'; $Shortcut = $WshShell.CreateShortcut($ShortcutPath); $Shortcut.TargetPath = '!INSTALL_PATH!\BioAccessSecure.exe'; $Shortcut.WorkingDirectory = '!INSTALL_PATH!'; $Shortcut.Description = 'BioAccess Secure - Authentification Biométrique'; $Shortcut.Save() } catch { }" 2>nul
 
 echo.
 
@@ -302,10 +319,10 @@ echo     OU
 echo     • Ouvrir le dossier: !INSTALL_PATH!
 echo     • Double-cliquer sur BioAccessSecure.exe
 echo.
-echo 📚 DOCUMENTATION DISPONIBLE:
-echo     • README.md - Guide complet et détaillé
+echo 📚 DOCUMENTATION:
+echo     • README.md - Guide complet
 echo     • QUICKSTART.md - Démarrage rapide
-echo     • DEBUG.md - Résolution de problèmes
+echo     • DEBUG.md - Dépannage
 echo.
 echo ═════════════════════════════════════════════════════════
 echo Appuyez sur une touche pour terminer...
