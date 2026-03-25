@@ -10,10 +10,15 @@ from scipy import signal
 import base64
 import io
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, List
 from config import AUDIO_DURATION, AUDIO_SAMPLE_RATE
 
 logger = logging.getLogger(__name__)
+
+
+class MicrophoneAccessError(Exception):
+    """Exception levée quand l'accès au microphone est refusé"""
+    pass
 
 
 class VoiceRecorder:
@@ -30,13 +35,88 @@ class VoiceRecorder:
         self.sample_rate = sample_rate
         self.duration = duration
         self.audio_data = None
+        self.selected_device = None
         
         # Vérifier la disponibilité des périphériques
         try:
             devices = sd.query_devices()
             logger.info(f"✓ Périphériques audio détectés: {len(devices)}")
+            self._list_input_devices()
         except Exception as e:
             logger.error(f"Erreur lors de la détection des périphériques: {e}")
+            raise MicrophoneAccessError(f"Impossible de détecter les périphériques audio: {e}")
+    
+    def _list_input_devices(self):
+        """Lister les périphériques d'entrée disponibles"""
+        try:
+            devices = sd.query_devices()
+            logger.info("Périphériques d'entrée audio disponibles:")
+            
+            for i, device in enumerate(devices):
+                if device['max_input_channels'] > 0:
+                    logger.info(f"  {i}: {device['name']} "
+                              f"({device['max_input_channels']} canaux)")
+        except Exception as e:
+            logger.warning(f"Impossible de lister les périphériques: {e}")
+
+    def is_available(self) -> bool:
+        """Vérifier si l'enregistrement audio est disponible"""
+        try:
+            devices = sd.query_devices()
+            # Vérifier s'il y a au moins un périphérique d'entrée
+            for device in devices:
+                if device['max_input_channels'] > 0:
+                    return True
+            return False
+        except Exception as e:
+            logger.error(f"Erreur lors de la vérification: {e}")
+            return False
+    
+    def get_input_devices(self) -> List[Dict]:
+        """
+        Obtenir la liste des périphériques d'entrée
+        
+        Returns:
+            List de dicts avec les informations des périphériques
+        """
+        devices_list = []
+        try:
+            devices = sd.query_devices()
+            for i, device in enumerate(devices):
+                if device['max_input_channels'] > 0:
+                    devices_list.append({
+                        'id': i,
+                        'name': device['name'],
+                        'channels': device['max_input_channels'],
+                        'sample_rate': device['default_samplerate']
+                    })
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des périphériques: {e}")
+        
+        return devices_list
+    
+    def set_device(self, device_id: int) -> bool:
+        """
+        Sélectionner un périphérique d'entrée
+        
+        Args:
+            device_id: ID du périphérique
+            
+        Returns:
+            True si succès
+        """
+        try:
+            device = sd.query_devices(device_id)
+            if device['max_input_channels'] > 0:
+                self.selected_device = device_id
+                logger.info(f"✓ Périphérique sélectionné: {device['name']}")
+                return True
+            else:
+                logger.error(f"Périphérique {device_id} n'a pas d'entrée audio")
+                return False
+        except Exception as e:
+            logger.error(f"Erreur lors de la sélection du périphérique: {e}")
+            return False
 
     def is_available(self) -> bool:
         """Vérifier si l'enregistrement audio est disponible"""
@@ -46,22 +126,27 @@ class VoiceRecorder:
         except:
             return False
 
-    def record_audio(self, duration: Optional[int] = None, channels: int = 1) -> Optional[np.ndarray]:
+    def record_audio(self, duration: Optional[int] = None, channels: int = 1, 
+                     device_id: Optional[int] = None) -> Optional[np.ndarray]:
         """
         Enregistrer de l'audio
         
         Args:
             duration: Durée en secondes (None = utiliser la valeur par défaut)
             channels: Nombre de canaux (1=mono, 2=stéréo)
+            device_id: ID du périphérique (None = utiliser le défaut)
             
         Returns:
             Audio data (numpy array) ou None si erreur
+            
+        Raises:
+            MicrophoneAccessError: Si le microphone n'est pas accessible
         """
         duration = duration or self.duration
         
         if duration <= 0 or duration > 60:
             logger.error(f"Durée invalide: {duration}s")
-            return None
+            raise ValueError(f"Durée doit être entre 0 et 60 secondes, reçu: {duration}")
         
         try:
             logger.info(f"Enregistrement en cours ({duration}s)...")
@@ -72,7 +157,8 @@ class VoiceRecorder:
                 samplerate=self.sample_rate,
                 channels=channels,
                 dtype=np.float32,
-                blocksize=2048
+                blocksize=2048,
+                device=device_id if device_id is not None else self.selected_device
             )
             
             # Attendre la fin de l'enregistrement
@@ -84,9 +170,45 @@ class VoiceRecorder:
             logger.info(f"✓ Enregistrement terminé ({len(audio)} samples)")
             return audio
         
+        except PermissionError as e:
+            logger.error(f"Permission refusée: {e}")
+            raise MicrophoneAccessError(f"Accès au microphone refusé: {e}")
         except Exception as e:
             logger.error(f"Erreur lors de l'enregistrement: {e}")
+            raise MicrophoneAccessError(f"Erreur d'enregistrement: {e}")
+    
+    def try_alternative_devices(self, duration: int = 2) -> Optional[np.ndarray]:
+        """
+        Essayer différents microphones
+        
+        Args:
+            duration: Durée de test en secondes
+            
+        Returns:
+            Audio si succès
+        """
+        logger.info("Recherche de microphone alternatif...")
+        
+        devices = self.get_input_devices()
+        
+        if not devices:
+            logger.error("Aucun périphérique d'entrée trouvé")
             return None
+        
+        for device in devices:
+            try:
+                logger.info(f"Test du périphérique: {device['name']}")
+                audio = self.record_audio(duration=duration, device_id=device['id'])
+                if audio is not None and len(audio) > 0:
+                    logger.info(f"✓ Microphone trouvé: {device['name']}")
+                    self.selected_device = device['id']
+                    return audio
+            except Exception as e:
+                logger.warning(f"Échec avec {device['name']}: {e}")
+                continue
+        
+        logger.error("Aucun microphone alternatif fonctionnel trouvé")
+        return None
 
     @staticmethod
     def record_with_callback(duration: int = AUDIO_DURATION, 

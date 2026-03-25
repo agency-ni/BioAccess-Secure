@@ -8,10 +8,15 @@ import numpy as np
 import base64
 import io
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
 from config import CAMERA_ID, CAMERA_WIDTH, CAMERA_HEIGHT, CAMERA_FPS
 
 logger = logging.getLogger(__name__)
+
+
+class CameraAccessError(Exception):
+    """Exception levée quand l'accès à la caméra est refusé"""
+    pass
 
 
 class FaceRecognizer:
@@ -36,15 +41,28 @@ class FaceRecognizer:
         """Vérifier si le module est disponible"""
         return self.face_cascade is not None
 
-    def start_camera(self) -> Optional[cv2.VideoCapture]:
+    def start_camera(self, camera_id: int = CAMERA_ID) -> Optional[cv2.VideoCapture]:
         """
         Démarrer la capture vidéo
         
+        Args:
+            camera_id: ID de la caméra (défaut: config.CAMERA_ID)
+        
         Returns:
             cv2.VideoCapture ou None si erreur
+            
+        Raises:
+            CameraAccessError: Si l'accès est refusé
         """
         try:
-            cap = cv2.VideoCapture(CAMERA_ID)
+            logger.info(f"Tentative d'accès à la caméra ID {camera_id}...")
+            
+            cap = cv2.VideoCapture(camera_id)
+            
+            # Vérifier si capture est ouverte
+            if not cap.isOpened():
+                logger.error(f"Impossible d'ouvrir la caméra ID {camera_id}")
+                raise CameraAccessError(f"Caméra ID {camera_id} non accessible")
             
             # Configurer la caméra
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
@@ -52,19 +70,85 @@ class FaceRecognizer:
             cap.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Buffer minimal pour images en direct
             
-            # Vérifier si la caméra est accessible
+            # Vérifier si on peut lire une frame
             ret, frame = cap.read()
-            if not ret:
-                logger.error("Impossible d'accéder à la caméra")
+            if not ret or frame is None:
+                logger.error("Impossible de lire une frame de la caméra")
                 cap.release()
-                return None
+                raise CameraAccessError("Impossible de lire depuis la caméra - vérifier les permissions")
             
-            logger.info(f"✓ Caméra démarrée (ID: {CAMERA_ID})")
+            logger.info(f"✓ Caméra démarrée (ID: {camera_id})")
             return cap
         
+        except CameraAccessError as e:
+            logger.error(f"Erreur d'accès caméra: {e}")
+            raise
         except Exception as e:
             logger.error(f"Erreur lors du démarrage de la caméra: {e}")
-            return None
+            raise CameraAccessError(f"Erreur système: {e}")
+    
+    def try_alternative_cameras(self, max_attempts: int = 5) -> Optional[cv2.VideoCapture]:
+        """
+        Essayer différentes caméras en cas d'échec
+        
+        Args:
+            max_attempts: Nombre max de caméras à tester
+            
+        Returns:
+            cv2.VideoCapture si trouvée, None sinon
+        """
+        logger.info(f"Recherche de caméra alternative...")
+        
+        for camera_id in range(max_attempts):
+            try:
+                logger.debug(f"Test caméra ID {camera_id}...")
+                cap = self.start_camera(camera_id)
+                if cap:
+                    logger.info(f"✓ Caméra alternative trouvée: ID {camera_id}")
+                    return cap
+            except CameraAccessError:
+                continue
+            except Exception as e:
+                logger.debug(f"Erreur avec caméra {camera_id}: {e}")
+                continue
+        
+        logger.error("Aucune caméra alternative trouvée")
+        return None
+    
+    def get_camera_info(self, camera_id: int = CAMERA_ID) -> Dict:
+        """
+        Obtenir les informations sur une caméra
+        
+        Returns:
+            Dict avec les informations de la caméra
+        """
+        info = {
+            'camera_id': camera_id,
+            'available': False,
+            'width': 0,
+            'height': 0,
+            'fps': 0,
+            'error': None
+        }
+        
+        try:
+            cap = cv2.VideoCapture(camera_id)
+            if cap.isOpened():
+                ret, frame = cap.read()
+                if ret:
+                    info['available'] = True
+                    info['width'] = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    info['height'] = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                    info['fps'] = int(cap.get(cv2.CAP_PROP_FPS))
+                else:
+                    info['error'] = "Impossible de lire une frame"
+            else:
+                info['error'] = "Caméra non accessible"
+            cap.release()
+        except Exception as e:
+            info['error'] = str(e)
+        
+        return info
 
     def read_frame(self, cap: cv2.VideoCapture) -> Optional[np.ndarray]:
         """
