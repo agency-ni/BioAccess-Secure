@@ -14,6 +14,9 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <!-- Theme Manager -->
+    <script src="theme.js"></script>
+    
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
@@ -120,6 +123,171 @@
             color: #4f46e5;
             font-size: 0.7rem;
         }
+        
+        /* Dark Mode Styles - Harmonized with theme.js - COMPLETE COVERAGE */
+        :root.dark-mode {
+            --color-bg-primary: #111827;
+            --color-bg-secondary: #1f2937;
+            --color-text-primary: #f3f4f6;
+            --color-text-secondary: #d1d5db;
+            --color-border: #374151;
+        }
+        
+        :root.dark-mode body {
+            background-color: #111827 !important;
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .sidebar {
+            background: #1f2937 !important;
+            color: #f3f4f6 !important;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5) !important;
+        }
+        
+        :root.dark-mode .sidebar-menu {
+            scrollbar-color: #4b5563 #1f2937 !important;
+        }
+        
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-track {
+            background: #1f2937 !important;
+        }
+        
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-thumb {
+            background: #4b5563 !important;
+        }
+        
+        :root.dark-mode .sidebar-item {
+            color: #d1d5db !important;
+        }
+        
+        :root.dark-mode .sidebar-item:hover:not(.active) {
+            background: #374151 !important;
+            border-left-color: #6b7280 !important;
+        }
+        
+        :root.dark-mode .sidebar-footer {
+            border-top-color: #374151 !important;
+            background: #1f2937 !important;
+        }
+        
+        :root.dark-mode .main-content {
+            background: #111827 !important;
+        }
+        
+        :root.dark-mode .bg-white {
+            background-color: #1f2937 !important;
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .bg-gray-50 {
+            background-color: #374151 !important;
+        }
+        
+        :root.dark-mode .bg-gray-100 {
+            background-color: #2d3748 !important;
+        }
+        
+        :root.dark-mode .text-gray-400 {
+            color: #9ca3af !important;
+        }
+        
+        :root.dark-mode .text-gray-500 {
+            color: #a6adb8 !important;
+        }
+        
+        :root.dark-mode .text-gray-600 {
+            color: #d1d5db !important;
+        }
+        
+        :root.dark-mode .text-gray-700 {
+            color: #e5e7eb !important;
+        }
+        
+        :root.dark-mode .text-gray-800,
+        :root.dark-mode .text-gray-900 {
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .border,
+        :root.dark-mode .border-b {
+            border-color: #374151 !important;
+        }
+        
+        :root.dark-mode .divide-y > * {
+            border-bottom-color: #374151 !important;
+        }
+        
+        :root.dark-mode .shadow-sm {
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.5) !important;
+        }
+        
+        :root.dark-mode input,
+        :root.dark-mode select,
+        :root.dark-mode textarea {
+            background-color: #374151 !important;
+            color: #f3f4f6 !important;
+            border-color: #4b5563 !important;
+        }
+        
+        :root.dark-mode .bg-indigo-100 {
+            background-color: #312e81 !important;
+            color: #a5b4fc !important;
+        }
+        
+        :root.dark-mode .chart-tooltip {
+            background: #374151 !important;
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .time-range {
+            background: #374151 !important;
+            color: #f3f4f6 !important;
+            border-color: #4b5563 !important;
+        }
+
+        /* BADGES - Contraste fort */
+        :root.dark-mode .bg-red-100 {
+            background-color: #7f1d1d !important;
+        }
+
+        :root.dark-mode .text-red-700 {
+            color: #fca5a5 !important;
+        }
+
+        :root.dark-mode .bg-yellow-100 {
+            background-color: #78350f !important;
+        }
+
+        :root.dark-mode .text-yellow-700 {
+            color: #fcd34d !important;
+        }
+
+        :root.dark-mode .bg-green-100 {
+            background-color: #065f46 !important;
+        }
+
+        :root.dark-mode .text-green-700 {
+            color: #86efac !important;
+        }
+
+        /* Badges - Force text color visible */
+        .bg-red-100 .text-red-700,
+        .bg-red-100.text-red-700,
+        span.bg-red-100 {
+            color: #991b1b !important;
+        }
+
+        .bg-yellow-100 .text-yellow-700,
+        .bg-yellow-100.text-yellow-700,
+        span.bg-yellow-100 {
+            color: #854d0e !important;
+        }
+
+        .bg-green-100 .text-green-700,
+        .bg-green-100.text-green-700,
+        span.bg-green-100 {
+            color: #15803d !important;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -219,6 +387,9 @@
                             <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">3</span>
                         </a>
                     </div>
+                    <button id="themeToggleBtn" class="text-gray-400 text-xl cursor-pointer hover:text-indigo-600 transition" title="Mode sombre">
+                        <i class="fas fa-moon"></i>
+                    </button>
                 </div>
             </div>
             
@@ -637,51 +808,84 @@
         
         // Afficher la salutation
         const greeting = getGreeting();
-        document.getElementById('greeting').textContent = `${greeting}, ${userData.prenom} ${userData.nom}`;
+        const greetingEl = document.getElementById('greeting');
+        if (greetingEl) {
+            greetingEl.textContent = `${greeting}, ${userData?.prenom || 'Utilisateur'} ${userData?.nom || ''}`;
+        }
         
-        // Initiales pour l'avatar
-        const initials = (userData.prenom[0] + userData.nom[0]).toUpperCase();
-        document.getElementById('userInitials').textContent = initials;
+        // Initiales pour l'avatar - avec vérification de sécurité
+        const prenomInit = (userData?.prenom?.[0] || 'A').toUpperCase();
+        const nomInit = (userData?.nom?.[0] || 'D').toUpperCase();
+        const initialsEl = document.getElementById('userInitials');
+        if (initialsEl) {
+            initialsEl.textContent = prenomInit + nomInit;
+        }
         
-        document.getElementById('adminName').textContent = `${userData.prenom} ${userData.nom}`;
-        document.getElementById('adminRole').textContent = userData.role === 'super_admin' ? 'Super Admin' : 'Admin';
+        const adminNameEl = document.getElementById('adminName');
+        if (adminNameEl) {
+            adminNameEl.textContent = `${userData?.prenom || 'Admin'} ${userData?.nom || ''}`;
+        }
+        
+        const adminRoleEl = document.getElementById('adminRole');
+        if (adminRoleEl) {
+            adminRoleEl.textContent = userData?.role === 'super_admin' ? 'Super Admin' : 'Admin';
+        }
         
         // Afficher la précédente connexion avec plage horaire
         function displayPreviousConnection() {
             const previousConnectionElement = document.getElementById('previousConnection');
             const rangeTextElement = document.getElementById('rangeText');
+            
+            if (!previousConnectionElement || !rangeTextElement) {
+                return;
+            }
+            
             const previousLoginTime = sessionStorage.getItem('previous_login_time');
             const currentLoginTime = sessionStorage.getItem('current_login_time');
             
             if (previousLoginTime) {
-                const loginDate = new Date(previousLoginTime);
-                const logoutDate = generateLogoutTime(loginDate);
-                
-                const formattedDate = formatDateTime(loginDate, false).split(' ')[0]; // Juste la date
-                const loginTime = formatTime(loginDate);
-                const logoutTime = formatTime(logoutDate);
-                const elapsed = getTimeElapsed(loginDate);
-                
-                previousConnectionElement.innerHTML = `Précédente connexion : ${formattedDate}`;
-                rangeTextElement.innerHTML = `${loginTime} → ${logoutTime} (${elapsed})`;
+                try {
+                    const loginDate = new Date(previousLoginTime);
+                    const logoutDate = generateLogoutTime(loginDate);
+                    
+                    const formattedDate = formatDateTime(loginDate, false).split(' ')[0];
+                    const loginTime = formatTime(loginDate);
+                    const logoutTime = formatTime(logoutDate);
+                    const elapsed = getTimeElapsed(loginDate);
+                    
+                    previousConnectionElement.textContent = `Précédente connexion : ${formattedDate}`;
+                    rangeTextElement.textContent = `${loginTime} → ${logoutTime} (${elapsed})`;
+                } catch (e) {
+                    console.error('Erreur affichage précédente connexion:', e);
+                }
             } else if (currentLoginTime) {
-                const date = new Date(currentLoginTime);
-                const formattedDate = formatDateTime(date, false).split(' ')[0];
-                const loginTime = formatTime(date);
-                
-                previousConnectionElement.innerHTML = `Première connexion : ${formattedDate}`;
-                rangeTextElement.innerHTML = `${loginTime} (en cours)`;
+                try {
+                    const date = new Date(currentLoginTime);
+                    const formattedDate = formatDateTime(date, false).split(' ')[0];
+                    const loginTime = formatTime(date);
+                    
+                    previousConnectionElement.textContent = `Première connexion : ${formattedDate}`;
+                    rangeTextElement.textContent = `${loginTime} (en cours)`;
+                } catch (e) {
+                    console.error('Erreur current login:', e);
+                }
             } else {
-                const now = new Date();
-                const formattedDate = formatDateTime(now, false).split(' ')[0];
-                const currentTime = formatTime(now);
-                
-                previousConnectionElement.innerHTML = `Connexion actuelle : ${formattedDate}`;
-                rangeTextElement.innerHTML = `${currentTime} (en cours)`;
+                try {
+                    const now = new Date();
+                    const formattedDate = formatDateTime(now, false).split(' ')[0];
+                    const currentTime = formatTime(now);
+                    
+                    previousConnectionElement.textContent = `Connexion actuelle : ${formattedDate}`;
+                    rangeTextElement.textContent = `${currentTime} (en cours)`;
+                } catch (e) {
+                    console.error('Erreur connexion actuelle:', e);
+                }
             }
         }
         
+        // === MISE À JOUR EN TEMPS RÉEL DU DATETIME ===
         displayPreviousConnection();
+        setInterval(displayPreviousConnection, 1000); // Mettre à jour chaque seconde
         
         // Générer des données de tentatives réalistes
         function generateAttemptData(days = 7) {
@@ -710,17 +914,31 @@
         // Mettre à jour les alertes avec heures réelles
         function updateAlertTimes() {
             const now = new Date();
-            const times = [
-                new Date(now.setHours(9, 45, 23, 0)),
-                new Date(now.setHours(22, 30, 15, 0)),
-                new Date(new Date().setDate(now.getDate() - 1)).setHours(14, 20, 45, 0),
-                new Date(new Date().setDate(now.getDate() - 1)).setHours(15, 10, 30, 0)
-            ];
             
-            document.getElementById('alertTime1').textContent = formatDateTime(new Date(times[0]), true);
-            document.getElementById('alertTime2').textContent = formatDateTime(new Date(times[1]), true);
-            document.getElementById('alertTime3').textContent = formatDateTime(new Date(times[2]), true);
-            document.getElementById('alertTime4').textContent = formatDateTime(new Date(times[3]), true);
+            // Créer les dates correctement
+            const time1 = new Date(now);
+            time1.setHours(9, 45, 23, 0);
+            
+            const time2 = new Date(now);
+            time2.setHours(22, 30, 15, 0);
+            
+            const time3 = new Date(now);
+            time3.setDate(now.getDate() - 1);
+            time3.setHours(14, 20, 45, 0);
+            
+            const time4 = new Date(now);
+            time4.setDate(now.getDate() - 1);
+            time4.setHours(15, 10, 30, 0);
+            
+            const times = [time1, time2, time3, time4];
+            
+            const alertElements = ['alertTime1', 'alertTime2', 'alertTime3', 'alertTime4'];
+            alertElements.forEach((id, index) => {
+                const element = document.getElementById(id);
+                if (element && times[index]) {
+                    element.textContent = formatDateTime(times[index], true);
+                }
+            });
         }
         
         // Générer les connexions admin
@@ -960,6 +1178,40 @@
             updateChartData(newData);
             generateAdminConnections();
         }, 30000);
+    </script>
+    
+    <!-- Theme Toggle Event Listener -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            if (themeToggleBtn && window.themeManager) {
+                themeToggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.themeManager.toggle();
+                    
+                    // Update icon based on current theme
+                    const isDark = window.themeManager.isDarkMode();
+                    themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                    themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+                });
+                
+                // Set initial icon
+                const isDark = window.themeManager.isDarkMode();
+                themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+            }
+
+            // Logout
+            const logoutLink = document.querySelector('a[href="login.html"]');
+            if (logoutLink) {
+                logoutLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = 'login.html';
+                });
+            }
+        });
     </script>
 </body>
 </html>

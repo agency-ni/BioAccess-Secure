@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentification Biométrique - BioAccess Secure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="theme.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        :root.dark-mode body {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%) !important;
+            min-height: 100vh;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .quality-bar {
+            background: linear-gradient(to right, #ef4444, #f59e0b, #10b981);
+            border-radius: 9999px;
+            height: 8px;
+            transition: width 0.3s ease;
+        }
+
+        video {
+            transform: scaleX(-1);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .theme-toggle button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-center;
+        }
+
+        .theme-toggle button:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+
+        .mode-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .mode-badge.active {
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <!-- Theme Toggle Button -->
+    <div class="theme-toggle">
+        <button id="themeToggleBtn" title="Mode sombre">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+
+    <div class="min-h-screen flex flex-col items-center justify-center p-4">
+        <!-- Main Card -->
+        <div class="w-full max-w-2xl">
+            <!-- Header -->
+            <div class="bg-white rounded-t-2xl shadow-2xl overflow-hidden">
+                <div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-8 text-white text-center">
+                    <div class="flex items-center justify-center mb-3">
+                        <i class="fas fa-fingerprint text-4xl"></i>
+                    </div>
+                    <h1 class="text-3xl font-bold">BioAccess Secure</h1>
+                    <p class="text-indigo-100 mt-2 text-sm">Authentification Biométrique</p>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="bg-white rounded-b-2xl shadow-2xl overflow-hidden">
+                <div class="p-8">
+                    <!-- Mode Selection (Initial Screen) -->
+                    <div id="modeSelection" class="space-y-6">
+                        <div class="text-center">
+                            <h2 class="text-2xl font-bold text-gray-800">Bienvenue</h2>
+                            <p class="text-gray-600 mt-2">Choisissez votre mode d'authentification</p>
+                        </div>
+
+                        <div class="space-y-3">
+                            <button id="liveAuthBtn" class="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all font-semibold text-lg">
+                                <i class="fas fa-camera text-xl"></i>
+                                <span>Authentification en Direct</span>
+                                <i class="fas fa-arrow-right ml-auto text-sm"></i>
+                            </button>
+
+                            <button id="emailAuthBtn" class="w-full flex items-center justify-center gap-3 px-6 py-4 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold text-lg">
+                                <i class="fas fa-envelope text-xl"></i>
+                                <span>Authentification Classique</span>
+                                <i class="fas fa-arrow-right ml-auto text-sm"></i>
+                            </button>
+                        </div>
+
+                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                            <p class="text-sm text-blue-800">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                Utilisateurs premières fois? <a href="#" class="font-semibold text-blue-900 hover:text-blue-800">Créer un compte</a>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Live Authentication Section -->
+                    <div id="liveAuthSection" class="hidden fade-in space-y-6">
+                        <div class="text-center mb-6">
+                            <button id="backFromLiveBtn" class="text-sm text-gray-600 hover:text-gray-800 float-left mb-4">
+                                <i class="fas fa-arrow-left mr-1"></i>Retour
+                            </button>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-2">Capture en Direct</h2>
+                            <p class="text-gray-600">Positionnez votre visage face à la caméra</p>
+                        </div>
+
+                        <!-- Video Container -->
+                        <div class="relative bg-black rounded-xl overflow-hidden aspect-video shadow-lg">
+                            <video id="authVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                            
+                            <!-- Face Detection Overlay -->
+                            <canvas id="detectionCanvas" class="absolute inset-0" style="display:none;"></canvas>
+                            
+                            <!-- Status Indicator -->
+                            <div id="videoStatus" class="absolute top-4 right-4">
+                                <span id="cameraStatus" class="mode-badge active">
+                                    <i class="fas fa-circle text-green-500 mr-1"></i>Caméra active
+                                </span>
+                            </div>
+
+                            <!-- Loading Overlay -->
+                            <div id="captureLoading" class="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden">
+                                <div class="text-center">
+                                    <div class="spinner mx-auto mb-4"></div>
+                                    <p class="text-white font-medium">Traitement en cours...</p>
+                                    <p class="text-gray-300 text-sm mt-2">Veuillez patienter</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quality Indicator -->
+                        <div class="bg-gray-50 rounded-xl p-4">
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="text-sm font-semibold text-gray-700">Qualité de capture:</span>
+                                <span id="qualityValue" class="text-lg font-bold text-indigo-600">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div id="qualityBar" class="quality-bar" style="width: 0%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2" id="qualityHint">Bonne lumière, visage bien visible</p>
+                        </div>
+
+                        <!-- Instructions -->
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+                            <p class="text-sm text-blue-800 font-medium">
+                                <i class="fas fa-lightbulb mr-2"></i>
+                                <span id="captureInstruction">Appuyez sur "Capturer" quand vous êtes prêt (visage bien visible, yeux ouverts)</span>
+                            </p>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex gap-3">
+                            <button id="captureBtn" class="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg transition-all font-semibold disabled:opacity-50">
+                                <i class="fas fa-camera mr-2"></i>Capturer
+                            </button>
+                            <button id="cancelLiveBtn" class="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold">
+                                Annuler
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Email/Classic Authentication Section -->
+                    <div id="emailAuthSection" class="hidden fade-in space-y-6">
+                        <div class="text-center mb-6">
+                            <button id="backFromEmailBtn" class="text-sm text-gray-600 hover:text-gray-800 float-left mb-4">
+                                <i class="fas fa-arrow-left mr-1"></i>Retour
+                            </button>
+                            <h2 class="text-2xl font-bold text-gray-800">Connexion</h2>
+                        </div>
+
+                        <!-- Email Input -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-envelope mr-2 text-indigo-600"></i>Adresse email
+                            </label>
+                            <input type="email" id="emailInput" placeholder="votre@email.com" 
+                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-10 transition"
+                                autocomplete="email">
+                        </div>
+
+                        <!-- Send Code Button -->
+                        <button id="sendCodeBtn" class="w-full px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all font-semibold disabled:opacity-50">
+                            <i class="fas fa-send mr-2"></i>Envoyer un code de vérification
+                        </button>
+
+                        <!-- Code Verification (Hidden initially) -->
+                        <div id="codeSection" class="hidden space-y-4 animate-fadeIn">
+                            <p class="text-sm text-gray-600 text-center">
+                                Un code de vérification a été envoyé à votre email
+                            </p>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-key mr-2 text-indigo-600"></i>Code de vérification
+                                </label>
+                                <input type="text" id="codeInput" placeholder="000000" maxlength="6" 
+                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-center text-3xl tracking-widest font-bold text-indigo-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-10 transition"
+                                    inputmode="numeric">
+                            </div>
+
+                            <button id="verifyCodeBtn" class="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg transition-all font-semibold disabled:opacity-50">
+                                <i class="fas fa-check mr-2"></i>Vérifier
+                            </button>
+
+                            <button id="backToEmailBtn" class="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold text-sm">
+                                ← Utiliser une autre adresse
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Success Message -->
+                    <div id="successMessage" class="hidden fade-in">
+                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-8 text-center">
+                            <div class="flex justify-center mb-4">
+                                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-check text-3xl text-green-600"></i>
+                                </div>
+                            </div>
+                            <h3 class="text-2xl font-bold text-green-900 mb-2">Authentification réussie!</h3>
+                            <p class="text-green-700 mb-4">Bienvenue de retour!</p>
+                            <div class="flex items-center justify-center gap-2 text-green-600 text-sm">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                Redirection en cours...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Error Message -->
+                    <div id="errorMessage" class="hidden fade-in">
+                        <div class="bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-200 rounded-xl p-8">
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-exclamation-circle text-3xl text-red-600"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-red-900 mb-1">Erreur d'authentification</h3>
+                                    <p id="errorText" class="text-red-700 mb-4 text-sm"></p>
+                                    <button id="errorRetryBtn" class="text-sm font-semibold text-red-600 hover:text-red-900">
+                                        ← Réessayer
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Info -->
+            <div class="mt-6 text-center">
+                <p class="text-white text-xs flex items-center justify-center gap-2">
+                    <i class="fas fa-lock text-green-400"></i>
+                    Connexion sécurisée et chiffrée
+                </p>
+                <p class="text-indigo-100 text-xs mt-2">
+                    Besoin d'aide? <a href="#" class="underline hover:text-white">Support technique</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="biometric_auth.js"></script>
+    
+    <!-- Theme Toggle Event Listener -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            if (themeToggleBtn && window.themeManager) {
+                themeToggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.themeManager.toggle();
+                    
+                    // Update icon based on current theme
+                    const isDark = window.themeManager.isDarkMode();
+                    themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                    themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+                });
+                
+                // Set initial icon
+                const isDark = window.themeManager.isDarkMode();
+                themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+            }
+        });
+    </script>
+</body>
+</html>

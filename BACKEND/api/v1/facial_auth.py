@@ -1,0 +1,690 @@
+"""
+Routes API pour l'authentification faciale et vocale
+Endpoints complets pour reconnaissance faciale, vocale et détection de vivacité
+"""
+
+from flask import Blueprint, request, jsonify, g
+from functools import wraps
+from typing import Dict, Tuple
+from datetime import datetime, timedelta
+import base64
+import io
+import logging
+import uuid
+
+from core.database import db
+from core.errors import AuthenticationError, ValidationError, NotFoundError
+from core.logger import log_audit
+from api.middlewares.auth_middleware import token_required, optional_token
+from models.user import User, UserSession, LoginLog
+from services.biometric_service import BiometricService
+from services.auth_service import AuthService
+
+logger = logging.getLogger(__name__)
+
+# Blueprint pour l'authentification biométrique
+facial_bp = Blueprint('facial_auth', __name__)
+
+# Services
+biometric_service = BiometricService()
+auth_service = AuthService()
+
+# ============================================================
+# AUTHENTIFICATION FACIALE
+# ============================================================
+
+@facial_bp.route('/face/register', methods=['POST'])
+@token_required
+def register_face() -> Tuple[Dict, int]:
+    """
+    Enregistrer un nouveau visage pour l'utilisateur connecté
+    
+    POST /api/v1/auth/face/register
+    Header: Authorization: Bearer <token>
+    Body:
+        {
+            "image_data": "base64_encoded_image",
+            "label": "Face enregistrée le 2024"
+        }
+    
+    Response:
+        {
+            "success": true,
+            "template_id": "uuid",
+            "encoding_vector": [...],
+            "message": "Visage enregistré avec succès"
+        }
+    """
+    try:
+        user_id = g.user_id
+        data = request.get_json()
+        
+        if not data or 'image_data' not in data:
+            raise ValidationError("image_data (base64) requis")
+        
+        # Décoder l'image base64
+        try:
+            image_bytes = base64.b64decode(data['image_data'])
+            image_file = io.BytesIO(image_bytes)
+        except Exception as e:
+            raise ValidationError(f"Erreur décodage image: {e}")
+        
+        # Traiter l'image et générer le template
+        encoding = biometric_service.process_face_image(image_file)
+        
+        if encoding is None:
+            raise ValidationError("Aucun visage détecté dans l'image")
+        
+        # Sauvegarder le template en base de données
+        template_id = str(uuid.uuid4())
+        from models.biometric import TemplateBiometrique
+        
+        template = TemplateBiometrique(
+            id=template_id,
+            user_id=user_id,
+            type_biometrique='FACE',
+            template_data=encoding.tolist(),
+            label=data.get('label', 'Visage enregistré'),
+            date_creation=datetime.now(),
+            date_derniere_utilisation=datetime.now()
+        )
+        
+        db.session.add(template)
+        db.session.commit()
+        
+        # Log audit
+        log_audit(
+            user_id=user_id,
+            action='FACE_REGISTRATION',
+            resource='biometric_template',
+            resource_id=template_id,
+            details={'type': 'FACE', 'label': data.get('label')},
+            status='SUCCESS'
+        )
+        
+        return jsonify({
+            'success': True,
+            'template_id': template_id,
+            'encoding_vector': encoding.tolist()[:10],  # Premiers éléments seulement
+            'message': 'Visage enregistré avec succès'
+        }), 201
+    
+    except (ValidationError, AuthenticationError) as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400
+    except Exception as e:
+        logger.error(f"Erreur enregistrement facial: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur serveur'
+        }), 500
+
+
+@facial_bp.route('/face/verify', methods=['POST'])
+def verify_face() -> Tuple[Dict, int]:
+    """
+    Authentifier un utilisateur via reconnaissance faciale
+    
+    POST /api/v1/auth/face/verify
+    Body:
+        {
+            "email": "user@example.com",
+            "image_data": "base64_encoded_image"
+        }
+    
+    Response:
+        {
+            "success": true,
+            "matched": true,
+            "similarity": 0.95,
+            "token": "jwt_token",
+            "user": {...},
+            "message": "Authentification réussie"
+        }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'email' not in data or 'image_data' not in data:
+            raise ValidationError("email et image_data requis")
+        
+        email = data['email'].lower()
+        user = User.query.filter_by(email=email).first()
+        
+        # Log de tentative
+        login_log = LoginLog(
+            email=email,
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent'),
+            success=False,
+            method='FACE'
+        )
+        
+        if not user:
+            db.session.add(login_log)
+            db.session.commit()
+            raise AuthenticationError("Utilisateur non trouvé")
+        
+        if not user.is_active:
+            db.session.add(login_log)
+            db.session.commit()
+            raise AuthenticationError("Compte désactivé")
+        
+        # Décoder l'image
+        try:
+            image_bytes = base64.b64decode(data['image_data'])
+            image_file = io.BytesIO(image_bytes)
+        except Exception as e:
+            raise ValidationError(f"Erreur décodage image: {e}")
+        
+        # Traiter l'image
+        provided_encoding = biometric_service.process_face_image(image_file)
+        
+        if provided_encoding is None:
+            db.session.add(login_log)
+            db.session.commit()
+            raise ValidationError("Aucun visage détecté dans l'image")
+        
+        # Récupérer les templates stockés
+        from models.biometric import TemplateBiometrique
+        templates = TemplateBiometrique.query.filter_by(
+            user_id=user.id,
+            type_biometrique='FACE'
+        ).all()
+        
+        if not templates:
+            db.session.add(login_log)
+            db.session.commit()
+            raise AuthenticationError("Aucun visage enregistré pour cet utilisateur")
+        
+        # Vérifier contre tous les templates
+        best_similarity = 0
+        matched = False
+        
+        for template in templates:
+            similarity = biometric_service.verify_face(
+                template.template_data,
+                provided_encoding
+            )
+            
+            if similarity > best_similarity:
+                best_similarity = similarity
+                if similarity > 0.6:  # Seuil configurable
+                    matched = True
+                    template.date_derniere_utilisation = datetime.now()
+        
+        if not matched:
+            db.session.add(login_log)
+            db.session.commit()
+            raise AuthenticationError("Reconnaissance faciale échouée")
+        
+        # Authentification réussie
+        login_log.success = True
+        db.session.add(login_log)
+        
+        # Créer la session
+        session = UserSession(
+            id=str(uuid.uuid4()),
+            user_id=user.id,
+            token_type='bearer',
+            created_at=datetime.now(),
+            expires_at=datetime.now() + timedelta(hours=24),
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent'),
+            auth_method='FACE'
+        )
+        
+        db.session.add(session)
+        db.session.commit()
+        
+        # Log audit
+        log_audit(
+            user_id=user.id,
+            action='AUTHENTICATION',
+            resource='user_session',
+            resource_id=session.id,
+            details={'method': 'FACE', 'similarity': best_similarity},
+            status='SUCCESS'
+        )
+        
+        return jsonify({
+            'success': True,
+            'matched': True,
+            'similarity': round(best_similarity, 4),
+            'token': session.id,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'role': user.role
+            },
+            'message': 'Authentification par visage réussie'
+        }), 200
+    
+    except (ValidationError, AuthenticationError) as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 401
+    except Exception as e:
+        logger.error(f"Erreur vérification faciale: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur serveur'
+        }), 500
+
+
+# ============================================================
+# AUTHENTIFICATION VOCALE
+# ============================================================
+
+@facial_bp.route('/voice/register', methods=['POST'])
+@token_required
+def register_voice() -> Tuple[Dict, int]:
+    """
+    Enregistrer un modèle vocal pour l'utilisateur connecté
+    
+    POST /api/v1/auth/voice/register
+    Header: Authorization: Bearer <token>
+    Body:
+        {
+            "audio_data": "base64_encoded_wav",
+            "label": "Voix enregistrée"
+        }
+    
+    Response:
+        {
+            "success": true,
+            "template_id": "uuid",
+            "message": "Voix enregistrée avec succès"
+        }
+    """
+    try:
+        user_id = g.user_id
+        data = request.get_json()
+        
+        if not data or 'audio_data' not in data:
+            raise ValidationError("audio_data (base64) requis")
+        
+        # Décoder l'audio base64
+        try:
+            audio_bytes = base64.b64decode(data['audio_data'])
+            audio_file = io.BytesIO(audio_bytes)
+        except Exception as e:
+            raise ValidationError(f"Erreur décodage audio: {e}")
+        
+        # Génerer le template vocal
+        voice_encoding = biometric_service.extract_voice_features(audio_file)
+        
+        if voice_encoding is None:
+            raise ValidationError("Impossible d'extraire les caractéristiques vocales")
+        
+        # Sauvegarder le template
+        template_id = str(uuid.uuid4())
+        from models.biometric import TemplateBiometrique
+        
+        template = TemplateBiometrique(
+            id=template_id,
+            user_id=user_id,
+            type_biometrique='VOICE',
+            template_data=voice_encoding if isinstance(voice_encoding, list) else [voice_encoding],
+            label=data.get('label', 'Voix enregistrée'),
+            date_creation=datetime.now(),
+            date_derniere_utilisation=datetime.now()
+        )
+        
+        db.session.add(template)
+        db.session.commit()
+        
+        log_audit(
+            user_id=user_id,
+            action='VOICE_REGISTRATION',
+            resource='biometric_template',
+            resource_id=template_id,
+            details={'type': 'VOICE'},
+            status='SUCCESS'
+        )
+        
+        return jsonify({
+            'success': True,
+            'template_id': template_id,
+            'message': 'Voix enregistrée avec succès'
+        }), 201
+    
+    except (ValidationError, AuthenticationError) as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400
+    except Exception as e:
+        logger.error(f"Erreur enregistrement vocal: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur serveur'
+        }), 500
+
+
+@facial_bp.route('/voice/verify', methods=['POST'])
+def verify_voice() -> Tuple[Dict, int]:
+    """
+    Authentifier un utilisateur via reconnaissance vocale
+    
+    POST /api/v1/auth/voice/verify
+    Body:
+        {
+            "email": "user@example.com",
+            "audio_data": "base64_encoded_wav"
+        }
+    
+    Response:
+        {
+            "success": true,
+            "matched": true,
+            "similarity": 0.85,
+            "token": "jwt_token",
+            "user": {...}
+        }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'email' not in data or 'audio_data' not in data:
+            raise ValidationError("email et audio_data requis")
+        
+        email = data['email'].lower()
+        user = User.query.filter_by(email=email).first()
+        
+        login_log = LoginLog(
+            email=email,
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent'),
+            success=False,
+            method='VOICE'
+        )
+        
+        if not user or not user.is_active:
+            db.session.add(login_log)
+            db.session.commit()
+            raise AuthenticationError("Utilisateur non trouvé ou désactivé")
+        
+        # Décoder l'audio
+        try:
+            audio_bytes = base64.b64decode(data['audio_data'])
+            audio_file = io.BytesIO(audio_bytes)
+        except Exception as e:
+            raise ValidationError(f"Erreur décodage audio: {e}")
+        
+        # Extraire les caractéristiques
+        provided_encoding = biometric_service.extract_voice_features(audio_file)
+        
+        if provided_encoding is None:
+            db.session.add(login_log)
+            db.session.commit()
+            raise ValidationError("Impossible d'extraire les caractéristiques vocales")
+        
+        # Récupérer les templates
+        from models.biometric import TemplateBiometrique
+        templates = TemplateBiometrique.query.filter_by(
+            user_id=user.id,
+            type_biometrique='VOICE'
+        ).all()
+        
+        if not templates:
+            db.session.add(login_log)
+            db.session.commit()
+            raise AuthenticationError("Aucune voix enregistrée")
+        
+        # Vérifier
+        best_similarity = 0
+        matched = False
+        
+        for template in templates:
+            similarity = biometric_service.verify_voice(
+                template.template_data,
+                provided_encoding
+            )
+            
+            if similarity > best_similarity:
+                best_similarity = similarity
+                if similarity > 0.7:  # Seuil configurable
+                    matched = True
+                    template.date_derniere_utilisation = datetime.now()
+        
+        if not matched:
+            db.session.add(login_log)
+            db.session.commit()
+            raise AuthenticationError("Reconnaissance vocale échouée")
+        
+        # Créer session
+        login_log.success = True
+        db.session.add(login_log)
+        
+        session = UserSession(
+            id=str(uuid.uuid4()),
+            user_id=user.id,
+            token_type='bearer',
+            created_at=datetime.now(),
+            expires_at=datetime.now() + timedelta(hours=24),
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent'),
+            auth_method='VOICE'
+        )
+        
+        db.session.add(session)
+        db.session.commit()
+        
+        log_audit(
+            user_id=user.id,
+            action='AUTHENTICATION',
+            resource='user_session',
+            resource_id=session.id,
+            details={'method': 'VOICE', 'similarity': best_similarity},
+            status='SUCCESS'
+        )
+        
+        return jsonify({
+            'success': True,
+            'matched': True,
+            'similarity': round(best_similarity, 4),
+            'token': session.id,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'role': user.role
+            }
+        }), 200
+    
+    except (ValidationError, AuthenticationError) as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 401
+    except Exception as e:
+        logger.error(f"Erreur vérification vocale: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur serveur'
+        }), 500
+
+
+# ============================================================
+# DÉTECTION DE VIVACITÉ
+# ============================================================
+
+@facial_bp.route('/face/liveness', methods=['POST'])
+def detect_liveness() -> Tuple[Dict, int]:
+    """
+    Détecter la vivacité (anti-spoofing) pour une image faciale
+    
+    POST /api/v1/auth/face/liveness
+    Body:
+        {
+            "image_data": "base64_encoded_image",
+            "email": "user@example.com"  # optionnel
+        }
+    
+    Response:
+        {
+            "success": true,
+            "is_live": true,
+            "confidence": 0.98,
+            "details": {
+                "has_blink": true,
+                "motion_detected": true,
+                "spoof_score": 0.05
+            }
+        }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'image_data' not in data:
+            raise ValidationError("image_data requis")
+        
+        # Décoder l'image
+        try:
+            image_bytes = base64.b64decode(data['image_data'])
+            image_file = io.BytesIO(image_bytes)
+        except Exception as e:
+            raise ValidationError(f"Erreur décodage image: {e}")
+        
+        # Détecter la vivacité
+        liveness_result = biometric_service.detect_liveness(image_file)
+        
+        email = data.get('email', 'unknown')
+        log_audit(
+            user_id=email,
+            action='LIVENESS_CHECK',
+            resource='face_frame',
+            details={
+                'is_live': liveness_result.get('is_live'),
+                'confidence': liveness_result.get('confidence'),
+                'spoof_score': liveness_result.get('spoof_score')
+            },
+            status='SUCCESS'
+        )
+        
+        return jsonify({
+            'success': True,
+            'is_live': liveness_result.get('is_live'),
+            'confidence': round(liveness_result.get('confidence', 0), 4),
+            'details': {
+                'has_blink': liveness_result.get('has_blink'),
+                'motion_detected': liveness_result.get('motion_detected'),
+                'spoof_score': round(liveness_result.get('spoof_score', 0), 4)
+            }
+        }), 200
+    
+    except ValidationError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400
+    except Exception as e:
+        logger.error(f"Erreur détection vivacité: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur serveur'
+        }), 500
+
+
+# ============================================================
+# UTILITIES
+# ============================================================
+
+@facial_bp.route('/face/templates', methods=['GET'])
+@token_required
+def get_face_templates() -> Tuple[Dict, int]:
+    """
+    Récupérer les templates faciaux de l'utilisateur
+    
+    GET /api/v1/auth/face/templates
+    Header: Authorization: Bearer <token>
+    """
+    try:
+        user_id = g.user_id
+        from models.biometric import TemplateBiometrique
+        
+        templates = TemplateBiometrique.query.filter_by(
+            user_id=user_id,
+            type_biometrique='FACE'
+        ).all()
+        
+        return jsonify({
+            'success': True,
+            'count': len(templates),
+            'templates': [{
+                'id': t.id,
+                'label': t.label,
+                'created': t.date_creation.isoformat(),
+                'last_used': t.date_derniere_utilisation.isoformat() if t.date_derniere_utilisation else None
+            } for t in templates]
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"Erreur récupération templates: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur serveur'
+        }), 500
+
+
+@facial_bp.route('/face/templates/<template_id>', methods=['DELETE'])
+@token_required
+def delete_face_template(template_id: str) -> Tuple[Dict, int]:
+    """
+    Supprimer un template facial
+    
+    DELETE /api/v1/auth/face/templates/<template_id>
+    """
+    try:
+        user_id = g.user_id
+        from models.biometric import TemplateBiometrique
+        
+        template = TemplateBiometrique.query.filter_by(
+            id=template_id,
+            user_id=user_id,
+            type_biometrique='FACE'
+        ).first()
+        
+        if not template:
+            return jsonify({
+                'success': False,
+                'error': 'Template non trouvé'
+            }), 404
+        
+        db.session.delete(template)
+        db.session.commit()
+        
+        log_audit(
+            user_id=user_id,
+            action='FACE_TEMPLATE_DELETED',
+            resource='biometric_template',
+            resource_id=template_id,
+            status='SUCCESS'
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Template supprimé'
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"Erreur suppression template: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur serveur'
+        }), 500
+
+
+# ============================================================
+# ENREGISTREMENT DU BLUEPRINT
+# ============================================================
+# À utiliser dans app.py:
+# from api.v1.facial_auth import facial_bp
+# app.register_blueprint(facial_bp)

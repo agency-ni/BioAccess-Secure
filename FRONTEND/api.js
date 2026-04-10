@@ -1,7 +1,7 @@
 // api.js - Gestion centralisée des appels API
 
 const API = {
-    baseURL: 'http://localhost:5000/api',
+    baseURL: window.API_URL || window.CONFIG?.API_URL || 'http://localhost:5000/api',
     
     // Headers par défaut
     headers() {

@@ -6,6 +6,7 @@
     <title>BioAccess Secure - Configuration</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="theme.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>* { font-family: 'Inter', sans-serif; }
         
@@ -72,6 +73,146 @@
             padding: 1rem;
             border-top: 1px solid #e5e7eb;
             background: white;
+        }
+
+        /* Dark Mode Styles - Harmonized with theme.js - COMPLETE COVERAGE */
+        :root.dark-mode {
+            --color-bg-primary: #111827;
+            --color-bg-secondary: #1f2937;
+            --color-text-primary: #f3f4f6;
+            --color-text-secondary: #d1d5db;
+            --color-border: #374151;
+        }
+
+        :root.dark-mode body {
+            background-color: #111827 !important;
+            color: #f3f4f6 !important;
+        }
+
+        :root.dark-mode .sidebar {
+            background: #1f2937 !important;
+            color: #f3f4f6 !important;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5) !important;
+        }
+
+        :root.dark-mode .sidebar-menu {
+            scrollbar-color: #4b5563 #1f2937 !important;
+        }
+
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-track {
+            background: #1f2937 !important;
+        }
+
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-thumb {
+            background: #4b5563 !important;
+        }
+
+        :root.dark-mode .sidebar-item {
+            color: #d1d5db !important;
+        }
+
+        :root.dark-mode .sidebar-item:hover:not(.active) {
+            background: #374151 !important;
+        }
+
+        :root.dark-mode .sidebar-footer {
+            border-top-color: #374151 !important;
+            background: #1f2937 !important;
+        }
+
+        :root.dark-mode .bg-white {
+            background-color: #1f2937 !important;
+            color: #f3f4f6 !important;
+        }
+
+        :root.dark-mode .bg-gray-50 {
+            background-color: #374151 !important;
+        }
+
+        :root.dark-mode .bg-gray-100 {
+            background-color: #2d3748 !important;
+        }
+
+        :root.dark-mode .text-gray-400 {
+            color: #9ca3af !important;
+        }
+
+        :root.dark-mode .text-gray-500 {
+            color: #a6adb8 !important;
+        }
+
+        :root.dark-mode .text-gray-600,
+        :root.dark-mode .text-gray-700,
+        :root.dark-mode .text-gray-800 {
+            color: #d1d5db !important;
+        }
+
+        :root.dark-mode .border,
+        :root.dark-mode .border-t,
+        :root.dark-mode .border-b {
+            border-color: #374151 !important;
+        }
+
+        :root.dark-mode .divide-y > * {
+            border-bottom-color: #374151 !important;
+        }
+
+        :root.dark-mode input,
+        :root.dark-mode select,
+        :root.dark-mode textarea {
+            background-color: #374151 !important;
+            color: #f3f4f6 !important;
+            border-color: #4b5563 !important;
+        }
+
+        /* BADGES - Contraste fort */
+        :root.dark-mode .bg-red-100 {
+            background-color: #7f1d1d !important;
+        }
+
+        :root.dark-mode .text-red-700 {
+            color: #fca5a5 !important;
+        }
+
+        :root.dark-mode .bg-yellow-100 {
+            background-color: #78350f !important;
+        }
+
+        :root.dark-mode .text-yellow-700 {
+            color: #fcd34d !important;
+        }
+
+        :root.dark-mode .bg-green-100 {
+            background-color: #065f46 !important;
+        }
+
+        :root.dark-mode .text-green-700 {
+            color: #86efac !important;
+        }
+
+        /* Badges - Force text color visible */
+        .bg-red-100 .text-red-700,
+        .bg-red-100.text-red-700,
+        span.bg-red-100 {
+            color: #991b1b !important;
+        }
+
+        .bg-yellow-100 .text-yellow-700,
+        .bg-yellow-100.text-yellow-700,
+        span.bg-yellow-100 {
+            color: #854d0e !important;
+        }
+
+        .bg-green-100 .text-green-700,
+        .bg-green-100.text-green-700,
+        span.bg-green-100 {
+            color: #15803d !important;
+        }
+
+        .bg-blue-100 .text-blue-700,
+        .bg-blue-100.text-blue-700,
+        span.bg-blue-100 {
+            color: #1e40af !important;
         }
     </style>
 </head>
@@ -162,6 +303,9 @@
                             <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">3</span>
                         </a>
                     </div>
+                    <button id="themeToggleBtn" class="text-gray-400 text-xl cursor-pointer hover:text-indigo-600 transition" title="Mode sombre">
+                        <i class="fas fa-moon"></i>
+                    </button>
                 </div>
             </div>
             
@@ -169,16 +313,16 @@
                 <!-- Tabs -->
                 <div class="border-b mb-6">
                     <div class="flex gap-6">
-                        <button class="pb-2 border-b-2 border-indigo-600 text-indigo-600 font-medium">Sécurité</button>
-                        <button class="pb-2 text-gray-500 hover:text-gray-700">Accès physique</button>
-                        <button class="pb-2 text-gray-500 hover:text-gray-700">Notifications</button>
-                        <button class="pb-2 text-gray-500 hover:text-gray-700">Journalisation</button>
-                        <button class="pb-2 text-gray-500 hover:text-gray-700">API</button>
+                        <button class="tab-btn active pb-2 border-b-2 border-indigo-600 text-indigo-600 font-medium" data-tab="securite">Sécurité</button>
+                        <button class="tab-btn pb-2 text-gray-500 hover:text-gray-700" data-tab="acces">Accès physique</button>
+                        <button class="tab-btn pb-2 text-gray-500 hover:text-gray-700" data-tab="notifications">Notifications</button>
+                        <button class="tab-btn pb-2 text-gray-500 hover:text-gray-700" data-tab="journalisation">Journalisation</button>
+                        <button class="tab-btn pb-2 text-gray-500 hover:text-gray-700" data-tab="api">API</button>
                     </div>
                 </div>
                 
                 <!-- Contenu Sécurité -->
-                <div class="bg-white rounded-xl shadow-sm p-6">
+                <div id="tab-securite" class="tab-content active bg-white rounded-xl shadow-sm p-6">
                     <h3 class="font-medium mb-4">Paramètres de sécurité</h3>
                     
                     <div class="space-y-4 max-w-2xl">
@@ -227,7 +371,7 @@
                     </div>
                     
                     <div class="mt-6 pt-4 border-t">
-                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
                             Enregistrer les modifications
                         </button>
                     </div>
@@ -264,12 +408,257 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Contenu Accès Physique -->
+                <div id="tab-acces" class="tab-content hidden bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="font-medium mb-4">Paramètres d'accès physique</h3>
+                    
+                    <div class="space-y-4 max-w-2xl">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Délai avant verrouillage (secondes)</label>
+                            <input type="number" id="lockDelay" value="5" min="1" max="60" class="w-32 p-2 border rounded-lg">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Temps d'ouverture porte (secondes)</label>
+                            <input type="number" id="doorOpenTime" value="3" min="1" max="10" class="w-32 p-2 border rounded-lg">
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium">Anti-tailgating</p>
+                                <p class="text-sm text-gray-500">Détection de multiples accès</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="antiTailgating" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium">Alarme défaillance accès</p>
+                                <p class="text-sm text-gray-500">Alerte en cas d'anomalie</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="accessAlarm" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t">
+                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
+                            Enregistrer les modifications
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Contenu Notifications -->
+                <div id="tab-notifications" class="tab-content hidden bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="font-medium mb-4">Paramètres de notifications</h3>
+                    
+                    <div class="space-y-4 max-w-2xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium">Alertes email</p>
+                                <p class="text-sm text-gray-500">Recevoir les alertes par email</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="emailAlerts" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium">Alertes SMS</p>
+                                <p class="text-sm text-gray-500">Notifications par SMS</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="smsAlerts" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium">Alertes système</p>
+                                <p class="text-sm text-gray-500">Notifications dashboard</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="systemAlerts" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Niveau alerte minimum</label>
+                            <select id="alertLevel" class="w-64 p-2 border rounded-lg">
+                                <option value="all">Toutes les alertes</option>
+                                <option value="high">Alertes hautes</option>
+                                <option value="critical">Alertes critiques</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t">
+                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
+                            Enregistrer les modifications
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Contenu Journalisation -->
+                <div id="tab-journalisation" class="tab-content hidden bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="font-medium mb-4">Paramètres de journalisation</h3>
+                    
+                    <div class="space-y-4 max-w-2xl">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Niveau de détail</label>
+                            <select id="logLevel" class="w-64 p-2 border rounded-lg">
+                                <option value="error">Erreurs uniquement</option>
+                                <option value="warning">Avertissements</option>
+                                <option value="info" selected>Information</option>
+                                <option value="debug">Debug</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Rétention logs (jours)</label>
+                            <input type="number" id="logRetention" value="90" min="7" max="365" class="w-32 p-2 border rounded-lg">
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium">Archivage automatique</p>
+                                <p class="text-sm text-gray-500">Archiver les anciens logs</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="autoArchive" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium">Sauvegarde sécurisée</p>
+                                <p class="text-sm text-gray-500">Immutabilité des logs</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="secureBackup" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t">
+                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
+                            Enregistrer les modifications
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Contenu API -->
+                <div id="tab-api" class="tab-content hidden bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="font-medium mb-4">Paramètres API</h3>
+                    
+                    <div class="space-y-4 max-w-2xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium">API activée</p>
+                                <p class="text-sm text-gray-500">Activer/désactiver l'API</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="apiEnabled" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Limite requêtes/minute</label>
+                            <input type="number" id="apiRateLimit" value="100" min="10" max="1000" class="w-32 p-2 border rounded-lg">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Version API</label>
+                            <input type="text" id="apiVersion" value="v1.0" class="w-64 p-2 border rounded-lg">
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium">Authentification OAuth2</p>
+                                <p class="text-sm text-gray-500">Sécurité accrue</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="oauth2" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium">Chiffrement TLS</p>
+                                <p class="text-sm text-gray-500">Connexions sécurisées</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="tlsEncryption" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium">En-têtes personnalisés</p>
+                                <p class="text-sm text-gray-500">Headers de sécurité</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="customHeaders" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t">
+                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
+                            Enregistrer les modifications
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     
     <script>
-        // Synchroniser les sliders avec leurs valeurs affichées
+        // ========== GESTION DES ONGLETS ==========
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-tab');
+                
+                // Retirer la classe active de tous les boutons et contenus
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('border-b-2', 'border-indigo-600', 'text-indigo-600', 'font-medium');
+                    btn.classList.add('text-gray-500');
+                });
+                
+                tabContents.forEach(content => {
+                    content.classList.add('hidden');
+                    content.classList.remove('active');
+                });
+                
+                // Ajouter la classe active au bouton et contenu sélectionnés
+                this.classList.add('border-b-2', 'border-indigo-600', 'text-indigo-600', 'font-medium');
+                this.classList.remove('text-gray-500');
+                
+                document.getElementById('tab-' + tabName).classList.remove('hidden');
+                document.getElementById('tab-' + tabName).classList.add('active');
+            });
+        });
+
+        // ========== SYNCHRONISER LES SLIDERS ==========
         const facialThresholdSlider = document.getElementById('facialThreshold');
         const facialThresholdValue = document.getElementById('facialThresholdValue');
         const voiceThresholdSlider = document.getElementById('voiceThreshold');
@@ -283,6 +672,157 @@
         // Seuil reconnaissance vocale
         voiceThresholdSlider.addEventListener('input', function() {
             voiceThresholdValue.textContent = parseFloat(this.value).toFixed(2);
+        });
+
+        // ========== SAUVEGARDE DES MODIFICATIONS ==========
+        function saveConfigChanges() {
+            // Collecter les données du tab Sécurité
+            const facialThreshold = document.getElementById('facialThreshold').value;
+            const voiceThreshold = document.getElementById('voiceThreshold').value;
+            const maxAttempts = document.querySelector('input[type="number"]:nth-child(1)').value;
+            const blockDuration = document.querySelector('input[type="number"]:nth-child(2)').value;
+            const liveDetection = document.querySelectorAll('input[type="checkbox"]')[0].checked;
+            const sessionTimeout = document.querySelector('input[type="number"]:nth-child(5)').value;
+
+            // Collecter les données du tab Accès physique
+            const lockDelay = document.getElementById('lockDelay')?.value;
+            const doorOpenTime = document.getElementById('doorOpenTime')?.value;
+            const antiTailgating = document.getElementById('antiTailgating')?.checked;
+            const accessAlarm = document.getElementById('accessAlarm')?.checked;
+
+            // Collecter les données du tab Journalisation
+            const logLevel = document.getElementById('logLevel')?.value;
+            const logRetention = document.getElementById('logRetention')?.value;
+            const autoArchive = document.getElementById('autoArchive')?.checked;
+            const secureBackup = document.getElementById('secureBackup')?.checked;
+
+            // Collecter les données du tab API
+            const apiEnabled = document.getElementById('apiEnabled')?.checked;
+            const apiRateLimit = document.getElementById('apiRateLimit')?.value;
+            const apiVersion = document.getElementById('apiVersion')?.value;
+            const oauth2 = document.getElementById('oauth2')?.checked;
+            const tlsEncryption = document.getElementById('tlsEncryption')?.checked;
+            const customHeaders = document.getElementById('customHeaders')?.checked;
+
+            const configData = {
+                securite: {
+                    facialThreshold,
+                    voiceThreshold,
+                    maxAttempts,
+                    blockDuration,
+                    liveDetection,
+                    sessionTimeout
+                },
+                acces: {
+                    lockDelay,
+                    doorOpenTime,
+                    antiTailgating,
+                    accessAlarm
+                },
+                journalisation: {
+                    logLevel,
+                    logRetention,
+                    autoArchive,
+                    secureBackup
+                },
+                api: {
+                    apiEnabled,
+                    apiRateLimit,
+                    apiVersion,
+                    oauth2,
+                    tlsEncryption,
+                    customHeaders
+                }
+            };
+
+            // Sauvegarder dans localStorage
+            localStorage.setItem('configBioAccess', JSON.stringify(configData));
+            
+            // Afficher une notification de succès
+            alert('✅ Configuration enregistrée avec succès !');
+            
+            // Log dans la console pour vérification
+            console.log('Configuration sauvegardée:', configData);
+        }
+
+        // Charger les configurations sauvegardées au chargement
+        window.addEventListener('load', function() {
+            const savedConfig = localStorage.getItem('configBioAccess');
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    
+                    // Restaurer les valeurs Sécurité
+                    if (config.securite) {
+                        document.getElementById('facialThreshold').value = config.securite.facialThreshold || 0.6;
+                        document.getElementById('voiceThreshold').value = config.securite.voiceThreshold || 0.6;
+                        document.getElementById('facialThresholdValue').textContent = parseFloat(config.securite.facialThreshold || 0.6).toFixed(2);
+                        document.getElementById('voiceThresholdValue').textContent = parseFloat(config.securite.voiceThreshold || 0.6).toFixed(2);
+                    }
+                    
+                    // Restaurer les valeurs Accès physique
+                    if (config.acces) {
+                        document.getElementById('lockDelay').value = config.acces.lockDelay || 5;
+                        document.getElementById('doorOpenTime').value = config.acces.doorOpenTime || 3;
+                        document.getElementById('antiTailgating').checked = config.acces.antiTailgating !== false;
+                        document.getElementById('accessAlarm').checked = config.acces.accessAlarm !== false;
+                    }
+                    
+                    // Restaurer les valeurs Journalisation
+                    if (config.journalisation) {
+                        document.getElementById('logLevel').value = config.journalisation.logLevel || 'info';
+                        document.getElementById('logRetention').value = config.journalisation.logRetention || 90;
+                        document.getElementById('autoArchive').checked = config.journalisation.autoArchive !== false;
+                        document.getElementById('secureBackup').checked = config.journalisation.secureBackup !== false;
+                    }
+                    
+                    // Restaurer les valeurs API
+                    if (config.api) {
+                        document.getElementById('apiEnabled').checked = config.api.apiEnabled !== false;
+                        document.getElementById('apiRateLimit').value = config.api.apiRateLimit || 100;
+                        document.getElementById('apiVersion').value = config.api.apiVersion || 'v1.0';
+                        document.getElementById('oauth2').checked = config.api.oauth2 !== false;
+                        document.getElementById('tlsEncryption').checked = config.api.tlsEncryption !== false;
+                        document.getElementById('customHeaders').checked = config.api.customHeaders !== false;
+                    }
+                    
+                    console.log('Configuration restaurée:', config);
+                } catch (e) {
+                    console.error('Erreur lors du chargement de la configuration:', e);
+                }
+            }
+        });
+    </script>
+    
+    <!-- Theme Toggle Event Listener -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            if (themeToggleBtn && window.themeManager) {
+                themeToggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.themeManager.toggle();
+                    
+                    const isDark = window.themeManager.isDarkMode();
+                    themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                    themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+                });
+                
+                const isDark = window.themeManager.isDarkMode();
+                themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+            }
+
+            // Logout
+            const logoutLink = document.querySelector('a[href="login.html"]');
+            if (logoutLink) {
+                logoutLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = 'login.html';
+                });
+            }
         });
     </script>
 </body>

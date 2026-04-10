@@ -30,7 +30,7 @@ from api.middlewares.audit import AuditMiddleware
 # Blueprints
 from api.v1 import (
     auth_bp, users_bp, logs_bp, alerts_bp,
-    dashboard_bp, biometric_bp, access_bp, audit_bp
+    dashboard_bp, biometric_bp, access_bp, audit_bp, facial_bp
 )
 
 # Utils
@@ -190,6 +190,7 @@ def create_app(config_name=None):
     api_prefix = app.config['API_PREFIX']
     
     app.register_blueprint(auth_bp, url_prefix=f"{api_prefix}/auth")
+    app.register_blueprint(facial_bp, url_prefix=f"{api_prefix}/facial")
     app.register_blueprint(users_bp, url_prefix=f"{api_prefix}/users")
     app.register_blueprint(logs_bp, url_prefix=f"{api_prefix}/logs")
     app.register_blueprint(alerts_bp, url_prefix=f"{api_prefix}/alerts")

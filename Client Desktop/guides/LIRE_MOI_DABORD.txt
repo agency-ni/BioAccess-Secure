@@ -1,0 +1,78 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║  📱 BioAccess Secure - Installation                          ║
+║  Gestion des Permissions et Diagnostic des Périphériques     ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+🚀 INSTALLATION - 3 ÉTAPES SIMPLES
+
+───────────────────────────────────────────────────────────────
+
+ÉTAPE 1️⃣ : CHOISIR MON SYSTÈME D'EXPLOITATION
+
+  🪟 WINDOWS:
+     → Double-cliquez sur le fichier: SETUP_WINDOWS.bat
+
+  🐧 LINUX:
+     → Ouvrez un terminal
+     → Tapez: chmod +x SETUP_LINUX_MAC.sh
+     → Puis: ./SETUP_LINUX_MAC.sh
+
+  🍎 macOS:
+     → Ouvrez un terminal
+     → Tapez: chmod +x SETUP_LINUX_MAC.sh
+     → Puis: ./SETUP_LINUX_MAC.sh
+
+───────────────────────────────────────────────────────────────
+
+ÉTAPE 2️⃣ : SUIVRE LES INSTRUCTIONS À L'ÉCRAN
+
+  ✅ L'installation est automatique
+  ✅ Elle détecte votre système
+  ✅ Elle installe tout ce qui manque
+
+───────────────────────────────────────────────────────────────
+
+ÉTAPE 3️⃣ : TESTER
+
+  Après l'installation:
+  
+  → Lancer le diagnostic:
+    python device_diagnostic.py
+    
+  → Ou lancer la configuration interactive:
+    python device_setup.py
+
+───────────────────────────────────────────────────────────────
+
+📝 FICHIERS À LIRE
+
+  INSTALLER_README.md       ← Voir ici en cas de doute
+  QUICK_START.txt           ← Guide rapide
+  DEVICE_SETUP_GUIDE.md     ← Guide complet
+
+───────────────────────────────────────────────────────────────
+
+⚠️ SI RIEN N'ARRIVE...
+
+  1. Vérifiez que Python 3.7+ est installé:
+     https://www.python.org/downloads/
+     
+  2. Sur Windows: cochez "Add Python to PATH" lors de l'installation
+  
+  3. Redémarrez votre ordinateur
+
+───────────────────────────────────────────────────────────────
+
+🎉 C'EST TOUT!
+
+  Aucun besoin de savoir comment ça marche.
+  L'installation fait tout automatiquement.
+
+  Commencez maintenant! 👉
+
+───────────────────────────────────────────────────────────────
+
+Questions?
+→ Voir: INSTALLER_README.md

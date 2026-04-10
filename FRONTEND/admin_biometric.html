@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Authentification Biométrique - BioAccess Secure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="theme.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .tab-btn.active {
+            @apply border-b-2 border-indigo-600 text-indigo-600 font-semibold;
+        }
+        
+        .tab-btn {
+            @apply px-4 py-2 text-gray-600 border-b-2 border-transparent hover:text-indigo-600 transition;
+        }
+        
+        .fade-enter {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .badge-success { @apply inline-flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium; }
+        .badge-error { @apply inline-flex items-center gap-1 bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium; }
+        .badge-pending { @apply inline-flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium; }
+        .badge-info { @apply inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium; }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        video {
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+        }
+
+        .alert-error {
+            @apply bg-red-50 border border-red-200 rounded-lg p-4;
+        }
+
+        .alert-warning {
+            @apply bg-yellow-50 border border-yellow-200 rounded-lg p-4;
+        }
+
+        .alert-success {
+            @apply bg-green-50 border border-green-200 rounded-lg p-4;
+        }
+
+        .alert-info {
+            @apply bg-blue-50 border border-blue-200 rounded-lg p-4;
+        }
+
+        table tr:hover {
+            @apply bg-gray-50;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <div class="bg-white border-b sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="bg-indigo-600 text-white p-2 rounded-lg">
+                        <i class="fas fa-fingerprint text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-800">Gestion Authentification Biométrique</h1>
+                        <p class="text-xs text-gray-500">Enregistrement et monitoring des utilisateurs</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button id="themeToggleBtn" class="text-gray-400 text-xl cursor-pointer hover:text-indigo-600 transition" title="Mode sombre">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <div class="text-right">
+                        <p class="text-sm font-medium text-gray-800" id="adminName">Administration</p>
+                        <p class="text-xs text-gray-500">Connecté</p>
+                    </div>
+                </div>
+                <script>
+                    document.getElementById('themeToggleBtn').addEventListener('click', () => {
+                        if (window.themeManager) {
+                            window.themeManager.toggle();
+                        }
+                    });
+
+                    // Logout
+                    const logoutLink = document.querySelector('a[href="login.html"]');
+                    if (logoutLink) {
+                        logoutLink.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            window.location.href = 'login.html';
+                        });
+                    }
+                </script>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto p-6">
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white rounded-lg border shadow-sm p-5 card-hover">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-600 text-sm font-medium">Utilisateurs</p>
+                            <p class="text-3xl font-bold text-gray-900 mt-2" id="stat-users">--</p>
+                        </div>
+                        <div class="bg-indigo-100 text-indigo-600 p-3 rounded-lg">
+                            <i class="fas fa-users text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg border shadow-sm p-5 card-hover">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-600 text-sm font-medium">Authentifications (24h)</p>
+                            <p class="text-3xl font-bold text-gray-900 mt-2" id="stat-auth">--</p>
+                        </div>
+                        <div class="bg-green-100 text-green-600 p-3 rounded-lg">
+                            <i class="fas fa-check-circle text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg border shadow-sm p-5 card-hover">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-600 text-sm font-medium">Erreurs (24h)</p>
+                            <p class="text-3xl font-bold text-red-600 mt-2" id="stat-errors">--</p>
+                        </div>
+                        <div class="bg-red-100 text-red-600 p-3 rounded-lg">
+                            <i class="fas fa-exclamation-circle text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg border shadow-sm p-5 card-hover">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-600 text-sm font-medium">Taux réussite</p>
+                            <p class="text-3xl font-bold text-green-600 mt-2" id="stat-rate">--%</p>
+                        </div>
+                        <div class="bg-blue-100 text-blue-600 p-3 rounded-lg">
+                            <i class="fas fa-percentage text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <div class="border-b bg-white rounded-t-lg mb-6">
+                <div class="flex gap-2 px-6 pt-4">
+                    <button class="tab-btn active" data-tab="enrollment">
+                        <i class="fas fa-user-plus mr-2"></i>Enregistrement
+                    </button>
+                    <button class="tab-btn" data-tab="desktop-users">
+                        <i class="fas fa-desktop mr-2"></i>Utilisateurs Desktop
+                    </button>
+                    <button class="tab-btn" data-tab="logs">
+                        <i class="fas fa-history mr-2"></i>Logs d'Authentification
+                    </button>
+                    <button class="tab-btn" data-tab="errors">
+                        <i class="fas fa-triangle-exclamation mr-2"></i>Alertes d'Erreurs
+                    </button>
+                    <button class="tab-btn" data-tab="analytics">
+                        <i class="fas fa-chart-line mr-2"></i>Statistiques
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 1: ENREGISTREMENT NOUVEL UTILISATEUR -->
+            <div id="enrollmentTab" class="fade-enter">
+                <div class="grid lg:grid-cols-2 gap-8">
+                    <!-- User Form -->
+                    <div class="bg-white rounded-lg border shadow-sm p-6">
+                        <h2 class="text-lg font-semibold mb-4 flex items-center">
+                            <i class="fas fa-user-circle text-indigo-600 mr-2"></i>
+                            Informations Utilisateur
+                        </h2>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                                <input type="email" id="enrollEmail" placeholder="utilisateur@exemple.com" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
+                                    <input type="text" id="enrollFirstName" placeholder="Jean" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nom</label>
+                                    <input type="text" id="enrollLastName" placeholder="Dupont" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Rôle *</label>
+                                <select id="enrollRole" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                    <option value="">Sélectionner un rôle</option>
+                                    <option value="user">Utilisateur</option>
+                                    <option value="admin">Administrateur</option>
+                                    <option value="desktop_user">Utilisateur Desktop</option>
+                                </select>
+                            </div>
+
+                            <div class="pt-4 border-t">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="requireBiometric" checked class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="text-sm text-gray-700">Requérir authentification biométrique</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Face Enrollment -->
+                    <div class="bg-white rounded-lg border shadow-sm p-6">
+                        <h2 class="text-lg font-semibold mb-4 flex items-center">
+                            <i class="fas fa-camera text-indigo-600 mr-2"></i>
+                            Enregistrement Facial
+                        </h2>
+                        
+                        <!-- Mode Selection -->
+                        <div class="space-y-4">
+                            <div class="flex gap-2 mb-4">
+                                <button id="modeUploadBtn" class="flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium transition" data-mode="upload">
+                                    <i class="fas fa-cloud-upload mr-1"></i>Upload Photo
+                                </button>
+                                <button id="modeLiveBtn" class="flex-1 px-3 py-2 border-2 border-gray-300 text-gray-700 rounded-lg text-sm font-medium transition hover:bg-gray-50" data-mode="live">
+                                    <i class="fas fa-video mr-1"></i>Capture Live
+                                </button>
+                            </div>
+
+                            <!-- Upload Section -->
+                            <div id="uploadSection" class="space-y-4">
+                                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 hover:border-indigo-500 transition cursor-pointer" id="uploadArea">
+                                    <div class="text-4xl text-gray-300 mb-2">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                    </div>
+                                    <p class="text-sm font-medium text-gray-700">Déposer une photo ici</p>
+                                    <p class="text-xs text-gray-500 mt-1">JPG, PNG - Max 5MB</p>
+                                    <input type="file" id="faceUpload" accept="image/jpeg,image/png" class="hidden">
+                                </div>
+
+                                <div id="uploadPreview" class="hidden">
+                                    <img id="uploadPreviewImg" src="" class="w-full rounded-lg mb-3">
+                                    <button id="clearUploadBtn" class="w-full px-3 py-2 border-2 border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition">
+                                        <i class="fas fa-redo mr-1"></i>Recommencer
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Live Capture Section -->
+                            <div id="liveSection" class="hidden space-y-4">
+                                <div class="bg-black rounded-lg overflow-hidden aspect-video relative" id="liveContainer">
+                                    <video id="enrollVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+                                    <div id="liveCaptureLoading" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+                                        <div class="text-center">
+                                            <div class="spinner mx-auto mb-2"></div>
+                                            <p class="text-white text-sm">Traitement...</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-2">
+                                    <button id="captureLiveBtn" class="flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition">
+                                        <i class="fas fa-camera mr-1"></i>Capturer
+                                    </button>
+                                    <button id="stopLiveBtn" class="flex-1 px-3 py-2 border-2 border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition">
+                                        <i class="fas fa-stop mr-1"></i>Arrêter
+                                    </button>
+                                </div>
+
+                                <div id="livePreview" class="hidden">
+                                    <img id="livePreviewImg" src="" class="w-full rounded-lg mb-3">
+                                    <button id="clearLiveBtn" class="w-full px-3 py-2 border-2 border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition">
+                                        <i class="fas fa-redo mr-1"></i>Recommencer
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Quality Indicator -->
+                            <div id="qualityStatus" class="hidden bg-blue-50 rounded-lg p-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm font-medium text-gray-700">Qualité détectée:</span>
+                                    <span id="qualityPercent" class="text-sm font-bold text-indigo-600">--</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                    <div id="qualityBar" class="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-2 transition-all duration-300" style="width:0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="mt-6 mb-6">
+                    <button id="submitEnrollBtn" class="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fas fa-save mr-2"></i>Enregistrer l'Utilisateur
+                    </button>
+                </div>
+
+                <!-- Feedback Messages -->
+                <div id="enrollmentResult" class="hidden"></div>
+            </div>
+
+            <!-- TAB 2: UTILISATEURS DESKTOP -->
+            <div id="desktopUsersTab" class="hidden fade-enter">
+                <div class="bg-white rounded-lg border shadow-sm">
+                    <div class="p-6 border-b">
+                        <div class="flex justify-between items-center">
+                            <h2 class="text-lg font-semibold flex items-center">
+                                <i class="fas fa-desktop text-indigo-600 mr-2"></i>
+                                Utilisateurs Client Desktop
+                            </h2>
+                            <div class="flex gap-2">
+                                <input type="text" id="desktopSearchInput" placeholder="Chercher par email..." class="px-4 py-2 border rounded-lg text-sm">
+                                <button id="refreshDesktopBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition">
+                                    <i class="fas fa-sync mr-1"></i>Actualiser
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 border-b">
+                                <tr>
+                                    <th class="px-6 py-3 text-left font-medium">Utilisateur</th>
+                                    <th class="px-6 py-3 text-left font-medium">Email</th>
+                                    <th class="px-6 py-3 text-left font-medium">Templates</th>
+                                    <th class="px-6 py-3 text-left font-medium">Dernière Auth</th>
+                                    <th class="px-6 py-3 text-left font-medium">Statut</th>
+                                    <th class="px-6 py-3 text-left font-medium">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="desktopUsersTableBody" class="divide-y">
+                                <tr>
+                                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i>Chargement...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: LOGS D'AUTHENTIFICATION -->
+            <div id="logsTab" class="hidden fade-enter">
+                <div class="bg-white rounded-lg border shadow-sm">
+                    <div class="p-6 border-b">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Email</label>
+                                <input type="email" id="filterEmail" placeholder="Filtrer..." class="w-full px-4 py-2 border rounded-lg text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Résultat</label>
+                                <select id="filterResult" class="w-full px-4 py-2 border rounded-lg text-sm">
+                                    <option value="">Tous</option>
+                                    <option value="success">Succès</option>
+                                    <option value="failed">Échec</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Type</label>
+                                <select id="filterType" class="w-full px-4 py-2 border rounded-lg text-sm">
+                                    <option value="">Tous</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="desktop">Desktop</option>
+                                    <option value="web">Web</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">&nbsp;</label>
+                                <button id="applyFilterBtn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition">
+                                    <i class="fas fa-filter mr-1"></i>Filtrer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 border-b">
+                                <tr>
+                                    <th class="px-6 py-3 text-left font-medium">Date/Heure</th>
+                                    <th class="px-6 py-3 text-left font-medium">Utilisateur</th>
+                                    <th class="px-6 py-3 text-left font-medium">Résultat</th>
+                                    <th class="px-6 py-3 text-left font-medium">Similarité</th>
+                                    <th class="px-6 py-3 text-left font-medium">Type</th>
+                                    <th class="px-6 py-3 text-left font-medium">IP</th>
+                                    <th class="px-6 py-3 text-left font-medium">Détails</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsTableBody" class="divide-y">
+                                <tr>
+                                    <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i>Chargement...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-6 border-t flex justify-between items-center">
+                        <button id="prevPageBtn" class="px-4 py-2 border rounded-lg hover:bg-gray-50 text-sm disabled:opacity-50" disabled>
+                            <i class="fas fa-chevron-left mr-1"></i>Précédent
+                        </button>
+                        <span id="paginationInfo" class="text-sm text-gray-600">Page 1</span>
+                        <button id="nextPageBtn" class="px-4 py-2 border rounded-lg hover:bg-gray-50 text-sm disabled:opacity-50" disabled>
+                            Suivant<i class="fas fa-chevron-right ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: ALERTES D'ERREURS (Client Desktop) -->
+            <div id="errorsTab" class="hidden fade-enter">
+                <div class="space-y-4">
+                    <!-- Critical Errors Section -->
+                    <div class="bg-white rounded-lg border shadow-sm">
+                        <div class="p-6 border-b">
+                            <h3 class="text-lg font-semibold flex items-center">
+                                <i class="fas fa-triangle-exclamation text-red-600 mr-2"></i>
+                                Erreurs Critiques (24h)
+                            </h3>
+                        </div>
+
+                        <div class="divide-y" id="criticalErrorsList">
+                            <div class="p-6 text-center text-gray-500">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>Chargement...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Errors Section -->
+                    <div class="bg-white rounded-lg border shadow-sm">
+                        <div class="p-6 border-b">
+                            <h3 class="text-lg font-semibold flex items-center">
+                                <i class="fas fa-history text-yellow-600 mr-2"></i>
+                                Erreurs Récentes
+                            </h3>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 border-b">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left font-medium">Date</th>
+                                        <th class="px-6 py-3 text-left font-medium">Utilisateur</th>
+                                        <th class="px-6 py-3 text-left font-medium">Type Erreur</th>
+                                        <th class="px-6 py-3 text-left font-medium">Message</th>
+                                        <th class="px-6 py-3 text-left font-medium">Client Info</th>
+                                        <th class="px-6 py-3 text-left font-medium">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="errorsTableBody" class="divide-y">
+                                    <tr>
+                                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i>Chargement...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: STATISTIQUES -->
+            <div id="analyticsTab" class="hidden fade-enter">
+                <div class="space-y-6">
+                    <!-- Charts Row -->
+                    <div class="grid lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-lg border shadow-sm p-6">
+                            <h3 class="font-semibold mb-4">Tendance Authentifications (7 jours)</h3>
+                            <canvas id="authTrendChart"></canvas>
+                        </div>
+                        <div class="bg-white rounded-lg border shadow-sm p-6">
+                            <h3 class="font-semibold mb-4">Répartition Résultats</h3>
+                            <canvas id="resultDistributionChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Error Analysis -->
+                    <div class="bg-white rounded-lg border shadow-sm p-6">
+                        <h3 class="font-semibold mb-4">Analyses d'Erreurs</h3>
+                        <div class="space-y-3" id="errorAnalysisList">
+                            <p class="text-gray-500">Chargement...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Capture Modal (for registration) -->
+    <div id="liveModal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-2xl w-full overflow-hidden">
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+                <h3 class="text-xl font-semibold flex items-center">
+                    <i class="fas fa-video mr-2"></i>Capture Vidéo en Direct
+                </h3>
+            </div>
+            
+            <div class="p-6">
+                <div class="bg-black rounded-lg overflow-hidden aspect-video relative mb-4">
+                    <video id="modalVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+                </div>
+
+                <p class="text-sm text-gray-600 mb-4 text-center">
+                    Positionnez votre visage face à la caméra
+                </p>
+
+                <div class="flex gap-3">
+                    <button id="modalCaptureBtn" class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium">
+                        <i class="fas fa-camera mr-2"></i>Capturer
+                    </button>
+                    <button id="modalCloseBtn" class="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium">
+                        Annuler
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="admin_biometric.js"></script>
+</body>
+</html>

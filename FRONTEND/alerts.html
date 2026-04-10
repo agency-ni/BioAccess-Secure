@@ -6,6 +6,7 @@
     <title>BioAccess Secure - Alertes</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="theme.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>* { font-family: 'Inter', sans-serif; }
         
@@ -72,6 +73,154 @@
             padding: 1rem;
             border-top: 1px solid #e5e7eb;
             background: white;
+        }
+        
+        /* Dark Mode Styles - Harmonized with theme.js - COMPLETE COVERAGE */
+        :root.dark-mode {
+            --color-bg-primary: #111827;
+            --color-bg-secondary: #1f2937;
+            --color-text-primary: #f3f4f6;
+            --color-text-secondary: #d1d5db;
+            --color-border: #374151;
+        }
+        
+        :root.dark-mode body {
+            background-color: #111827 !important;
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .sidebar {
+            background: #1f2937 !important;
+            color: #f3f4f6 !important;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5) !important;
+        }
+        
+        :root.dark-mode .sidebar-menu {
+            scrollbar-color: #4b5563 #1f2937 !important;
+        }
+        
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-track {
+            background: #1f2937 !important;
+        }
+        
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-thumb {
+            background: #4b5563 !important;
+        }
+        
+        :root.dark-mode .sidebar-item {
+            color: #d1d5db !important;
+        }
+        
+        :root.dark-mode .sidebar-item:hover:not(.active) {
+            background: #374151 !important;
+        }
+        
+        :root.dark-mode .sidebar-footer {
+            border-top-color: #374151 !important;
+            background: #1f2937 !important;
+        }
+        
+        :root.dark-mode .bg-white {
+            background-color: #1f2937 !important;
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .bg-gray-50 {
+            background-color: #374151 !important;
+        }
+        
+        :root.dark-mode .bg-gray-100 {
+            background-color: #2d3748 !important;
+        }
+        
+        :root.dark-mode .text-gray-400 {
+            color: #9ca3af !important;
+        }
+        
+        :root.dark-mode .text-gray-500 {
+            color: #a6adb8 !important;
+        }
+        
+        :root.dark-mode .text-gray-600,
+        :root.dark-mode .text-gray-700 {
+            color: #d1d5db !important;
+        }
+        
+        :root.dark-mode .text-gray-800 {
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .border {
+            border-color: #374151 !important;
+        }
+        
+        :root.dark-mode .divide-y > * {
+            border-bottom-color: #374151 !important;
+        }
+        
+        :root.dark-mode .divide-y > *:last-child {
+            border-bottom-color: transparent !important;
+        }
+        
+        :root.dark-mode .border-b {
+            border-bottom-color: #374151 !important;
+        }
+        
+        :root.dark-mode .border-l-4 {
+            border-left-color: inherit !important;
+        }
+        
+        :root.dark-mode .hover\:bg-gray-50:hover {
+            background-color: #374151 !important;
+        }
+        
+        :root.dark-mode input,
+        :root.dark-mode select,
+        :root.dark-mode textarea {
+            background-color: #374151 !important;
+            color: #f3f4f6 !important;
+            border-color: #4b5563 !important;
+        }
+        
+        :root.dark-mode .bg-red-100 {
+            background-color: #7f1d1d !important;
+        }
+        
+        :root.dark-mode .text-red-700 {
+            color: #fca5a5 !important;
+        }
+        
+        :root.dark-mode .bg-yellow-100 {
+            background-color: #78350f !important;
+        }
+        
+        :root.dark-mode .text-yellow-700 {
+            color: #fcd34d !important;
+        }
+        
+        :root.dark-mode .bg-green-100 {
+            background-color: #065f46 !important;
+        }
+        
+        :root.dark-mode .text-green-700 {
+            color: #86efac !important;
+        }
+        
+        :root.dark-mode .bg-blue-100 {
+            background-color: #1e3a8a !important;
+        }
+
+        :root.dark-mode .text-blue-700,
+        :root.dark-mode .text-blue-800 {
+            color: #93c5fd !important;
+        }
+        
+        :root.dark-mode .bg-indigo-100 {
+            background-color: #312e81 !important;
+        }
+        
+        :root.dark-mode .text-indigo-600 {
+            color: #a5b4fc !important;
         }
     </style>
 </head>
@@ -161,8 +310,9 @@
                             <i class="fas fa-bell text-indigo-600 text-xl cursor-pointer hover:text-indigo-700"></i>
                             <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">3</span>
                         </a>
-                    </div>
-                </div>
+                    </div>                    <button id="themeToggleBtn" class="text-gray-400 text-xl cursor-pointer hover:text-indigo-600 transition" title="Mode sombre">
+                        <i class="fas fa-moon"></i>
+                    </button>                </div>
             </div>
             
             <div class="p-6">
@@ -185,90 +335,124 @@
                 <!-- Liste alertes -->
                 <div class="bg-white rounded-xl shadow-sm overflow-hidden">
                     <div class="p-4 border-b bg-gray-50">
-                        <select class="border rounded px-3 py-1 text-sm">
-                            <option>Toutes les alertes</option>
-                            <option>Non traitées</option>
-                            <option>En cours</option>
-                            <option>Traitées</option>
+                        <select id="alertFilter" class="border rounded px-3 py-2 text-sm">
+                            <option value="">Toutes les alertes</option>
+                            <option value="Non traitée">Non traitées</option>
+                            <option value="En cours">En cours</option>
+                            <option value="Traitée">Traitées</option>
                         </select>
                     </div>
                     
-                    <div class="divide-y">
-                        <div class="p-4 hover:bg-gray-50">
-                            <div class="flex items-start gap-4">
-                                <div class="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
-                                <div class="flex-1">
-                                    <div class="flex justify-between">
-                                        <h3 class="font-medium">Tentative d'usurpation - Jean Dupont</h3>
-                                        <span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">Haute</span>
-                                    </div>
-                                    <p class="text-sm text-gray-600 mt-1">3 échecs consécutifs sur poste PC-102 en 5 minutes</p>
-                                    <div class="flex justify-between mt-2 text-xs text-gray-400">
-                                        <span>10/03/2026 09:45</span>
-                                        <span>Non traitée</span>
-                                    </div>
-                                </div>
-                                <button class="bg-indigo-600 text-white px-3 py-1 rounded text-sm">Traiter</button>
-                            </div>
-                        </div>
-                        
-                        <div class="p-4 hover:bg-gray-50">
-                            <div class="flex items-start gap-4">
-                                <div class="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
-                                <div class="flex-1">
-                                    <div class="flex justify-between">
-                                        <h3 class="font-medium">Accès non autorisé - Claire Martin</h3>
-                                        <span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">Haute</span>
-                                    </div>
-                                    <p class="text-sm text-gray-600 mt-1">Tentative accès salle serveur (département RH)</p>
-                                    <div class="flex justify-between mt-2 text-xs text-gray-400">
-                                        <span>10/03/2026 08:15</span>
-                                        <span>Non traitée</span>
-                                    </div>
-                                </div>
-                                <button class="bg-indigo-600 text-white px-3 py-1 rounded text-sm">Traiter</button>
-                            </div>
-                        </div>
-                        
-                        <div class="p-4 hover:bg-gray-50">
-                            <div class="flex items-start gap-4">
-                                <div class="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
-                                <div class="flex-1">
-                                    <div class="flex justify-between">
-                                        <h3 class="font-medium">Accès hors horaire - Thomas Petit</h3>
-                                        <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full">Moyenne</span>
-                                    </div>
-                                    <p class="text-sm text-gray-600 mt-1">Accès salle serveur à 22h30 (horaire autorisé: 8h-20h)</p>
-                                    <div class="flex justify-between mt-2 text-xs text-gray-400">
-                                        <span>09/03/2026 22:30</span>
-                                        <span>En cours</span>
-                                    </div>
-                                </div>
-                                <button class="bg-gray-500 text-white px-3 py-1 rounded text-sm">Déjà assigné</button>
-                            </div>
-                        </div>
-                        
-                        <div class="p-4 hover:bg-gray-50">
-                            <div class="flex items-start gap-4">
-                                <div class="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                                <div class="flex-1">
-                                    <div class="flex justify-between">
-                                        <h3 class="font-medium">Nouvel employé enrôlé</h3>
-                                        <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Basse</span>
-                                    </div>
-                                    <p class="text-sm text-gray-600 mt-1">Sophie Martin - Département Comptabilité</p>
-                                    <div class="flex justify-between mt-2 text-xs text-gray-400">
-                                        <span>08/03/2026 14:20</span>
-                                        <span>Traitée</span>
-                                    </div>
-                                </div>
-                                <span class="text-green-600 text-sm"><i class="fas fa-check"></i> Traité</span>
-                            </div>
-                        </div>
-                    </div>
+                    <div id="alertsList" class="divide-y">
+                        <!-- Alertes générées par JavaScript -->
+                    
                 </div>
             </div>
         </div>
     </div>
+    
+    <!-- Theme Toggle Event Listener -->
+    <script>
+        // ========== DONNÉES ALERTES ==========
+        const alerts = [
+            { id: 1, titre: "Tentative d'usurpation - Jean Dupont", description: "3 échecs consécutifs sur poste PC-102 en 5 minutes", date: "10/03/2026 09:45", status: "Non traitée", priorite: "Haute", couleur: "#dc2626" },
+            { id: 2, titre: "Accès non autorisé - Claire Martin", description: "Tentative accès salle serveur (département RH)", date: "10/03/2026 08:15", status: "Non traitée", priorite: "Haute", couleur: "#dc2626" },
+            { id: 3, titre: "Accès hors horaire - Thomas Petit", description: "Accès salle serveur à 22h30 (horaire autorisé: 8h-20h)", date: "09/03/2026 22:30", status: "En cours", priorite: "Moyenne", couleur: "#f59e0b" },
+            { id: 4, titre: "Nouvel employé enrôlé", description: "Sophie Martin - Département Comptabilité", date: "08/03/2026 14:20", status: "Traitée", priorite: "Basse", couleur: "#16a34a" }
+        ];
+
+        function renderAlerts(filter = "") {
+            const alertsList = document.getElementById('alertsList');
+            alertsList.innerHTML = '';
+
+            const filtered = filter ? alerts.filter(a => a.status === filter) : alerts;
+
+            if (filtered.length === 0) {
+                alertsList.innerHTML = '<div class="p-6 text-center text-gray-500"><p>Aucune alerte trouvée</p></div>';
+                return;
+            }
+
+            filtered.forEach(alert => {
+                const badge = alert.status === "Traitée" ? "bg-green-100 text-green-700" : (alert.status === "En cours" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700");
+                const button = alert.status === "Traitée" 
+                    ? `<span class="text-green-600 text-sm"><i class="fas fa-check"></i> Traité</span>`
+                    : (alert.status === "En cours" 
+                        ? `<button class="bg-gray-500 text-white px-3 py-1 rounded text-sm cursor-not-allowed">Assigné</button>`
+                        : `<button class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700 treat-btn" data-id="${alert.id}">Traiter</button>`);
+
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'p-4 hover:bg-gray-50 transition';
+                alertDiv.innerHTML = `
+                    <div class="flex items-start gap-4">
+                        <div class="w-2 h-2 rounded-full mt-2" style="background-color: ${alert.couleur}"></div>
+                        <div class="flex-1">
+                            <div class="flex justify-between">
+                                <h3 class="font-medium">${alert.titre}</h3>
+                                <span class="${badge} text-xs px-2 py-1 rounded-full">${alert.priorite}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">${alert.description}</p>
+                            <div class="flex justify-between mt-2 text-xs text-gray-400">
+                                <span>${alert.date}</span>
+                                <span>${alert.status}</span>
+                            </div>
+                        </div>
+                        ${button}
+                    </div>
+                `;
+                alertsList.appendChild(alertDiv);
+            });
+
+            // Ajouter les event listeners aux boutons Traiter
+            document.querySelectorAll('.treat-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const alertId = this.dataset.id;
+                    const alert = alerts.find(a => a.id === parseInt(alertId));
+                    if (alert) {
+                        alert.status = "En cours";
+                        renderAlerts(document.getElementById('alertFilter').value);
+                        alert('Alerte #' + alertId + ' assignée - ' + alert.titre);
+                    }
+                });
+            });
+        }
+
+        // ========== EVENT LISTENERS ==========
+        document.getElementById('alertFilter').addEventListener('change', function() {
+            renderAlerts(this.value);
+        });
+
+        // ========== INITIALISATION ==========
+        renderAlerts();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Theme Toggle
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            if (themeToggleBtn && window.themeManager) {
+                themeToggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.themeManager.toggle();
+                    
+                    const isDark = window.themeManager.isDarkMode();
+                    themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                    themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+                });
+                
+                const isDark = window.themeManager.isDarkMode();
+                themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+            }
+
+            // Logout
+            const logoutLink = document.querySelector('a[href="login.html"]');
+            if (logoutLink) {
+                logoutLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = 'login.html';
+                });
+            }
+        });
+    </script>
 </body>
 </html>

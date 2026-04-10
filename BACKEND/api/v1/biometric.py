@@ -393,6 +393,40 @@ def biometric_health() -> Tuple[Dict, int]:
     }), 200
 
 
+@biometric_blueprint.route('/analyze-quality', methods=['POST'])
+def analyze_quality_public() -> Tuple[Dict, int]:
+    """
+    Analyze image quality (PUBLIC - no auth required)
+    Used by authentication pages for real-time quality detection
+    
+    POST /api/v1/biometric/analyze-quality
+    {
+        "image_base64": "data:image/jpeg;base64,..."
+    }
+    """
+    try:
+        data = request.get_json() or {}
+        image_base64 = data.get('image_base64')
+        
+        if not image_base64:
+            return jsonify({'success': False, 'message': 'Image requise'}), 400
+        
+        from services.biometric_enrollment_service import BiometricEnrollmentService
+        enrollment_service = BiometricEnrollmentService()
+        
+        quality_score = enrollment_service.analyze_image_quality(image_base64)
+        
+        return jsonify({
+            'success': True,
+            'quality_score': quality_score,
+            'acceptable': quality_score > 0.6
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Quality analysis error: {e}")
+        return jsonify({'success': False, 'message': 'Erreur analyse qualité'}), 500
+
+
 # Enregistrer le blueprint
 def register_biometric_routes(app):
     """Enregistrer les routes biométriques"""

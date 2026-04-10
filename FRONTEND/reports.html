@@ -11,6 +11,9 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Theme Manager -->
+    <script src="theme.js"></script>
+    
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
@@ -18,6 +21,15 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
+    
+    <!-- jsPDF pour PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- html2canvas pour PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- SheetJS pour Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -55,6 +67,139 @@
             position: relative;
             height: 300px;
             width: 100%;
+        }
+
+        /* Dark Mode Styles - Harmonized with theme.js - COMPLETE COVERAGE */
+        :root.dark-mode {
+            --color-bg-primary: #111827;
+            --color-bg-secondary: #1f2937;
+            --color-text-primary: #f3f4f6;
+            --color-text-secondary: #d1d5db;
+            --color-border: #374151;
+        }
+
+        :root.dark-mode body {
+            background-color: #111827 !important;
+            color: #f3f4f6 !important;
+        }
+
+        :root.dark-mode .sidebar {
+            background: #1f2937 !important;
+            color: #f3f4f6 !important;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5) !important;
+        }
+
+        :root.dark-mode .sidebar-menu {
+            scrollbar-color: #4b5563 #1f2937 !important;
+        }
+
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-track {
+            background: #1f2937 !important;
+        }
+
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-thumb {
+            background: #4b5563 !important;
+        }
+
+        :root.dark-mode .sidebar-item {
+            color: #d1d5db !important;
+        }
+
+        :root.dark-mode .sidebar-item:hover:not(.active) {
+            background: #374151 !important;
+        }
+
+        :root.dark-mode .sidebar-footer {
+            border-top-color: #374151 !important;
+            background: #1f2937 !important;
+        }
+
+        :root.dark-mode .bg-white {
+            background-color: #1f2937 !important;
+            color: #f3f4f6 !important;
+        }
+
+        :root.dark-mode .bg-gray-50 {
+            background-color: #374151 !important;
+        }
+
+        :root.dark-mode .bg-gray-100 {
+            background-color: #2d3748 !important;
+        }
+
+        :root.dark-mode .text-gray-400 {
+            color: #9ca3af !important;
+        }
+
+        :root.dark-mode .text-gray-500 {
+            color: #a6adb8 !important;
+        }
+
+        :root.dark-mode .text-gray-600,
+        :root.dark-mode .text-gray-700,
+        :root.dark-mode .text-gray-800 {
+            color: #d1d5db !important;
+        }
+
+        :root.dark-mode .border,
+        :root.dark-mode .border-t {
+            border-color: #374151 !important;
+        }
+
+        :root.dark-mode .divide-y > * {
+            border-bottom-color: #374151 !important;
+        }
+
+        :root.dark-mode input,
+        :root.dark-mode select,
+        :root.dark-mode textarea {
+            background-color: #374151 !important;
+            color: #f3f4f6 !important;
+            border-color: #4b5563 !important;
+        }
+
+        /* BADGES - Contraste fort */
+        :root.dark-mode .bg-red-100 {
+            background-color: #7f1d1d !important;
+        }
+
+        :root.dark-mode .text-red-700 {
+            color: #fca5a5 !important;
+        }
+
+        :root.dark-mode .bg-yellow-100 {
+            background-color: #78350f !important;
+        }
+
+        :root.dark-mode .text-yellow-700 {
+            color: #fcd34d !important;
+        }
+
+        :root.dark-mode .bg-green-100 {
+            background-color: #065f46 !important;
+        }
+
+        :root.dark-mode .text-green-700 {
+            color: #86efac !important;
+        }
+
+        /* Badges - Force text color visible */
+        .bg-red-100 .text-red-700,
+        .bg-red-100.text-red-700,
+        span.bg-red-100 {
+            color: #991b1b !important;
+        }
+
+        .bg-yellow-100 .text-yellow-700,
+        .bg-yellow-100.text-yellow-700,
+        span.bg-yellow-100 {
+            color: #854d0e !important;
+        }
+
+        .bg-green-100 .text-green-700,
+        .bg-green-100.text-green-700,
+        span.bg-green-100 {
+            color: #15803d !important;
         }
     </style>
 </head>
@@ -145,6 +290,9 @@
                             <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">3</span>
                         </a>
                     </div>
+                    <button id="themeToggleBtn" class="text-gray-400 text-xl cursor-pointer hover:text-indigo-600 transition" title="Mode sombre">
+                        <i class="fas fa-moon"></i>
+                    </button>
                     <div class="text-sm">
                         <span class="text-gray-500">Dernier rapport:</span>
                         <span class="font-medium ml-1">15 mars 2026</span>
@@ -693,22 +841,180 @@
         }
         
         function exportReport(format) {
-            let message = '';
-            switch(format) {
-                case 'pdf':
-                    message = '✅ Rapport PDF généré avec succès !';
-                    break;
-                case 'excel':
-                    message = '📊 Fichier Excel exporté !';
-                    break;
-                case 'csv':
-                    message = '📁 Fichier CSV prêt !';
-                    break;
-                case 'json':
-                    message = '🔧 Données JSON exportées !';
-                    break;
+            // Données du rapport
+            const reportData = {
+                period: document.getElementById('previewPeriod').textContent,
+                kpis: {
+                    attempts: '1,547',
+                    successRate: '94.2%',
+                    failures: '90',
+                    alerts: '23'
+                },
+                departments: [
+                    { name: 'Informatique', attempts: 487, success: 453, failures: 34, rate: '93%' },
+                    { name: 'Ressources Humaines', attempts: 312, success: 284, failures: 28, rate: '91%' },
+                    { name: 'Comptabilité', attempts: 298, success: 262, failures: 36, rate: '88%' },
+                    { name: 'Direction', attempts: 156, success: 148, failures: 8, rate: '95%' },
+                    { name: 'Marketing', attempts: 294, success: 268, failures: 26, rate: '91%' }
+                ]
+            };
+
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/T/, '_').replace(/:/g, '-');
+            const filename = `rapport_bioaccess_${timestamp}`;
+
+            try {
+                switch(format) {
+                    case 'pdf':
+                        exportToPDF(reportData, filename);
+                        break;
+                    case 'excel':
+                        exportToExcel(reportData, filename);
+                        break;
+                    case 'csv':
+                        exportToCSV(reportData, filename);
+                        break;
+                    case 'json':
+                        exportToJSON(reportData, filename);
+                        break;
+                }
+            } catch (error) {
+                alert('❌ Erreur lors de l\'export: ' + error.message);
             }
-            alert(message + '\n(Période: ' + document.getElementById('previewPeriod').textContent + ')');
+        }
+
+        function exportToPDF(data, filename) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(16);
+            doc.text('Rapport BioAccess Secure', 10, 10);
+            
+            doc.setFontSize(10);
+            doc.text(`Période: ${data.period}`, 10, 20);
+            doc.text(`Généré le: ${new Date().toLocaleString('fr-FR')}`, 10, 27);
+            
+            // KPIs
+            doc.setFontSize(12);
+            doc.text('Indicateurs clés', 10, 35);
+            doc.setFontSize(10);
+            doc.text(`Total tentatives: ${data.kpis.attempts}`, 15, 42);
+            doc.text(`Taux de succès: ${data.kpis.successRate}`, 15, 48);
+            doc.text(`Échecs: ${data.kpis.failures}`, 15, 54);
+            doc.text(`Alertes: ${data.kpis.alerts}`, 15, 60);
+            
+            // Tableau départements
+            doc.setFontSize(12);
+            doc.text('Récapitulatif par département', 10, 70);
+            
+            const tableData = [
+                ['Département', 'Tentatives', 'Succès', 'Échecs', 'Taux'],
+                ...data.departments.map(d => [d.name, d.attempts.toString(), d.success.toString(), d.failures.toString(), d.rate])
+            ];
+            
+            doc.lastAutoTable = { lastCellPos: { x: 0, y: 70 } };
+            
+            let yPos = 77;
+            tableData.forEach((row, idx) => {
+                const isHeader = idx === 0;
+                if (isHeader) {
+                    doc.setFontSize(9);
+                    doc.setFont(undefined, 'bold');
+                } else {
+                    doc.setFont(undefined, 'normal');
+                }
+                doc.text(row[0], 15, yPos);
+                doc.text(row[1], 70, yPos);
+                doc.text(row[2], 95, yPos);
+                doc.text(row[3], 120, yPos);
+                doc.text(row[4], 150, yPos);
+                yPos += 6;
+            });
+            
+            doc.save(`${filename}.pdf`);
+            alert('✅ PDF exporté avec succès !');
+        }
+
+        function exportToExcel(data, filename) {
+            const wb = XLSX.utils.book_new();
+            
+            // Feuille 1: KPIs
+            const kpiData = [
+                ['KPI', 'Valeur'],
+                ['Période', data.period],
+                ['Total tentatives', data.kpis.attempts],
+                ['Taux de succès', data.kpis.successRate],
+                ['Échecs', data.kpis.failures],
+                ['Alertes', data.kpis.alerts]
+            ];
+            const ws1 = XLSX.utils.aoa_to_sheet(kpiData);
+            ws1['!cols'] = [{ wch: 20 }, { wch: 20 }];
+            XLSX.utils.book_append_sheet(wb, ws1, 'KPIs');
+            
+            // Feuille 2: Départements
+            const deptData = [
+                ['Département', 'Tentatives', 'Succès', 'Échecs', 'Taux de succès'],
+                ...data.departments.map(d => [d.name, d.attempts, d.success, d.failures, d.rate])
+            ];
+            const ws2 = XLSX.utils.aoa_to_sheet(deptData);
+            ws2['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(wb, ws2, 'Départements');
+            
+            XLSX.writeFile(wb, `${filename}.xlsx`);
+            alert('📊 Fichier Excel exporté avec succès !');
+        }
+
+        function exportToCSV(data, filename) {
+            let csv = 'Rapport BioAccess Secure\n';
+            csv += `Période;${data.period}\n`;
+            csv += `Généré le;${new Date().toLocaleString('fr-FR')}\n\n`;
+            
+            csv += 'INDICATEURS CLÉS\n';
+            csv += `Total tentatives;${data.kpis.attempts}\n`;
+            csv += `Taux de succès;${data.kpis.successRate}\n`;
+            csv += `Échecs;${data.kpis.failures}\n`;
+            csv += `Alertes;${data.kpis.alerts}\n\n`;
+            
+            csv += 'RÉCAPITULATIF PAR DÉPARTEMENT\n';
+            csv += 'Département;Tentatives;Succès;Échecs;Taux de succès\n';
+            data.departments.forEach(d => {
+                csv += `${d.name};${d.attempts};${d.success};${d.failures};${d.rate}\n`;
+            });
+            
+            downloadFile(csv, `${filename}.csv`, 'text/csv;charset=utf-8;');
+            alert('📁 Fichier CSV exporté avec succès !');
+        }
+
+        function exportToJSON(data, filename) {
+            const json = {
+                rapport: 'BioAccess Secure',
+                periode: data.period,
+                dateGeneration: new Date().toISOString(),
+                indicateurs: {
+                    totalTentatives: data.kpis.attempts,
+                    tauxSucces: data.kpis.successRate,
+                    echecs: data.kpis.failures,
+                    alertes: data.kpis.alerts
+                },
+                departements: data.departments
+            };
+            
+            const jsonString = JSON.stringify(json, null, 2);
+            downloadFile(jsonString, `${filename}.json`, 'application/json;charset=utf-8;');
+            alert('🔧 Fichier JSON exporté avec succès !');
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            
+            // Ajoute le lien au DOM, le clique, puis le retire
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Nettoie la ressource
+            URL.revokeObjectURL(link.href);
         }
         
         function generateReport() {
@@ -744,6 +1050,38 @@
             const modal = document.getElementById('scheduleModal');
             if (e.target === modal) {
                 closeScheduleModal();
+            }
+        });
+    </script>
+    
+    <!-- Theme Toggle Event Listener -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            if (themeToggleBtn && window.themeManager) {
+                themeToggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.themeManager.toggle();
+                    
+                    const isDark = window.themeManager.isDarkMode();
+                    themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                    themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+                });
+                
+                const isDark = window.themeManager.isDarkMode();
+                themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+            }
+
+            // Logout
+            const logoutLink = document.querySelector('a[href="login.html"]');
+            if (logoutLink) {
+                logoutLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = 'login.html';
+                });
             }
         });
     </script>

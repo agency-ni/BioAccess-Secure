@@ -181,3 +181,115 @@ class TentativeAuth(db.Model):
             'raison_echec': self.raison_echec,
             'adresse_ip': self.adresse_ip
         }
+
+
+class AuthenticationAttempt(db.Model):
+    """
+    Modèle pour logs détaillés des tentatives d'authentification
+    Utilisé pour dashboard admin et alertes
+    """
+    __tablename__ = 'authentication_attempts'
+    
+    # Identifiant
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    
+    # Informations authentification
+    email = db.Column(db.String(255), nullable=False, index=True)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True, index=True)
+    success = db.Column(db.Boolean, default=False, index=True)
+    reason = db.Column(db.String(100), nullable=False)  # MATCH_SUCCESS, FACE_MISMATCH, NO_FACE_DETECTED, etc
+    similarity_score = db.Column(db.Float, nullable=True)
+    
+    # Informations client
+    ip_address = db.Column(db.String(45), nullable=True)
+    user_agent = db.Column(db.String(512), nullable=True)
+    
+    # Contexte
+    is_admin_attempt = db.Column(db.Boolean, default=False, index=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # Index pour requêtes rapides
+    __table_args__ = (
+        db.Index('idx_auth_user_timestamp', 'user_id', 'timestamp'),
+        db.Index('idx_auth_success_timestamp', 'success', 'timestamp'),
+        db.Index('ix_authentication_attempts_timestamp', 'timestamp'),
+    )
+    
+    def to_dict(self):
+        """Convertir en dictionnaire"""
+        return {
+            'id': self.id,
+            'email': self.email,
+            'user_id': self.user_id,
+            'success': self.success,
+            'reason': self.reason,
+            'similarity_score': self.similarity_score,
+            'ip_address': self.ip_address,
+            'is_admin': self.is_admin_attempt,
+            'timestamp': self.timestamp.isoformat()
+        }
+
+
+class BiometricErrorLog(db.Model):
+    """
+    Modèle pour enregistrer les erreurs d'authentification biométrique
+    Utilisé pour les alertes admin sur les erreurs Client Desktop
+    """
+    __tablename__ = 'biometric_error_logs'
+    
+    # Identifiant
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    
+    # Informations erreur
+    error_type = db.Column(db.String(100), nullable=False, index=True)
+    error_message = db.Column(db.String(512), nullable=False)
+    
+    # Utilisateur concerné
+    user_email = db.Column(db.String(255), nullable=True, index=True)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True, index=True)
+    
+    # Type d'authentification
+    auth_type = db.Column(db.String(50), default='unknown')  # live, upload, api, desktop, etc
+    
+    # Informations client (pour Desktop)
+    client_info = db.Column(db.JSON, nullable=True)  # os, app_version, screen_res, etc
+    
+    # Sévérité (1-10)
+    severity = db.Column(db.Integer, default=5)
+    
+    # Status
+    resolved = db.Column(db.Boolean, default=False, index=True)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+    admin_notes = db.Column(db.String(512), nullable=True)
+    
+    # Timestamp
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # Index pour requêtes rapides
+    __table_args__ = (
+        db.Index('idx_error_type_timestamp', 'error_type', 'timestamp'),
+        db.Index('idx_error_user_timestamp', 'user_email', 'timestamp'),
+        db.Index('idx_error_unresolved', 'resolved', 'timestamp'),
+    )
+    
+    def mark_resolved(self, admin_id=None, notes=None):
+        """Marquer l'erreur comme résolue"""
+        self.resolved = True
+        self.resolved_at = datetime.utcnow()
+        self.admin_notes = notes
+        db.session.commit()
+        return self
+    
+    def to_dict(self):
+        """Convertir en dictionnaire"""
+        return {
+            'id': self.id,
+            'error_type': self.error_type,
+            'error_message': self.error_message,
+            'user_email': self.user_email,
+            'auth_type': self.auth_type,
+            'client_info': self.client_info or {},
+            'severity': self.severity,
+            'resolved': self.resolved,
+            'timestamp': self.timestamp.isoformat()
+        }

@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════════════════════════════
+  INSTALLATION - VERSION ULTRA SIMPLE
+═══════════════════════════════════════════════════════════════════════════
+
+VOTRE OS?
+
+  🪟 WINDOWS
+  ──────────
+  1. Double-clic sur: BUILD_NOW.bat
+  2. Attendre 15-25 minutes
+  3. C'est prêt! ✅
+
+  
+  🐧 LINUX ou 🍎 macOS
+  ───────────────────
+  1. Terminal → cd [ce_dossier]
+  2. bash BUILD_NOW.sh
+  3. Attendre 15-25 minutes
+  4. C'est prêt! ✅
+
+
+RÉSULTAT?
+
+  ✅ Dossier: release/
+  ✅ Archive: BioAccess-Secure-XXXX.zip (ou .7z)
+  ✅ À partager aux utilisateurs
+
+
+BESOIN D'AIDE?
+
+  Lire: 🚀_CLIQUE_MOI_POUR_CONSTRUIRE.txt
+  Ou:   🎯_START_HERE_COMPILATION.txt
+
+
+═══════════════════════════════════════════════════════════════════════════

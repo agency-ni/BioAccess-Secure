@@ -99,6 +99,11 @@ class Config:
     # Monitoring
     SENTRY_DSN = os.environ.get('SENTRY_DSN')
     PROMETHEUS_ENABLED = os.environ.get('PROMETHEUS_ENABLED', 'True') == 'True'
+    
+    # Google OAuth
+    GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+    GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+    GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5000/api/v1/auth/google/callback')
 
 
 class DevelopmentConfig(Config):

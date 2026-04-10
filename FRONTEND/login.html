@@ -16,6 +16,9 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Theme Manager -->
+    <script src="theme.js"></script>
+    
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
@@ -99,9 +102,139 @@
         .gsi-material-button:hover {
             background-color: #f8fafc;
         }
+        
+        /* Theme Toggle Button (Light Mode) */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .theme-toggle button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .theme-toggle button:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        /* Dark Mode Styles - Harmonized with theme.js - COMPLETE COVERAGE */
+        :root.dark-mode {
+            --color-bg-primary: #111827;
+            --color-bg-secondary: #1f2937;
+            --color-text-primary: #f3f4f6;
+            --color-border: #374151;
+        }
+        
+        :root.dark-mode body {
+            background: linear-gradient(135deg, #111827 0%, #1f2937 50%, #312e81 100%) !important;
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .bg-white {
+            background-color: #1f2937 !important;
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .bg-gray-50 {
+            background-color: #374151 !important;
+        }
+        
+        :root.dark-mode .text-gray-400 {
+            color: #9ca3af !important;
+        }
+        
+        :root.dark-mode .text-gray-500 {
+            color: #a6adb8 !important;
+        }
+        
+        :root.dark-mode .text-gray-600,
+        :root.dark-mode .text-gray-700,
+        :root.dark-mode .text-gray-800 {
+            color: #d1d5db !important;
+        }
+        
+        :root.dark-mode input,
+        :root.dark-mode textarea {
+            background-color: #374151 !important;
+            color: #f3f4f6 !important;
+            border-color: #4b5563 !important;
+        }
+        
+        :root.dark-mode input::placeholder {
+            color: #6b7280 !important;
+        }
+        
+        :root.dark-mode .border {
+            border-color: #374151 !important;
+        }
+
+        /* BADGES - Contraste fort */
+        :root.dark-mode .bg-red-100 {
+            background-color: #7f1d1d !important;
+        }
+
+        :root.dark-mode .text-red-700 {
+            color: #fca5a5 !important;
+        }
+
+        :root.dark-mode .bg-yellow-100 {
+            background-color: #78350f !important;
+        }
+
+        :root.dark-mode .text-yellow-700 {
+            color: #fcd34d !important;
+        }
+
+        :root.dark-mode .bg-green-100 {
+            background-color: #065f46 !important;
+        }
+
+        :root.dark-mode .text-green-700 {
+            color: #86efac !important;
+        }
+
+        /* Badges - Force text color visible */
+        .bg-red-100 .text-red-700,
+        .bg-red-100.text-red-700,
+        span.bg-red-100 {
+            color: #991b1b !important;
+        }
+
+        .bg-yellow-100 .text-yellow-700,
+        .bg-yellow-100.text-yellow-700,
+        span.bg-yellow-100 {
+            color: #854d0e !important;
+        }
+
+        .bg-green-100 .text-green-700,
+        .bg-green-100.text-green-700,
+        span.bg-green-100 {
+            color: #15803d !important;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 min-h-screen relative overflow-x-hidden">
+    <!-- Theme Toggle Button -->
+    <div class="theme-toggle">
+        <button id="themeToggleBtn" title="Mode sombre" class="text-white">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+    
     <!-- Éléments décoratifs animés -->
     <div class="absolute top-0 left-0 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float"></div>
     <div class="absolute bottom-0 right-0 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float" style="animation-delay: 2s;"></div>
@@ -403,7 +536,12 @@
 
     <script>
         // === CONFIGURATION GOOGLE OAUTH ===
-        const GOOGLE_CLIENT_ID = 'VOTRE_CLIENT_ID_GOOGLE.apps.googleusercontent.com'; // À remplacer par votre vrai Client ID
+        // Charger depuis les variables d'environnement ou utiliser placeholder
+        const GOOGLE_CLIENT_ID = window.CONFIG?.GOOGLE_CLIENT_ID || (
+            typeof process !== 'undefined' && process.env.REACT_APP_GOOGLE_CLIENT_ID 
+                ? process.env.REACT_APP_GOOGLE_CLIENT_ID 
+                : 'VOTRE_CLIENT_ID_GOOGLE.apps.googleusercontent.com'
+        );
         
         // Initialisation de Google Identity Services
         window.onload = function() {
@@ -443,36 +581,95 @@
         
         // Callback Google OAuth
         function handleGoogleCredential(response) {
-            console.log('Réponse Google:', response);
-            
-            // Décoder le JWT token (en pratique, à envoyer à votre backend)
-            const credential = response.credential;
-            
-            // Simulation de vérification avec votre backend
-            fetch('/api/auth/google', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ credential: credential })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.exists) {
-                    // Utilisateur existe -> connexion automatique
-                    sessionStorage.setItem('token', data.token);
-                    sessionStorage.setItem('user', btoa(JSON.stringify(data.user)));
-                    window.location.href = 'dashboard.html';
-                } else {
-                    // Utilisateur n'existe pas -> proposer inscription
-                    showGoogleRegistrationPrompt(data.email, data.name);
+            try {
+                console.log('Réponse Google:', response);
+                
+                if (!response || !response.credential) {
+                    throw new Error('Credential Google manquante');
                 }
-            })
-            .catch(error => {
-                console.error('Erreur auth Google:', error);
-                document.getElementById('errorText').textContent = 'Erreur lors de l\'authentification Google';
-                document.getElementById('errorMessage').classList.remove('hidden');
-            });
+                
+                const credential = response.credential;
+                console.log('Credential récupérée, longueur:', credential.length);
+                
+                // Déterminer l'URL complète du backend
+                const apiUrl = window.API_URL || window.CONFIG?.API_URL || 'http://localhost:5000/api';
+                const googleAuthUrl = apiUrl + '/v1/auth/google';
+                
+                console.log('Appel endpoint:', googleAuthUrl);
+                
+                // Créer le payload
+                const payload = { credential: credential };
+                console.log('Payload:', { credential: credential.substring(0, 50) + '...' });
+                
+                // Envoyer le credential au backend pour vérification
+                fetch(googleAuthUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => {
+                    console.log('Réponse HTTP:', res.status, res.statusText);
+                    
+                    if (!res.ok) {
+                        // Lire la réponse pour le détail de l'erreur
+                        return res.text().then(text => {
+                            console.error('Réponse erreur:', text);
+                            try {
+                                const errorData = JSON.parse(text);
+                                throw new Error(`HTTP ${res.status}: ${errorData.error || errorData.message || res.statusText}`);
+                            } catch (e) {
+                                if (e.message.startsWith('HTTP')) throw e;
+                                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                            }
+                        });
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log('Données reçues:', data);
+                    
+                    if (data.success && data.token) {
+                        // Connexion réussie
+                        console.log('✓ Authentification réussie');
+                        sessionStorage.setItem('token', data.token);
+                        if (data.refresh_token) {
+                            sessionStorage.setItem('refresh_token', data.refresh_token);
+                        }
+                        if (data.user) {
+                            sessionStorage.setItem('user', btoa(JSON.stringify(data.user)));
+                        }
+                        window.location.href = 'dashboard.html';
+                    } else if (data.error) {
+                        throw new Error(data.error);
+                    } else {
+                        throw new Error(data.message || 'Authentification échouée');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur auth Google:', error);
+                    const errorMsg = document.getElementById('errorMessage');
+                    const errorText = document.getElementById('errorText');
+                    if (errorText) {
+                        errorText.textContent = 'Erreur: ' + error.message;
+                    }
+                    if (errorMsg) {
+                        errorMsg.classList.remove('hidden');
+                    }
+                });
+            } catch (error) {
+                console.error('Erreur handleGoogleCredential:', error);
+                const errorMsg = document.getElementById('errorMessage');
+                const errorText = document.getElementById('errorText');
+                if (errorText) {
+                    errorText.textContent = 'Erreur: ' + error.message;
+                }
+                if (errorMsg) {
+                    errorMsg.classList.remove('hidden');
+                }
+            }
         }
         
         // Fonction de secours pour simulation
@@ -595,19 +792,26 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorMsg = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
             const successMsg = document.getElementById('successMessage');
             const loginBtn = document.getElementById('loginBtn');
+            
+            if (!errorMsg || !errorText) {
+                console.error('Erreur: Éléments de message non trouvés');
+                alert('Erreur: Impossible d\'afficher les messages d\'erreur');
+                return;
+            }
             
             // Validations
             const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
             if (!emailRegex.test(email)) {
-                errorMsg.querySelector('#errorText').textContent = 'Format d\'email invalide';
+                errorText.textContent = 'Format d\'email invalide';
                 errorMsg.classList.remove('hidden');
                 return;
             }
             
             if (password.length < 8) {
-                errorMsg.querySelector('#errorText').textContent = 'Le mot de passe doit contenir au moins 8 caractères';
+                errorText.textContent = 'Le mot de passe doit contenir au moins 8 caractères';
                 errorMsg.classList.remove('hidden');
                 return;
             }
@@ -637,7 +841,7 @@
                         window.location.href = 'dashboard.html';
                     }, 1500);
                 } else {
-                    errorMsg.querySelector('#errorText').textContent = 'Email ou mot de passe incorrect';
+                    errorText.textContent = 'Email ou mot de passe incorrect';
                     errorMsg.classList.remove('hidden');
                     successMsg.classList.add('hidden');
                     
@@ -650,7 +854,7 @@
                 }
             } catch (error) {
                 console.error('Erreur de connexion:', error);
-                errorMsg.querySelector('#errorText').textContent = 'Erreur réseau. Veuillez réessayer.';
+                errorText.textContent = 'Erreur réseau. Veuillez réessayer.';
                 errorMsg.classList.remove('hidden');
                 loginBtn.disabled = false;
                 loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
@@ -710,6 +914,29 @@
         if (window.self !== window.top) {
             window.top.location = window.self.location;
         }
+    </script>
+    
+    <!-- Theme Toggle Event Listener -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            if (themeToggleBtn && window.themeManager) {
+                themeToggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.themeManager.toggle();
+                    
+                    // Update icon based on current theme
+                    const isDark = window.themeManager.isDarkMode();
+                    themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                    themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+                });
+                
+                // Set initial icon
+                const isDark = window.themeManager.isDarkMode();
+                themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+            }
+        });
     </script>
     
     <!-- Noscript -->

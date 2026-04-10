@@ -8,6 +8,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Theme Manager -->
+    <script src="theme.js"></script>
+    <!-- jsPDF pour PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- SheetJS pour Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -18,7 +24,7 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            background: white;
+            background: rgb(117, 48, 48);
             box-shadow: 2px 0 10px rgba(0,0,0,0.05);
         }
         
@@ -76,6 +82,221 @@
             padding: 1rem;
             border-top: 1px solid #e5e7eb;
             background: white;
+        }
+        
+        /* Dark Mode Styles - Harmonized with theme.js - COMPLETE COVERAGE */
+        :root.dark-mode {
+            --color-bg-primary: #111827;
+            --color-bg-secondary: #1f2937;
+            --color-text-primary: #f3f4f6;
+            --color-text-secondary: #d1d5db;
+            --color-border: #374151;
+        }
+        
+        :root.dark-mode body {
+            background-color: #111827 !important;
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .sidebar {
+            background: #1f2937 !important;
+            color: #f3f4f6 !important;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5) !important;
+        }
+        
+        :root.dark-mode .sidebar-menu {
+            scrollbar-color: #4b5563 #1f2937 !important;
+        }
+        
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-track {
+            background: #1f2937 !important;
+        }
+        
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-thumb {
+            background: #4b5563 !important;
+        }
+        
+        :root.dark-mode .sidebar-item {
+            color: #d1d5db !important;
+        }
+        
+        :root.dark-mode .sidebar-item:hover:not(.active) {
+            background: #374151 !important;
+        }
+        
+        :root.dark-mode .sidebar-footer {
+            border-top-color: #374151 !important;
+            background: #1f2937 !important;
+        }
+        
+        :root.dark-mode .bg-white {
+            background-color: #1f2937 !important;
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .bg-gray-50 {
+            background-color: #374151 !important;
+        }
+        
+        :root.dark-mode .bg-gray-100 {
+            background-color: #2d3748 !important;
+        }
+        
+        :root.dark-mode .text-gray-400 {
+            color: #9ca3af !important;
+        }
+        
+        :root.dark-mode .text-gray-500 {
+            color: #a6adb8 !important;
+        }
+        
+        :root.dark-mode .text-gray-600,
+        :root.dark-mode .text-gray-700,
+        :root.dark-mode .text-gray-800 {
+            color: #d1d5db !important;
+        }
+        
+        :root.dark-mode .border,
+        :root.dark-mode .border-b {
+            border-color: #374151 !important;
+        }
+        
+        :root.dark-mode .divide-y > * {
+            border-bottom-color: #374151 !important;
+        }
+        
+        :root.dark-mode input,
+        :root.dark-mode select,
+        :root.dark-mode textarea {
+            background-color: #374151 !important;
+            color: #f3f4f6 !important;
+            border-color: #4b5563 !important;
+        }
+
+        /* BADGES - Contraste fort */
+        :root.dark-mode .bg-red-100 {
+            background-color: #7f1d1d !important;
+        }
+
+        :root.dark-mode .text-red-700 {
+            color: #fca5a5 !important;
+        }
+
+        :root.dark-mode .bg-yellow-100 {
+            background-color: #78350f !important;
+        }
+
+        :root.dark-mode .text-yellow-700 {
+            color: #fcd34d !important;
+        }
+
+        :root.dark-mode .bg-green-100 {
+            background-color: #065f46 !important;
+        }
+
+        :root.dark-mode .text-green-700 {
+            color: #86efac !important;
+        }
+
+        :root.dark-mode .bg-blue-100 {
+            background-color: #1e3a8a !important;
+        }
+
+        :root.dark-mode .text-blue-700,
+        :root.dark-mode .text-blue-800 {
+            color: #93c5fd !important;
+        }
+
+        :root.dark-mode .bg-indigo-100 {
+            background-color: #312e81 !important;
+        }
+
+        :root.dark-mode .text-indigo-600 {
+            color: #a5b4fc !important;
+        }
+
+        :root.dark-mode .bg-purple-100 {
+            background-color: #3b1f47 !important;
+        }
+
+        :root.dark-mode .text-purple-700 {
+            color: #d9a5ff !important;
+        }
+
+        /* Statuts - Dark mode optimization */
+        :root.dark-mode .status-badge {
+            background-color: #1f2937 !important;
+            border: 1px solid #4b5563 !important;
+        }
+
+        :root.dark-mode .status-badge.success {
+            background-color: #0c4a6e !important;
+            border-color: #0c4a6e !important;
+            color: #bfdbfe !important;
+        }
+
+        :root.dark-mode .status-badge.failure {
+            background-color: #7f1d1d !important;
+            border-color: #7f1d1d !important;
+            color: #fecaca !important;
+        }
+
+        /* Tableau - Dark mode text */
+        :root.dark-mode tbody tr {
+            border-bottom-color: #374151 !important;
+            background-color: transparent;
+        }
+
+        :root.dark-mode tbody td {
+            color: #d1d5db !important;
+        }
+
+        :root.dark-mode tbody tr:hover {
+            background-color: #374151 !important;
+        }
+
+        :root.dark-mode .text-gray-600 {
+            color: #d1d5db !important;
+        }
+
+        :root.dark-mode .text-gray-400 {
+            color: #9ca3af !important;
+        }
+
+        /* Filtres - Dark mode */
+        :root.dark-mode .text-xs.text-gray-500 {
+            color: #a6adb8 !important;
+        }
+
+        :root.dark-mode input::placeholder,
+        :root.dark-mode select {
+            color: #9ca3af !important;
+        }
+
+        /* Buttons dark mode */
+        :root.dark-mode button.hover\:bg-gray-50:hover {
+            background-color: #374151 !important;
+        }
+
+        /* Période - Style specific */
+        .period-input-wrapper {
+            position: relative;
+            padding-bottom: 24px;
+        }
+
+        .period-label {
+            font-size: 10px;
+            color: #9ca3af;
+            position: absolute;
+            bottom: -22px;
+            left: 2px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        :root.dark-mode .period-label {
+            color: #6b7280 !important;
         }
     </style>
 </head>
@@ -166,6 +387,9 @@
                             <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">3</span>
                         </a>
                     </div>
+                    <button id="themeToggleBtn" class="text-gray-400 text-xl cursor-pointer hover:text-indigo-600 transition" title="Mode sombre">
+                        <i class="fas fa-moon"></i>
+                    </button>
                 </div>
             </div>
             
@@ -182,46 +406,67 @@
                 </div>
                 
                 <!-- Filtres -->
-                <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
-                    <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
-                        <div class="md:col-span-2">
-                            <label class="block text-xs text-gray-500 mb-1">Période</label>
-                            <div class="flex gap-2">
-                                <input type="date" class="w-full p-2 border rounded-lg text-sm">
-                                <input type="date" class="w-full p-2 border rounded-lg text-sm">
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                    <!-- LIGNE 1: Période seule -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <!-- Période -->
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-2 font-semibold">Période</label>
+                            <div class="flex gap-2 items-start">
+                                <div class="flex-1 period-input-wrapper">
+                                    <input type="date" id="dateFrom" class="w-full p-2 border rounded-lg text-sm" title="Date de début">
+                                    <small class="period-label">Début</small>
+                                </div>
+                                <span class="text-gray-400 mt-2 flex-shrink-0">→</span>
+                                <div class="flex-1 period-input-wrapper">
+                                    <input type="date" id="dateTo" class="w-full p-2 border rounded-lg text-sm" title="Date de fin">
+                                    <small class="period-label">Fin</small>
+                                </div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- LIGNE 2: Utilisateur, Type accès, Statut, IP, Boutons -->
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                        <!-- Utilisateur -->
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">Utilisateur</label>
-                            <select class="w-full p-2 border rounded-lg text-sm">
-                                <option>Tous</option>
-                                <option>Jean Dupont</option>
-                                <option>Claire Martin</option>
+                            <label class="block text-xs text-gray-500 mb-2 font-semibold">Utilisateur</label>
+                            <select id="filterUser" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="">Tous</option>
+                                <option value="Jean Dupont">Jean Dupont</option>
+                                <option value="Claire Martin">Claire Martin</option>
                             </select>
                         </div>
+                        <!-- Type accès -->
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">Type accès</label>
-                            <select class="w-full p-2 border rounded-lg text-sm">
-                                <option>Tous</option>
-                                <option>Poste</option>
-                                <option>Porte</option>
+                            <label class="block text-xs text-gray-500 mb-2 font-semibold">Type accès</label>
+                            <select id="filterType" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="">Tous</option>
+                                <option value="Poste">Poste</option>
+                                <option value="Porte">Porte</option>
                             </select>
                         </div>
+                        <!-- Statut -->
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">Statut</label>
-                            <select class="w-full p-2 border rounded-lg text-sm">
-                                <option>Tous</option>
-                                <option>Succès</option>
-                                <option>Échec</option>
+                            <label class="block text-xs text-gray-500 mb-2 font-semibold">Statut</label>
+                            <select id="filterStatus" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="">Tous</option>
+                                <option value="Succès">Succès</option>
+                                <option value="Échec">Échec</option>
                             </select>
                         </div>
+                        <!-- IP -->
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">IP</label>
-                            <input type="text" placeholder="192.168.1.x" class="w-full p-2 border rounded-lg text-sm">
+                            <label class="block text-xs text-gray-500 mb-2 font-semibold">Filtrer par IP</label>
+                            <input type="text" id="filterIP" placeholder="192.168.1.x" class="w-full p-2 border rounded-lg text-sm">
                         </div>
-                        <div class="flex items-end">
-                            <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm w-full">
+                        <!-- Boutons d'action -->
+                        <div class="flex gap-3 items-end">
+                            <button id="filterBtn" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition font-medium">
                                 <i class="fas fa-search mr-2"></i>Filtrer
+                            </button>
+                            <button id="resetBtn" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-300 transition font-medium">
+                                <i class="fas fa-redo mr-2"></i>Réinitialiser
                             </button>
                         </div>
                     </div>
@@ -243,47 +488,6 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-4">10/03/2026 09:34:22</td>
-                                <td class="p-4 font-medium">Jean Dupont</td>
-                                <td class="p-4">Poste</td>
-                                <td class="p-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Succès</span></td>
-                                <td class="p-4 text-gray-400">-</td>
-                                <td class="p-4 font-mono text-xs">192.168.1.105</td>
-                                <td class="p-4 font-mono text-xs text-gray-400">a3f2c1...</td>
-                                <td class="p-4"><button class="text-indigo-600 hover:text-indigo-800"><i class="fas fa-eye"></i></button></td>
-                            </tr>
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-4">10/03/2026 09:15:07</td>
-                                <td class="p-4 font-medium">Claire Martin</td>
-                                <td class="p-4">Porte</td>
-                                <td class="p-4"><span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs">Échec</span></td>
-                                <td class="p-4">Département non autorisé</td>
-                                <td class="p-4 font-mono text-xs">192.168.1.110</td>
-                                <td class="p-4 font-mono text-xs text-gray-400">b4e5d2...</td>
-                                <td class="p-4"><button class="text-indigo-600 hover:text-indigo-800"><i class="fas fa-eye"></i></button></td>
-                            </tr>
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-4">10/03/2026 08:45:33</td>
-                                <td class="p-4 font-medium">Thomas Petit</td>
-                                <td class="p-4">Poste</td>
-                                <td class="p-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Succès</span></td>
-                                <td class="p-4 text-gray-400">-</td>
-                                <td class="p-4 font-mono text-xs">192.168.1.120</td>
-                                <td class="p-4 font-mono text-xs text-gray-400">c6f8e3...</td>
-                                <td class="p-4"><button class="text-indigo-600 hover:text-indigo-800"><i class="fas fa-eye"></i></button></td>
-                            </tr>
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-4">10/03/2026 08:30:12</td>
-                                <td class="p-4 font-medium">Julie Moreau</td>
-                                <td class="p-4">Poste</td>
-                                <td class="p-4"><span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs">Échec</span></td>
-                                <td class="p-4">Mauvais visage</td>
-                                <td class="p-4 font-mono text-xs">192.168.1.115</td>
-                                <td class="p-4 font-mono text-xs text-gray-400">d7g9h4...</td>
-                                <td class="p-4"><button class="text-indigo-600 hover:text-indigo-800"><i class="fas fa-eye"></i></button></td>
-                            </tr>
-                        </tbody>
                     </table>
                     
                     <!-- Pagination -->
@@ -301,13 +505,13 @@
                 
                 <!-- Boutons d'export -->
                 <div class="flex justify-end gap-3 mt-4">
-                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
+                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50" onclick="exportLogs('csv')">
                         <i class="fas fa-file-csv mr-2"></i>CSV
                     </button>
-                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
+                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50" onclick="exportLogs('excel')">
                         <i class="fas fa-file-excel mr-2"></i>Excel
                     </button>
-                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700" onclick="exportLogs('pdf')">
                         <i class="fas fa-file-pdf mr-2"></i>PDF signé
                     </button>
                 </div>
@@ -316,12 +520,318 @@
     </div>
     
     <script>
+        // ========== LOGIQUE FILTRES LOGS ==========
+        const logs = [
+            { timestamp: '10/03/2026 09:34', user: 'Jean Dupont', type: 'Poste', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.15', hash: 'a3f2e8b9c1d4e5f6' },
+            { timestamp: '10/03/2026 08:15', user: 'Claire Martin', type: 'Porte', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.20', hash: 'b4e3f9c2d5e6f7a1' },
+            { timestamp: '10/03/2026 07:45', user: 'Jean Dupont', type: 'Poste', status: 'Échec', reason: 'Reconnaissance échouée', ip: '192.168.1.15', hash: 'c5f4g0d3e6f7g8b2' },
+            { timestamp: '09/03/2026 14:20', user: 'Claire Martin', type: 'Porte', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.20', hash: 'd6g5h1e4f7g8h9c3' },
+            { timestamp: '09/03/2026 12:00', user: 'Jean Dupont', type: 'Poste', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.15', hash: 'e7h6i2f5g8h9i0d4' },
+        ];
+
+        function isValidDateRange() {
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            
+            if (!dateFrom && !dateTo) return true;
+            if (!dateFrom || !dateTo) return true;
+            
+            const from = new Date(dateFrom);
+            const to = new Date(dateTo);
+            
+            if (from > to) {
+                alert('Erreur: La date de début doit être antérieure ou égale à la date de fin');
+                document.getElementById('dateTo').focus();
+                return false;
+            }
+            return true;
+        }
+
+        function parseLogDate(dateStr) {
+            // Format: "10/03/2026 09:34"
+            const [date, time] = dateStr.split(' ');
+            const [day, month, year] = date.split('/');
+            return new Date(year, month - 1, day);
+        }
+
+        function isDateInRange(logDate, dateFrom, dateTo) {
+            const logDateTime = parseLogDate(logDate);
+            
+            if (dateFrom) {
+                const from = new Date(dateFrom);
+                if (logDateTime < from) return false;
+            }
+            
+            if (dateTo) {
+                const to = new Date(dateTo);
+                to.setHours(23, 59, 59, 999);
+                if (logDateTime > to) return false;
+            }
+            
+            return true;
+        }
+
+        function applyFilters() {
+            if (!isValidDateRange()) return;
+
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const filterUser = document.getElementById('filterUser').value.trim();
+            const filterType = document.getElementById('filterType').value.trim();
+            const filterStatus = document.getElementById('filterStatus').value.trim();
+            const filterIP = document.getElementById('filterIP').value.trim().toLowerCase();
+
+            const filtered = logs.filter(log => {
+                const dateMatch = isDateInRange(log.timestamp, dateFrom, dateTo);
+                const userMatch = !filterUser || log.user === filterUser;
+                const typeMatch = !filterType || log.type === filterType;
+                const statusMatch = !filterStatus || log.status === filterStatus;
+                const ipMatch = !filterIP || log.ip.toLowerCase().includes(filterIP);
+
+                return dateMatch && userMatch && typeMatch && statusMatch && ipMatch;
+            });
+
+            renderLogs(filtered);
+        }
+
+        function renderLogs(logsToDisplay) {
+            const tbody = document.querySelector('tbody');
+            tbody.innerHTML = '';
+            
+            if (logsToDisplay.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-gray-500">Aucun log correspondant aux critères</td></tr>`;
+                return;
+            }
+
+            logsToDisplay.forEach(log => {
+                const row = document.createElement('tr');
+                row.className = 'border-b hover:bg-gray-50 transition';
+                
+                // Couleurs statut améliorées avec bon contraste
+                let statusBg, statusColor, statusClass;
+                if (log.status === 'Succès') {
+                    statusBg = '#bfdbfe';  // Bleu ciel plus clair
+                    statusColor = '#0c4a6e';  // Bleu nuit
+                    statusClass = 'font-semibold status-badge success';
+                } else {
+                    statusBg = '#fecaca';  // Rouge clair plus vibrant
+                    statusColor = '#7f1d1d';  // Rouge nuit
+                    statusClass = 'font-semibold status-badge failure';
+                }
+                
+                row.innerHTML = `
+                    <td class="p-4">${log.timestamp}</td>
+                    <td class="p-4">${log.user}</td>
+                    <td class="p-4"><span class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium">${log.type}</span></td>
+                    <td class="p-4"><span style="background: ${statusBg}; color: ${statusColor};" class="px-3 py-1 rounded text-xs ${statusClass}">${log.status}</span></td>
+                    <td class="p-4 text-gray-600">${log.reason}</td>
+                    <td class="p-4 font-mono text-xs">${log.ip}</td>
+                    <td class="p-4 font-mono text-xs text-gray-400">${log.hash.substring(0, 12)}...</td>
+                    <td class="p-4"><button class="text-indigo-600 hover:text-indigo-800 text-sm"><i class="fas fa-eye"></i></button></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // ========== FONCTIONS D'EXPORT ==========
+        function exportLogs(format) {
+            // Récupérer les logs actuellement affichés ou filtrés
+            const tbody = document.querySelector('tbody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            if (rows.length === 0) {
+                alert('❌ Aucun log à exporter');
+                return;
+            }
+
+            const logsData = [];
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length > 0) {
+                    logsData.push({
+                        timestamp: cells[0].textContent.trim(),
+                        user: cells[1].textContent.trim(),
+                        type: cells[2].textContent.trim(),
+                        status: cells[3].textContent.trim(),
+                        reason: cells[4].textContent.trim(),
+                        ip: cells[5].textContent.trim(),
+                        hash: cells[6].textContent.trim()
+                    });
+                }
+            });
+
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/T/, '_').replace(/:/g, '-');
+            const filename = `logs_bioaccess_${timestamp}`;
+
+            try {
+                switch(format) {
+                    case 'pdf':
+                        exportLogsToPDF(logsData, filename);
+                        break;
+                    case 'excel':
+                        exportLogsToExcel(logsData, filename);
+                        break;
+                    case 'csv':
+                        exportLogsToCSV(logsData, filename);
+                        break;
+                }
+            } catch (error) {
+                alert('❌ Erreur lors de l\'export: ' + error.message);
+            }
+        }
+
+        function exportLogsToPDF(logsData, filename) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(16);
+            doc.text('Logs BioAccess Secure', 10, 10);
+            
+            doc.setFontSize(10);
+            doc.text(`Généré le: ${new Date().toLocaleString('fr-FR')}`, 10, 20);
+            doc.text(`Nombre de logs: ${logsData.length}`, 10, 27);
+            
+            // Tableau
+            let yPos = 35;
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'bold');
+            doc.text('Timestamp', 10, yPos);
+            doc.text('Utilisateur', 40, yPos);
+            doc.text('Type', 80, yPos);
+            doc.text('Statut', 105, yPos);
+            doc.text('IP', 140, yPos);
+            
+            doc.setFont(undefined, 'normal');
+            yPos += 7;
+            
+            logsData.forEach((log, idx) => {
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 10;
+                }
+                doc.setFontSize(8);
+                doc.text(log.timestamp, 10, yPos);
+                doc.text(log.user.substring(0, 15), 40, yPos);
+                doc.text(log.type, 80, yPos);
+                doc.text(log.status, 105, yPos);
+                doc.text(log.ip, 140, yPos);
+                yPos += 6;
+            });
+            
+            doc.save(`${filename}.pdf`);
+            alert('✅ PDF des logs exporté avec succès !');
+        }
+
+        function exportLogsToExcel(logsData, filename) {
+            const wb = XLSX.utils.book_new();
+            
+            const excelData = [
+                ['Timestamp', 'Utilisateur', 'Type', 'Statut', 'Raison', 'IP', 'Hash'],
+                ...logsData.map(l => [l.timestamp, l.user, l.type, l.status, l.reason, l.ip, l.hash])
+            ];
+            
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+            ws['!cols'] = [
+                { wch: 20 },
+                { wch: 20 },
+                { wch: 15 },
+                { wch: 12 },
+                { wch: 25 },
+                { wch: 15 },
+                { wch: 20 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws, 'Logs');
+            XLSX.writeFile(wb, `${filename}.xlsx`);
+            alert('📊 Fichier Excel des logs exporté avec succès !');
+        }
+
+        function exportLogsToCSV(logsData, filename) {
+            let csv = 'Logs BioAccess Secure\n';
+            csv += `Généré le;${new Date().toLocaleString('fr-FR')}\n\n`;
+            csv += 'Timestamp;Utilisateur;Type;Statut;Raison;IP;Hash\n';
+            
+            logsData.forEach(log => {
+                csv += `${log.timestamp};${log.user};${log.type};${log.status};${log.reason};${log.ip};${log.hash}\n`;
+            });
+            
+            downloadFile(csv, `${filename}.csv`, 'text/csv;charset=utf-8;');
+            alert('📁 Fichier CSV des logs exporté avec succès !');
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            URL.revokeObjectURL(link.href);
+        }
+
+        // Event listeners filtres
+        document.getElementById('filterBtn').addEventListener('click', applyFilters);
+        document.getElementById('dateFrom').addEventListener('change', applyFilters);
+        document.getElementById('dateTo').addEventListener('change', applyFilters);
+        document.getElementById('filterUser').addEventListener('change', applyFilters);
+        document.getElementById('filterType').addEventListener('change', applyFilters);
+        document.getElementById('filterStatus').addEventListener('change', applyFilters);
+        document.getElementById('filterIP').addEventListener('input', applyFilters);
+
+        // Réinitialiser les filtres
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            document.getElementById('filterUser').value = '';
+            document.getElementById('filterType').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterIP').value = '';
+            renderLogs(logs);
+        });
+
+        // Initialisation
+        renderLogs(logs);
+
         // Logout
         document.querySelector('a[href="login.html"]')?.addEventListener('click', function(e) {
             e.preventDefault();
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = 'login.html';
+        });
+    </script>
+    
+    <!-- Theme Toggle Event Listener -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            if (themeToggleBtn && window.themeManager) {
+                themeToggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.themeManager.toggle();
+                    
+                    const isDark = window.themeManager.isDarkMode();
+                    themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                    themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+                });
+                
+                const isDark = window.themeManager.isDarkMode();
+                themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+            }
+
+            // Logout
+            const logoutLink = document.querySelector('a[href="login.html"]');
+            if (logoutLink) {
+                logoutLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = 'login.html';
+                });
+            }
         });
     </script>
 </body>

@@ -8,6 +8,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Theme Manager -->
+    <script src="theme.js"></script>
+    <!-- jsPDF pour PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- SheetJS pour Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -76,6 +82,158 @@
             padding: 1rem;
             border-top: 1px solid #e5e7eb;
             background: white;
+        }
+        
+        /* Dark Mode Styles - COMPLETE COVERAGE */
+        :root.dark-mode {
+            --text-primary: #f3f4f6;
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+        }
+        
+        :root.dark-mode body {
+            background-color: #111827 !important;
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .sidebar {
+            background: #1f2937 !important;
+            color: #f3f4f6 !important;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+        }
+        
+        :root.dark-mode .sidebar-menu {
+            scrollbar-color: #4b5563 #1f2937 !important;
+        }
+        
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-track {
+            background: #1f2937 !important;
+        }
+        
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-thumb {
+            background: #4b5563 !important;
+        }
+        
+        :root.dark-mode .sidebar-item {
+            color: #d1d5db !important;
+        }
+        
+        :root.dark-mode .sidebar-item:hover:not(.active) {
+            background: #374151 !important;
+        }
+        
+        :root.dark-mode .sidebar-footer {
+            border-top-color: #374151 !important;
+            background: #1f2937 !important;
+        }
+        
+        :root.dark-mode .bg-white {
+            background-color: #1f2937 !important;
+            color: #f3f4f6 !important;
+        }
+        
+        :root.dark-mode .bg-gray-50 {
+            background-color: #374151 !important;
+        }
+        
+        :root.dark-mode .bg-gray-100 {
+            background-color: #2d3748 !important;
+        }
+        
+        :root.dark-mode .text-gray-400 {
+            color: #9ca3af !important;
+        }
+        
+        :root.dark-mode .text-gray-500 {
+            color: #a6adb8 !important;
+        }
+        
+        :root.dark-mode .text-gray-600,
+        :root.dark-mode .text-gray-700,
+        :root.dark-mode .text-gray-800 {
+            color: #d1d5db !important;
+        }
+        
+        :root.dark-mode .border {
+            border-color: #374151 !important;
+        }
+        
+        :root.dark-mode .divide-y > * {
+            border-bottom-color: #374151 !important;
+        }
+        
+        :root.dark-mode input,
+        :root.dark-mode select,
+        :root.dark-mode textarea {
+            background-color: #374151 !important;
+            color: #f3f4f6 !important;
+            border-color: #4b5563 !important;
+        }
+
+        /* BADGES - Contraste fort */
+        :root.dark-mode .bg-red-100 {
+            background-color: #7f1d1d !important;
+        }
+
+        :root.dark-mode .text-red-700 {
+            color: #fca5a5 !important;
+        }
+
+        :root.dark-mode .bg-yellow-100 {
+            background-color: #78350f !important;
+        }
+
+        :root.dark-mode .text-yellow-700 {
+            color: #fcd34d !important;
+        }
+
+        :root.dark-mode .bg-green-100 {
+            background-color: #065f46 !important;
+        }
+
+        :root.dark-mode .text-green-700 {
+            color: #86efac !important;
+        }
+
+        :root.dark-mode .bg-indigo-100 {
+            background-color: #312e81 !important;
+        }
+
+        :root.dark-mode .text-indigo-600 {
+            color: #a5b4fc !important;
+        }
+
+        :root.dark-mode .bg-purple-100 {
+            background-color: #3b1f47 !important;
+        }
+
+        :root.dark-mode .text-purple-600 {
+            color: #d9a5ff !important;
+        }
+
+        /* Badges - Force text color visible */
+        .bg-red-100 .text-red-700,
+        .bg-red-100.text-red-700,
+        span.bg-red-100 {
+            color: #991b1b !important;
+        }
+
+        .bg-yellow-100 .text-yellow-700,
+        .bg-yellow-100.text-yellow-700,
+        span.bg-yellow-100 {
+            color: #854d0e !important;
+        }
+
+        .bg-green-100 .text-green-700,
+        .bg-green-100.text-green-700,
+        span.bg-green-100 {
+            color: #15803d !important;
+        }
+
+        .bg-blue-100 .text-blue-700,
+        .bg-blue-100.text-blue-700,
+        span.bg-blue-100 {
+            color: #1e40af !important;
         }
     </style>
 </head>
@@ -168,10 +326,13 @@
                             <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">3</span>
                         </a>
                     </div>
-                    <a href="user-form.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                    <button id="themeToggleBtn" class="text-gray-400 text-xl cursor-pointer hover:text-indigo-600 transition" title="Mode sombre">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button id="addUserBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
                         <i class="fas fa-plus"></i>
                         Nouvel utilisateur
-                    </a>
+                    </button>
                 </div>
             </div>
             
@@ -183,42 +344,42 @@
                             <label class="block text-xs text-gray-500 mb-1">Recherche</label>
                             <div class="relative">
                                 <i class="fas fa-search absolute left-3 top-3 text-gray-400 text-sm"></i>
-                                <input type="text" placeholder="Nom, email, département..." 
+                                <input type="text" id="searchInput" placeholder="Nom, email, département..." 
                                        class="w-full pl-9 pr-4 py-2 border rounded-lg text-sm">
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Département</label>
-                            <select class="w-full p-2 border rounded-lg text-sm">
-                                <option>Tous</option>
-                                <option>Informatique</option>
-                                <option>RH</option>
-                                <option>Comptabilité</option>
-                                <option>Direction</option>
+                            <select id="departmentFilter" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="">Tous</option>
+                                <option value="Informatique">Informatique</option>
+                                <option value="RH">RH</option>
+                                <option value="Comptabilité">Comptabilité</option>
+                                <option value="Direction">Direction</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Rôle</label>
-                            <select class="w-full p-2 border rounded-lg text-sm">
-                                <option>Tous</option>
-                                <option>Admin</option>
-                                <option>Employé</option>
+                            <select id="roleFilter" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="">Tous</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Employé">Employé</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Statut</label>
-                            <select class="w-full p-2 border rounded-lg text-sm">
-                                <option>Tous</option>
-                                <option>Actif</option>
-                                <option>Inactif</option>
+                            <select id="statusFilter" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="">Tous</option>
+                                <option value="Actif">Actif</option>
+                                <option value="Inactif">Inactif</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Auth</label>
-                            <select class="w-full p-2 border rounded-lg text-sm">
-                                <option>Tous</option>
-                                <option>Facial</option>
-                                <option>Vocal</option>
+                            <select id="authFilter" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="">Tous</option>
+                                <option value="Facial">Facial</option>
+                                <option value="Vocal">Vocal</option>
                             </select>
                         </div>
                     </div>
@@ -239,133 +400,560 @@
                                 <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-4 font-mono">#001</td>
-                                <td class="p-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                                            <span class="text-indigo-600 font-bold">JD</span>
-                                        </div>
-                                        <span class="font-medium">Jean Dupont</span>
-                                    </div>
-                                </td>
-                                <td class="p-4">jean.dupont@bioaccess.com</td>
-                                <td class="p-4">Informatique</td>
-                                <td class="p-4">Admin</td>
-                                <td class="p-4">10/03/2026 09:34</td>
-                                <td class="p-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Actif</span></td>
-                                <td class="p-4">
-                                    <div class="flex gap-2">
-                                        <a href="user-detail.html?id=1" class="text-indigo-600 hover:text-indigo-800">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a href="user-form.html?id=1" class="text-blue-600 hover:text-blue-800">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <button class="text-red-600 hover:text-red-800">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-4 font-mono">#002</td>
-                                <td class="p-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                            <span class="text-purple-600 font-bold">CM</span>
-                                        </div>
-                                        <span class="font-medium">Claire Martin</span>
-                                    </div>
-                                </td>
-                                <td class="p-4">claire.martin@bioaccess.com</td>
-                                <td class="p-4">RH</td>
-                                <td class="p-4">Employé</td>
-                                <td class="p-4">10/03/2026 08:15</td>
-                                <td class="p-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Actif</span></td>
-                                <td class="p-4"><i class="fas fa-eye text-indigo-600"></i></td>
-                            </tr>
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-4 font-mono">#003</td>
-                                <td class="p-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                            <span class="text-green-600 font-bold">TP</span>
-                                        </div>
-                                        <span class="font-medium">Thomas Petit</span>
-                                    </div>
-                                </td>
-                                <td class="p-4">thomas.petit@bioaccess.com</td>
-                                <td class="p-4">Informatique</td>
-                                <td class="p-4">Admin</td>
-                                <td class="p-4">09/03/2026 14:20</td>
-                                <td class="p-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Actif</span></td>
-                                <td class="p-4"><i class="fas fa-eye text-indigo-600"></i></td>
-                            </tr>
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-4 font-mono">#004</td>
-                                <td class="p-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                                            <span class="text-gray-600 font-bold">LB</span>
-                                        </div>
-                                        <span class="font-medium">Lucas Bernard</span>
-                                    </div>
-                                </td>
-                                <td class="p-4">lucas.bernard@bioaccess.com</td>
-                                <td class="p-4">Direction</td>
-                                <td class="p-4">Employé</td>
-                                <td class="p-4">08/03/2026 11:30</td>
-                                <td class="p-4"><span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs">Inactif</span></td>
-                                <td class="p-4"><i class="fas fa-eye text-indigo-600"></i></td>
-                            </tr>
+                        <tbody id="usersTableBody">
                         </tbody>
                     </table>
                     
                     <!-- Pagination -->
                     <div class="p-4 border-t flex justify-between items-center">
-                        <span class="text-sm text-gray-500">1-4 sur 124</span>
+                        <span id="paginationInfo" class="text-sm text-gray-500">Aucun utilisateur</span>
                         <div class="flex gap-2">
-                            <button class="px-3 py-1 border rounded hover:bg-gray-50">◀</button>
-                            <button class="px-3 py-1 bg-indigo-600 text-white rounded">1</button>
-                            <button class="px-3 py-1 border rounded hover:bg-gray-50">2</button>
-                            <button class="px-3 py-1 border rounded hover:bg-gray-50">3</button>
-                            <button class="px-3 py-1 border rounded hover:bg-gray-50">4</button>
-                            <button class="px-3 py-1 border rounded hover:bg-gray-50">5</button>
-                            <button class="px-3 py-1 border rounded hover:bg-gray-50">▶</button>
+                            <button id="prevPageBtn" class="px-3 py-1 border rounded hover:bg-gray-50">◀</button>
+                            <div id="paginationButtons" class="flex gap-2"></div>
+                            <button id="nextPageBtn" class="px-3 py-1 border rounded hover:bg-gray-50">▶</button>
                         </div>
-                        <select class="border rounded px-2 py-1 text-sm">
-                            <option>15 par page</option>
-                            <option>30 par page</option>
-                            <option>50 par page</option>
-                            <option>100 par page</option>
+                        <select id="pageSize" class="border rounded px-2 py-1 text-sm">
+                            <option value="10">10 par page</option>
+                            <option value="15" selected>15 par page</option>
+                            <option value="30">30 par page</option>
+                            <option value="50">50 par page</option>
                         </select>
                     </div>
                 </div>
                 
                 <!-- Boutons d'export -->
                 <div class="flex justify-end gap-3 mt-4">
-                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
+                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50" onclick="exportUsers('csv')">
                         <i class="fas fa-file-csv mr-2"></i>CSV
                     </button>
-                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
+                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50" onclick="exportUsers('excel')">
                         <i class="fas fa-file-excel mr-2"></i>Excel
                     </button>
-                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
+                    <button class="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50" onclick="exportUsers('pdf')">
                         <i class="fas fa-file-pdf mr-2"></i>PDF
                     </button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- MODAL UTILISATEUR -->
+    <div id="userModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 12px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 25px rgba(0,0,0,0.15);">
+            <div style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
+                <h2 id="modalTitle" style="font-size: 18px; font-weight: 600; margin: 0;">Modal Title</h2>
+            </div>
+            <div id="modalContent" style="padding: 24px;">
+                <!-- Content goes here -->
+            </div>
+            <div style="padding: 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 12px;" id="modalActions">
+                <!-- Buttons go here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Dark Mode Modal Styling -->
+    <style>
+        :root.dark-mode #userModal {
+            background: rgba(0,0,0,0.7) !important;
+        }
+
+        :root.dark-mode #userModal > div {
+            background: #1f2937 !important;
+            color: #f3f4f6 !important;
+        }
+
+        :root.dark-mode #userModal label {
+            color: #a6adb8 !important;
+        }
+
+        :root.dark-mode #userModal input,
+        :root.dark-mode #userModal select {
+            background-color: #374151 !important;
+            color: #f3f4f6 !important;
+            border-color: #4b5563 !important;
+        }
+
+        :root.dark-mode #userModal button:not([onclick*="saveUserEdit"]):not([onclick*="openEditModal"]) {
+            background-color: #374151 !important;
+            color: #f3f4f6 !important;
+            border-color: #4b5563 !important;
+        }
+    </style>
     
     <script>
+        // ========== DONNÉES D'UTILISATEURS ==========
+        let allUsers = [
+            { id: 1, nom: 'Jean Dupont', email: 'jean.dupont@bioaccess.com', department: 'Informatique', role: 'Admin', lastLogin: '10/03/2026 09:34', status: 'Actif', auth: 'Facial' },
+            { id: 2, nom: 'Claire Martin', email: 'claire.martin@bioaccess.com', department: 'RH', role: 'Employé', lastLogin: '10/03/2026 08:15', status: 'Actif', auth: 'Facial' },
+            { id: 3, nom: 'Thomas Petit', email: 'thomas.petit@bioaccess.com', department: 'Informatique', role: 'Admin', lastLogin: '09/03/2026 14:20', status: 'Actif', auth: 'Vocal' },
+            { id: 4, nom: 'Lucas Bernard', email: 'lucas.bernard@bioaccess.com', department: 'Direction', role: 'Employé', lastLogin: '08/03/2026 11:30', status: 'Inactif', auth: 'Facial' },
+            { id: 5, nom: 'Sophie Lefevre', email: 'sophie.lefevre@bioaccess.com', department: 'Comptabilité', role: 'Employé', lastLogin: '10/03/2026 16:45', status: 'Actif', auth: 'Facial' },
+        ];
+
+        let filteredUsers = allUsers;
+        let currentPage = 1;
+        let pageSize = 15;
+
+        // ========== FONCTION POUR OBTENIR INITIALES ==========
+        function getInitials(name) {
+            return name.split(' ').map(n => n[0]).join('').toUpperCase();
+        }
+
+        // ========== FONCTION POUR RENDRE LE TABLEAU ==========
+        function renderTable() {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '';
+
+            if (filteredUsers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">Aucun utilisateur trouvé</td></tr>';
+                return;
+            }
+
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+            const pageUsers = filteredUsers.slice(startIndex, endIndex);
+
+            pageUsers.forEach(user => {
+                const row = document.createElement('tr');
+                row.className = 'border-b hover:bg-gray-50';
+                row.dataset.userId = user.id;
+
+                const statusClass = user.status === 'Actif' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+                const initials = getInitials(user.nom);
+                const colors = ['bg-indigo', 'bg-purple', 'bg-green', 'bg-pink', 'bg-yellow'];
+                const colorClass = colors[user.id % colors.length] + '-100';
+
+                row.innerHTML = `
+                    <td class="p-4 font-mono">#${String(user.id).padStart(3, '0')}</td>
+                    <td class="p-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 ${colorClass} rounded-full flex items-center justify-center">
+                                <span class="font-bold">${initials}</span>
+                            </div>
+                            <span class="font-medium">${user.nom}</span>
+                        </div>
+                    </td>
+                    <td class="p-4">${user.email}</td>
+                    <td class="p-4">${user.department}</td>
+                    <td class="p-4">${user.role}</td>
+                    <td class="p-4">${user.lastLogin}</td>
+                    <td class="p-4"><span class="${statusClass} px-2 py-1 rounded-full text-xs">${user.status}</span></td>
+                    <td class="p-4">
+                        <div class="flex gap-2">
+                            <button class="view-btn text-indigo-600 hover:text-indigo-800" data-id="${user.id}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="edit-btn text-blue-600 hover:text-blue-800" data-id="${user.id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="delete-btn text-red-600 hover:text-red-800" data-id="${user.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+
+                tbody.appendChild(row);
+            });
+
+            updatePagination();
+        }
+
+        // ========== FONCTION POUR FILTRER ==========
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const department = document.getElementById('departmentFilter').value;
+            const role = document.getElementById('roleFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            const auth = document.getElementById('authFilter').value;
+
+            filteredUsers = allUsers.filter(user => {
+                const matchSearch = !searchTerm || 
+                    user.nom.toLowerCase().includes(searchTerm) ||
+                    user.email.toLowerCase().includes(searchTerm) ||
+                    user.department.toLowerCase().includes(searchTerm);
+
+                const matchDept = !department || user.department === department;
+                const matchRole = !role || user.role === role;
+                const matchStatus = !status || user.status === status;
+                const matchAuth = !auth || user.auth === auth;
+
+                return matchSearch && matchDept && matchRole && matchStatus && matchAuth;
+            });
+
+            currentPage = 1;
+            renderTable();
+        }
+
+        // ========== FONCTION POUR MISE À JOUR PAGINATION ==========
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredUsers.length / pageSize);
+            const paginationInfo = document.getElementById('paginationInfo');
+            const startIndex = (currentPage - 1) * pageSize + 1;
+            const endIndex = Math.min(currentPage * pageSize, filteredUsers.length);
+
+            paginationInfo.textContent = `${filteredUsers.length === 0 ? 0 : startIndex}-${endIndex} sur ${filteredUsers.length}`;
+
+            const buttonsDiv = document.getElementById('paginationButtons');
+            buttonsDiv.innerHTML = '';
+
+            for (let i = 1; i <= totalPages; i++) {
+                const btn = document.createElement('button');
+                btn.textContent = i;
+                btn.className = `px-3 py-1 border rounded ${i === currentPage ? 'bg-indigo-600 text-white' : 'hover:bg-gray-50'}`;
+                btn.onclick = () => { currentPage = i; renderTable(); };
+                buttonsDiv.appendChild(btn);
+            }
+
+            document.getElementById('prevPageBtn').disabled = currentPage === 1;
+            document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+        }
+
+        // ========== ÉVÉNEMENTS ==========
+        document.getElementById('searchInput').addEventListener('keyup', applyFilters);
+        document.getElementById('departmentFilter').addEventListener('change', applyFilters);
+        document.getElementById('roleFilter').addEventListener('change', applyFilters);
+        document.getElementById('statusFilter').addEventListener('change', applyFilters);
+        document.getElementById('authFilter').addEventListener('change', applyFilters);
+
+        document.getElementById('pageSize').addEventListener('change', (e) => {
+            pageSize = parseInt(e.target.value);
+            currentPage = 1;
+            renderTable();
+        });
+
+        document.getElementById('prevPageBtn').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+            }
+        });
+
+        document.getElementById('nextPageBtn').addEventListener('click', () => {
+            const totalPages = Math.ceil(filteredUsers.length / pageSize);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+            }
+        });
+
+        // ========== AJOUT UTILISATEUR ==========
+        document.getElementById('addUserBtn').addEventListener('click', () => {
+            const newUser = {
+                id: Math.max(...allUsers.map(u => u.id)) + 1,
+                nom: 'Nouvel Utilisateur',
+                email: `user${allUsers.length + 1}@bioaccess.com`,
+                department: 'Informatique',
+                role: 'Employé',
+                lastLogin: new Date().toLocaleDateString('fr-FR') + ' ' + new Date().toLocaleTimeString('fr-FR'),
+                status: 'Actif',
+                auth: 'Facial'
+            };
+            allUsers.push(newUser);
+            applyFilters();
+            alert('Nouvel utilisateur ajouté (ID: #' + String(newUser.id).padStart(3, '0') + ')');
+        });
+
+        // ========== FONCTION POUR AFFICHER LES DÉTAILS ==========
+        function openViewModal(userId) {
+            const user = allUsers.find(u => u.id === parseInt(userId));
+            if (!user) return;
+
+            const modal = document.getElementById('userModal');
+            document.getElementById('modalTitle').textContent = 'Détails Utilisateur';
+            document.getElementById('modalContent').innerHTML = `
+                <div class="space-y-4">
+                    <div><label class="text-xs text-gray-500">ID</label><p class="font-mono font-bold">#${String(user.id).padStart(3, '0')}</p></div>
+                    <div><label class="text-xs text-gray-500">Nom</label><p>${user.nom}</p></div>
+                    <div><label class="text-xs text-gray-500">Email</label><p>${user.email}</p></div>
+                    <div><label class="text-xs text-gray-500">Département</label><p>${user.department}</p></div>
+                    <div><label class="text-xs text-gray-500">Rôle</label><p>${user.role}</p></div>
+                    <div><label class="text-xs text-gray-500">Statut</label><p><span class="px-2 py-1 rounded-full text-xs font-medium" style="background: ${user.status === 'Actif' ? '#dbeafe' : '#f3f4f6'}; color: ${user.status === 'Actif' ? '#1e40af' : '#4b5563'}">${user.status}</span></p></div>
+                    <div><label class="text-xs text-gray-500">Type d'authentification</label><p>${user.auth}</p></div>
+                    <div><label class="text-xs text-gray-500">Dernière connexion</label><p>${user.lastLogin}</p></div>
+                </div>
+            `;
+            document.getElementById('modalActions').innerHTML = `
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded">Fermer</button>
+                <button onclick="openEditModal('${userId}')" class="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded ml-2">Éditer</button>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        // ========== FONCTION POUR ÉDITER ==========
+        function openEditModal(userId) {
+            const user = allUsers.find(u => u.id === parseInt(userId));
+            if (!user) return;
+
+            const modal = document.getElementById('userModal');
+            document.getElementById('modalTitle').textContent = 'Éditer Utilisateur';
+            document.getElementById('modalContent').innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs text-gray-500">Nom</label>
+                        <input type="text" id="editNom" value="${user.nom}" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Email</label>
+                        <input type="email" id="editEmail" value="${user.email}" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Département</label>
+                        <input type="text" id="editDept" value="${user.department}" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Rôle</label>
+                        <select id="editRole" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
+                            <option ${user.role === 'Admin' ? 'selected' : ''}>Admin</option>
+                            <option ${user.role === 'Employé' ? 'selected' : ''}>Employé</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Statut</label>
+                        <select id="editStatus" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
+                            <option ${user.status === 'Actif' ? 'selected' : ''}>Actif</option>
+                            <option ${user.status === 'Inactif' ? 'selected' : ''}>Inactif</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            document.getElementById('modalActions').innerHTML = `
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded">Annuler</button>
+                <button onclick="saveUserEdit('${userId}')" class="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded ml-2">Enregistrer</button>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        // ========== FONCTION POUR ENREGISTRER LES MODIFICATIONS ==========
+        function saveUserEdit(userId) {
+            const user = allUsers.find(u => u.id === parseInt(userId));
+            if (!user) return;
+
+            user.nom = document.getElementById('editNom').value;
+            user.email = document.getElementById('editEmail').value;
+            user.department = document.getElementById('editDept').value;
+            user.role = document.getElementById('editRole').value;
+            user.status = document.getElementById('editStatus').value;
+
+            closeModal();
+            applyFilters();
+            alert('Utilisateur #' + String(userId).padStart(3, '0') + ' mis à jour');
+        }
+
+        // ========== FONCTION POUR FERMER LE MODAL ==========
+        function closeModal() {
+            document.getElementById('userModal').style.display = 'none';
+            document.getElementById('modalContent').innerHTML = '';
+            document.getElementById('modalActions').innerHTML = '';
+        }
+
+        // ========== ACTIONS TABLEAU ==========
+        document.addEventListener('click', (e) => {
+            const viewBtn = e.target.closest('.view-btn');
+            const editBtn = e.target.closest('.edit-btn');
+            const deleteBtn = e.target.closest('.delete-btn');
+
+            if (viewBtn) {
+                const id = viewBtn.getAttribute('data-id');
+                openViewModal(id);
+                e.preventDefault();
+            }
+
+            if (editBtn) {
+                const id = editBtn.getAttribute('data-id');
+                openEditModal(id);
+                e.preventDefault();
+            }
+
+            if (deleteBtn) {
+                const id = deleteBtn.getAttribute('data-id');
+                if (confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur?')) {
+                    allUsers = allUsers.filter(u => u.id !== parseInt(id));
+                    applyFilters();
+                    alert('Utilisateur #' + String(id).padStart(3, '0') + ' supprimé');
+                }
+                e.preventDefault();
+            }
+        });
+
+        // ========== INITIALISATION ==========
+        renderTable();
+
         document.getElementById('logoutBtn').addEventListener('click', function(e) {
             e.preventDefault();
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = 'login.html';
+        });
+    </script>
+
+    <!-- Fonctions d'export -->
+    <script>
+        function exportUsers(format) {
+            const tbody = document.querySelector('tbody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            if (rows.length === 0) {
+                alert('❌ Aucun utilisateur à exporter');
+                return;
+            }
+
+            const usersData = [];
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length > 0) {
+                    usersData.push({
+                        nom: cells[1]?.textContent.trim() || '',
+                        email: cells[2]?.textContent.trim() || '',
+                        department: cells[3]?.textContent.trim() || '',
+                        role: cells[4]?.textContent.trim() || '',
+                        lastLogin: cells[5]?.textContent.trim() || '',
+                        status: cells[6]?.textContent.trim() || ''
+                    });
+                }
+            });
+
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/T/, '_').replace(/:/g, '-');
+            const filename = `utilisateurs_bioaccess_${timestamp}`;
+
+            try {
+                switch(format) {
+                    case 'pdf':
+                        exportUsersToPDF(usersData, filename);
+                        break;
+                    case 'excel':
+                        exportUsersToExcel(usersData, filename);
+                        break;
+                    case 'csv':
+                        exportUsersToCSV(usersData, filename);
+                        break;
+                }
+            } catch (error) {
+                alert('❌ Erreur lors de l\'export: ' + error.message);
+            }
+        }
+
+        function exportUsersToPDF(usersData, filename) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(16);
+            doc.text('Utilisateurs BioAccess Secure', 10, 10);
+            
+            doc.setFontSize(10);
+            doc.text(`Généré le: ${new Date().toLocaleString('fr-FR')}`, 10, 20);
+            doc.text(`Nombre d'utilisateurs: ${usersData.length}`, 10, 27);
+            
+            // Tableau
+            let yPos = 35;
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'bold');
+            doc.text('Nom', 10, yPos);
+            doc.text('Email', 50, yPos);
+            doc.text('Département', 100, yPos);
+            doc.text('Rôle', 150, yPos);
+            
+            doc.setFont(undefined, 'normal');
+            yPos += 7;
+            
+            usersData.forEach((user, idx) => {
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 10;
+                }
+                doc.setFontSize(8);
+                doc.text(user.nom, 10, yPos);
+                doc.text(user.email.substring(0, 30), 50, yPos);
+                doc.text(user.department.substring(0, 25), 100, yPos);
+                doc.text(user.role, 150, yPos);
+                yPos += 6;
+            });
+            
+            doc.save(`${filename}.pdf`);
+            alert('✅ PDF des utilisateurs exporté avec succès !');
+        }
+
+        function exportUsersToExcel(usersData, filename) {
+            const wb = XLSX.utils.book_new();
+            
+            const excelData = [
+                ['Nom', 'Email', 'Département', 'Rôle', 'Dernière connexion', 'Statut'],
+                ...usersData.map(u => [u.nom, u.email, u.department, u.role, u.lastLogin, u.status])
+            ];
+            
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+            ws['!cols'] = [
+                { wch: 25 },
+                { wch: 30 },
+                { wch: 20 },
+                { wch: 15 },
+                { wch: 20 },
+                { wch: 12 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws, 'Utilisateurs');
+            XLSX.writeFile(wb, `${filename}.xlsx`);
+            alert('📊 Fichier Excel des utilisateurs exporté avec succès !');
+        }
+
+        function exportUsersToCSV(usersData, filename) {
+            let csv = 'Utilisateurs BioAccess Secure\n';
+            csv += `Généré le;${new Date().toLocaleString('fr-FR')}\n\n`;
+            csv += 'Nom;Email;Département;Rôle;Dernière connexion;Statut\n';
+            
+            usersData.forEach(user => {
+                csv += `${user.nom};${user.email};${user.department};${user.role};${user.lastLogin};${user.status}\n`;
+            });
+            
+            downloadFile(csv, `${filename}.csv`, 'text/csv;charset=utf-8;');
+            alert('📁 Fichier CSV des utilisateurs exporté avec succès !');
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            URL.revokeObjectURL(link.href);
+        }
+    </script>
+    
+    <!-- Theme Toggle Event Listener -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            if (themeToggleBtn && window.themeManager) {
+                themeToggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.themeManager.toggle();
+                    
+                    // Update icon based on current theme
+                    const isDark = window.themeManager.isDarkMode();
+                    themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                    themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+                });
+                
+                // Set initial icon
+                const isDark = window.themeManager.isDarkMode();
+                themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+            }
+
+            // Logout
+            const logoutLink = document.querySelector('a[href="login.html"]');
+            if (logoutLink) {
+                logoutLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = 'login.html';
+                });
+            }
         });
     </script>
 </body>

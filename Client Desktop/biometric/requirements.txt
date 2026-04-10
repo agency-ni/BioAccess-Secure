@@ -1,0 +1,39 @@
+# Client Desktop - Biometric Module Requirements
+# Installation: pip install -r requirements.txt
+
+# Computer Vision & Image Processing
+opencv-python==4.8.1.78
+numpy>=1.24.0
+pillow>=10.0.0
+
+# Face Recognition Libraries
+dlib==19.24.2  # Modèles et détection faciale
+imutils>=0.5.4  # Utilitaires OpenCV
+
+# MUSE Integration
+# (Modules inclus: easy_facial_recognition.py + modèles pretrained)
+
+# API & HTTP
+requests>=2.31.0
+
+# Threading & Async
+# (Inclus dans stdlib)
+
+# Configuration & Logging
+python-dotenv>=1.0.0
+# Logging déjà dans stdlib
+
+# Optional: GUI & Desktop
+# Décommenter si interface graphique nécessaire
+# PyQt6>=6.5.0
+# PySimpleGUI>=4.60.0
+
+# Optional: Performance monitoring
+# psutil>=5.9.0
+
+# Development
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.9.0
+flake8>=6.0.0
+mypy>=1.5.0

@@ -1,0 +1,25 @@
+📱 BioAccess Secure - Installation Universelle
+
+═══════════════════════════════════════════════════════════════
+
+👉 COMMENCEZ ICI:
+
+  File to click/run depending on your OS:
+
+  🪟 WINDOWS:     Double-cliquez sur SETUP_WINDOWS.bat
+  🐧 LINUX:       ./SETUP_LINUX_MAC.sh
+  🍎 macOS:       ./SETUP_LINUX_MAC.sh
+
+═══════════════════════════════════════════════════════════════
+
+✨ C'est tout ce que vous devez faire!
+
+   L'installation:
+   ✅ Détecte votre OS automatiquement
+   ✅ Installe tous les modules nécessaires
+   ✅ Configure les permissions
+   ✅ Vous guide étape par étape
+
+═══════════════════════════════════════════════════════════════
+
+📖 Plus d'infos: LIRE_MOI_DABORD.txt ou INSTALLER_README.md
