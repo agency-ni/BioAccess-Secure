@@ -479,6 +479,16 @@
             color: #f3f4f6 !important;
             border-color: #4b5563 !important;
         }
+
+        :root.dark-mode #faceEnrollContainer,
+        :root.dark-mode #voiceEnrollContainer {
+            background: #1f2937 !important;
+            border-color: #4b5563 !important;
+        }
+
+        :root.dark-mode .animate-pulse {
+            opacity: 0.7;
+        }
     </style>
     
     <script>
@@ -541,13 +551,13 @@
                     <td class="p-4"><span class="${statusClass} px-2 py-1 rounded-full text-xs">${user.status}</span></td>
                     <td class="p-4">
                         <div class="flex gap-2">
-                            <button class="view-btn text-indigo-600 hover:text-indigo-800" data-id="${user.id}">
+                            <button class="view-btn text-indigo-600 hover:text-indigo-800" data-id="${user.id}" title="Voir détails">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <button class="edit-btn text-blue-600 hover:text-blue-800" data-id="${user.id}">
+                            <button class="edit-btn text-blue-600 hover:text-blue-800" data-id="${user.id}" title="Éditer et enrôler">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="delete-btn text-red-600 hover:text-red-800" data-id="${user.id}">
+                            <button class="delete-btn text-red-600 hover:text-red-800" data-id="${user.id}" title="Supprimer">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -687,42 +697,354 @@
             if (!user) return;
 
             const modal = document.getElementById('userModal');
-            document.getElementById('modalTitle').textContent = 'Éditer Utilisateur';
+            document.getElementById('modalTitle').textContent = `Éditer Utilisateur - ${user.nom}`;
             document.getElementById('modalContent').innerHTML = `
-                <div class="space-y-4">
+                <!-- Onglets -->
+                <div class="flex border-b mb-4 gap-2">
+                    <button class="edit-tab px-4 py-2 border-b-2 border-indigo-600 text-indigo-600 font-medium" onclick="switchEditTab('info')">
+                        <i class="fas fa-user mr-2"></i>Infos
+                    </button>
+                    <button class="edit-tab px-4 py-2 border-b-2 border-gray-300 text-gray-600 hover:text-gray-800 font-medium" onclick="switchEditTab('face')">
+                        <i class="fas fa-face-smile mr-2"></i>Visage
+                    </button>
+                    <button class="edit-tab px-4 py-2 border-b-2 border-gray-300 text-gray-600 hover:text-gray-800 font-medium" onclick="switchEditTab('voice')">
+                        <i class="fas fa-microphone mr-2"></i>Voix
+                    </button>
+                </div>
+                
+                <!-- TAB INFO -->
+                <div id="tab-info" class="space-y-4">
                     <div>
-                        <label class="text-xs text-gray-500">Nom</label>
+                        <label class="text-xs text-gray-500 font-semibold">Nom</label>
                         <input type="text" id="editNom" value="${user.nom}" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
                     </div>
                     <div>
-                        <label class="text-xs text-gray-500">Email</label>
+                        <label class="text-xs text-gray-500 font-semibold">Email</label>
                         <input type="email" id="editEmail" value="${user.email}" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
                     </div>
                     <div>
-                        <label class="text-xs text-gray-500">Département</label>
+                        <label class="text-xs text-gray-500 font-semibold">Département</label>
                         <input type="text" id="editDept" value="${user.department}" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
                     </div>
                     <div>
-                        <label class="text-xs text-gray-500">Rôle</label>
+                        <label class="text-xs text-gray-500 font-semibold">Rôle</label>
                         <select id="editRole" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
                             <option ${user.role === 'Admin' ? 'selected' : ''}>Admin</option>
                             <option ${user.role === 'Employé' ? 'selected' : ''}>Employé</option>
                         </select>
                     </div>
                     <div>
-                        <label class="text-xs text-gray-500">Statut</label>
+                        <label class="text-xs text-gray-500 font-semibold">Statut</label>
                         <select id="editStatus" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
                             <option ${user.status === 'Actif' ? 'selected' : ''}>Actif</option>
                             <option ${user.status === 'Inactif' ? 'selected' : ''}>Inactif</option>
                         </select>
                     </div>
                 </div>
+                
+                <!-- TAB FACE -->
+                <div id="tab-face" class="space-y-4" style="display: none;">
+                    <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Enrôlement facial - Choisissez votre méthode
+                    </div>
+                    
+                    <!-- Options -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="enrollFaceLiveBtn" class="p-4 border-2 border-green-300 rounded-lg hover:bg-green-50 text-center font-medium text-green-700 transition">
+                            <i class="fas fa-camera text-2xl mb-2 block"></i>En live
+                        </button>
+                        <button id="enrollFaceUploadBtn" class="p-4 border-2 border-blue-300 rounded-lg hover:bg-blue-50 text-center font-medium text-blue-700 transition">
+                            <i class="fas fa-upload text-2xl mb-2 block"></i>Importer une photo
+                        </button>
+                    </div>
+                    
+                    <!-- Upload file (hidden) -->
+                    <input type="file" id="faceFileInput" accept="image/jpeg,image/png" style="display: none;">
+                    
+                    <!-- Status -->
+                    <div id="faceStatus" class="text-sm text-gray-600"></div>
+                </div>
+                
+                <!-- TAB VOICE -->
+                <div id="tab-voice" class="space-y-4" style="display: none;">
+                    <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Enrôlement vocal - Choisissez votre méthode
+                    </div>
+                    
+                    <!-- Options -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="enrollVoiceLiveBtn" class="p-4 border-2 border-purple-300 rounded-lg hover:bg-purple-50 text-center font-medium text-purple-700 transition">
+                            <i class="fas fa-microphone text-2xl mb-2 block"></i>En live
+                        </button>
+                        <button id="enrollVoiceUploadBtn" class="p-4 border-2 border-indigo-300 rounded-lg hover:bg-indigo-50 text-center font-medium text-indigo-700 transition">
+                            <i class="fas fa-upload text-2xl mb-2 block"></i>Importer un audio
+                        </button>
+                    </div>
+                    
+                    <!-- Upload file (hidden) -->
+                    <input type="file" id="voiceFileInput" accept="audio/wav,audio/mp3,audio/mpeg" style="display: none;">
+                    
+                    <!-- Status -->
+                    <div id="voiceStatus" class="text-sm text-gray-600"></div>
+                </div>
             `;
+            
             document.getElementById('modalActions').innerHTML = `
                 <button onclick="closeModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded">Annuler</button>
                 <button onclick="saveUserEdit('${userId}')" class="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded ml-2">Enregistrer</button>
             `;
+            
             modal.style.display = 'flex';
+            
+            // Event listeners pour enrôlement
+            setupEnrollmentListeners(user);
+        }
+        
+        // ========== GESTION DES ONGLETS D'ÉDITION ==========
+        function switchEditTab(tabName) {
+            // Masquer tous les tabs
+            document.getElementById('tab-info').style.display = 'none';
+            document.getElementById('tab-face').style.display = 'none';
+            document.getElementById('tab-voice').style.display = 'none';
+            
+            // Afficher le tab sélectionné
+            document.getElementById(`tab-${tabName}`).style.display = 'block';
+            
+            // Mettre à jour les onglets actifs
+            document.querySelectorAll('.edit-tab').forEach(tab => {
+                tab.style.borderBottomColor = '#d1d5db';
+                tab.style.color = '#4b5563';
+            });
+            event.target.closest('.edit-tab').style.borderBottomColor = '#4f46e5';
+            event.target.closest('.edit-tab').style.color = '#4f46e5';
+        }
+        
+        // ========== CONFIGURATION ENRÔLEMENT ==========
+        function setupEnrollmentListeners(user) {
+            // FACE - Live
+            document.getElementById('enrollFaceLiveBtn').onclick = async () => {
+                await enrollFaceLive(user);
+            };
+            
+            // FACE - Upload
+            document.getElementById('enrollFaceUploadBtn').onclick = () => {
+                document.getElementById('faceFileInput').click();
+            };
+            
+            document.getElementById('faceFileInput').onchange = async (e) => {
+                if (e.target.files.length > 0) {
+                    await enrollFaceUpload(user, e.target.files[0]);
+                }
+            };
+            
+            // VOICE - Live
+            document.getElementById('enrollVoiceLiveBtn').onclick = async () => {
+                await enrollVoiceLive(user);
+            };
+            
+            // VOICE - Upload
+            document.getElementById('enrollVoiceUploadBtn').onclick = () => {
+                document.getElementById('voiceFileInput').click();
+            };
+            
+            document.getElementById('voiceFileInput').onchange = async (e) => {
+                if (e.target.files.length > 0) {
+                    await enrollVoiceUpload(user, e.target.files[0]);
+                }
+            };
+        }
+        
+        // ========== ENRÔLEMENT FACIAL ==========
+        async function enrollFaceLive(user) {
+            const statusDiv = document.getElementById('faceStatus');
+            statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Initialisation caméra...</span>';
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: { ideal: 640 }, height: { ideal: 480 } } 
+                });
+                
+                // Créer video element temporaire
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+                
+                // Attendre 3 secondes puis capturer
+                statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-camera"></i> Capture en 3 secondes...</span>';
+                await new Promise(r => setTimeout(r, 3000));
+                
+                // Capturer frame
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                
+                // Arrêter camera
+                stream.getTracks().forEach(t => t.stop());
+                
+                const imageB64 = canvas.toDataURL('image/jpeg').split(',')[1];
+                
+                // Envoyer au backend
+                statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Enrôlement en cours...</span>';
+                
+                const response = await fetch(`${window.API_URL || 'http://localhost:5000/api'}/v1/admin/enroll/face`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Token': 'ADMIN_TOKEN_HERE'
+                    },
+                    body: JSON.stringify({
+                        user_id: user.id,
+                        image_b64: imageB64
+                    })
+                });
+                
+                if (response.ok) {
+                    user.auth = 'Facial';
+                    statusDiv.innerHTML = '<span class="text-green-600"><i class="fas fa-check-circle"></i> Enrôlement facial réussi!</span>';
+                    setTimeout(() => { renderTable(); }, 1500);
+                } else {
+                    const error = await response.json();
+                    statusDiv.innerHTML = `<span class="text-red-600"><i class="fas fa-times-circle"></i> Erreur: ${error.error || 'Enrôlement échoué'}</span>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="text-red-600"><i class="fas fa-times-circle"></i> Erreur: ${error.message}</span>`;
+            }
+        }
+        
+        async function enrollFaceUpload(user, file) {
+            const statusDiv = document.getElementById('faceStatus');
+            statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Traitement du fichier...</span>';
+            
+            try {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const imageB64 = e.target.result.split(',')[1];
+                    
+                    statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Enrôlement en cours...</span>';
+                    
+                    const response = await fetch(`${window.API_URL || 'http://localhost:5000/api'}/v1/admin/enroll/face`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Admin-Token': 'ADMIN_TOKEN_HERE'
+                        },
+                        body: JSON.stringify({
+                            user_id: user.id,
+                            image_b64: imageB64
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        user.auth = 'Facial';
+                        statusDiv.innerHTML = '<span class="text-green-600"><i class="fas fa-check-circle"></i> Enrôlement facial réussi!</span>';
+                        setTimeout(() => { renderTable(); }, 1500);
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<span class="text-red-600"><i class="fas fa-times-circle"></i> Erreur: ${error.error || 'Enrôlement échoué'}</span>`;
+                    }
+                };
+                reader.readAsDataURL(file);
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="text-red-600"><i class="fas fa-times-circle"></i> Erreur: ${error.message}</span>`;
+            }
+        }
+        
+        // ========== ENRÔLEMENT VOCAL ==========
+        async function enrollVoiceLive(user) {
+            const statusDiv = document.getElementById('voiceStatus');
+            statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Initialisation microphone...</span>';
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaRecorder = new MediaRecorder(stream);
+                const chunks = [];
+                
+                mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+                mediaRecorder.start();
+                
+                statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-microphone"></i> Enregistrement 3 secondes...</span>';
+                
+                await new Promise(r => setTimeout(r, 3000));
+                
+                mediaRecorder.stop();
+                stream.getTracks().forEach(t => t.stop());
+                
+                await new Promise(r => mediaRecorder.onstop = r);
+                
+                const blob = new Blob(chunks, { type: 'audio/wav' });
+                const reader = new FileReader();
+                
+                reader.onload = async () => {
+                    const audioB64 = reader.result.split(',')[1];
+                    
+                    statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Enrôlement en cours...</span>';
+                    
+                    const response = await fetch(`${window.API_URL || 'http://localhost:5000/api'}/v1/admin/enroll/voice`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Admin-Token': 'ADMIN_TOKEN_HERE'
+                        },
+                        body: JSON.stringify({
+                            user_id: user.id,
+                            audio_b64: audioB64
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        user.auth = 'Vocal';
+                        statusDiv.innerHTML = '<span class="text-green-600"><i class="fas fa-check-circle"></i> Enrôlement vocal réussi!</span>';
+                        setTimeout(() => { renderTable(); }, 1500);
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<span class="text-red-600"><i class="fas fa-times-circle"></i> Erreur: ${error.error || 'Enrôlement échoué'}</span>`;
+                    }
+                };
+                reader.readAsDataURL(blob);
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="text-red-600"><i class="fas fa-times-circle"></i> Erreur: ${error.message}</span>`;
+            }
+        }
+        
+        async function enrollVoiceUpload(user, file) {
+            const statusDiv = document.getElementById('voiceStatus');
+            statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Traitement du fichier...</span>';
+            
+            try {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const audioB64 = e.target.result.split(',')[1];
+                    
+                    statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Enrôlement en cours...</span>';
+                    
+                    const response = await fetch(`${window.API_URL || 'http://localhost:5000/api'}/v1/admin/enroll/voice`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Admin-Token': 'ADMIN_TOKEN_HERE'
+                        },
+                        body: JSON.stringify({
+                            user_id: user.id,
+                            audio_b64: audioB64
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        user.auth = 'Vocal';
+                        statusDiv.innerHTML = '<span class="text-green-600"><i class="fas fa-check-circle"></i> Enrôlement vocal réussi!</span>';
+                        setTimeout(() => { renderTable(); }, 1500);
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<span class="text-red-600"><i class="fas fa-times-circle"></i> Erreur: ${error.error || 'Enrôlement échoué'}</span>`;
+                    }
+                };
+                reader.readAsDataURL(file);
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="text-red-600"><i class="fas fa-times-circle"></i> Erreur: ${error.message}</span>`;
+            }
         }
 
         // ========== FONCTION POUR ENREGISTRER LES MODIFICATIONS ==========
@@ -746,7 +1068,15 @@
             document.getElementById('userModal').style.display = 'none';
             document.getElementById('modalContent').innerHTML = '';
             document.getElementById('modalActions').innerHTML = '';
+            
+            // Nettoyer les ressources webcam/audio si présentes
+            const video = document.getElementById('enrollVideo');
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
         }
+
+
 
         // ========== ACTIONS TABLEAU ==========
         document.addEventListener('click', (e) => {

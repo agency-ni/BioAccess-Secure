@@ -3,7 +3,7 @@ Modèle User pour la base de données
 Respecte strictement le diagramme de classes
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask_login import UserMixin
 from core.database import db
 from core.security import SecurityManager
@@ -200,3 +200,46 @@ class UserSession(db.Model):
             'user_agent': self.user_agent,
             'is_active': self.is_active
         }
+
+
+class LoginLog(db.Model):
+    """
+    Modèle pour enregistrer les tentatives de connexion
+    Utilisé pour l'audit et la détection d'anomalies
+    """
+    __tablename__ = 'login_logs'
+    
+    # Attributs
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = db.Column(db.String(120), nullable=False, index=True)
+    ip_address = db.Column(db.String(45), nullable=False)
+    user_agent = db.Column(db.String(256), nullable=True)
+    success = db.Column(db.Boolean, default=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Foreign key
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
+    
+    # Relations
+    user = db.relationship('User', backref=db.backref('login_logs', lazy='dynamic', cascade='all, delete-orphan'))
+    
+    # Métadonnées
+    failure_reason = db.Column(db.String(255), nullable=True)
+    method = db.Column(db.String(50), default='password')  # password, face, voice, google_oauth
+    
+    def to_dict(self):
+        """Retourne un dictionnaire de la tentative"""
+        return {
+            'id': self.id,
+            'email': self.email,
+            'ip_address': self.ip_address,
+            'success': self.success,
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
+            'user_id': self.user_id,
+            'failure_reason': self.failure_reason,
+            'method': self.method
+        }
+    
+    def __repr__(self):
+        status = '✓' if self.success else '✗'
+        return f"<LoginLog {self.email} {status} {self.timestamp}>"

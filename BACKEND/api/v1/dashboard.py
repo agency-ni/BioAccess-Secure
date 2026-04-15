@@ -17,8 +17,7 @@ from core.errors import ValidationError
 from api.middlewares.auth_middleware import token_required, admin_required
 
 from models.user import User, LoginLog
-from models.log import AccessLog
-from models.alert import Alert
+from models.log import LogAcces, Alerte
 
 dashboard_bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
 
@@ -37,16 +36,16 @@ def get_kpis():
     today = datetime.utcnow().date()
     tomorrow = today + timedelta(days=1)
     
-    attempts_today = AccessLog.query.filter(
-        AccessLog.timestamp >= today,
-        AccessLog.timestamp < tomorrow
+    attempts_today = LogAcces.query.filter(
+        LogAcces.date_heure >= today,
+        LogAcces.date_heure < tomorrow
     ).count()
     
     # Taux de succès
-    success_today = AccessLog.query.filter(
-        AccessLog.timestamp >= today,
-        AccessLog.timestamp < tomorrow,
-        AccessLog.status == 'success'
+    success_today = LogAcces.query.filter(
+        LogAcces.date_heure >= today,
+        LogAcces.date_heure < tomorrow,
+        LogAcces.statut == 'succes'
     ).count()
     
     success_rate = 0
@@ -54,13 +53,13 @@ def get_kpis():
         success_rate = round((success_today / attempts_today) * 100, 1)
     
     # Alertes non traitées
-    pending_alerts = Alert.query.filter_by(traitee=False).count()
+    pending_alerts = Alerte.query.filter_by(traitee=False).count()
     
     # Variation par rapport à hier
     yesterday = today - timedelta(days=1)
-    attempts_yesterday = AccessLog.query.filter(
-        AccessLog.timestamp >= yesterday,
-        AccessLog.timestamp < today
+    attempts_yesterday = LogAcces.query.filter(
+        LogAcces.date_heure >= yesterday,
+        LogAcces.date_heure < today
     ).count()
     
     variation = 0
@@ -100,15 +99,15 @@ def get_activity():
     for date in dates:
         next_day = date + timedelta(days=1)
         
-        attempts = AccessLog.query.filter(
-            AccessLog.timestamp >= date,
-            AccessLog.timestamp < next_day
+        attempts = LogAcces.query.filter(
+            LogAcces.date_heure >= date,
+            LogAcces.date_heure < next_day
         ).count()
         
-        successes = AccessLog.query.filter(
-            AccessLog.timestamp >= date,
-            AccessLog.timestamp < next_day,
-            AccessLog.status == 'success'
+        successes = LogAcces.query.filter(
+            LogAcces.date_heure >= date,
+            LogAcces.date_heure < next_day,
+            LogAcces.statut == 'succes'
         ).count()
         
         result.append({
@@ -127,8 +126,8 @@ def get_activity():
 @token_required
 def get_recent_alerts():
     """Récupère les 5 dernières alertes"""
-    alerts = Alert.query.order_by(
-        desc(Alert.date_creation)
+    alerts = Alerte.query.order_by(
+        desc(Alerte.date_creation)
     ).limit(5).all()
     
     return [a.to_dict() for a in alerts]
@@ -144,13 +143,13 @@ def get_top_failures():
         User.nom,
         User.prenom,
         User.departement,
-        func.count(AccessLog.id).label('fail_count')
+        func.count(LogAcces.id).label('fail_count')
     ).join(
-        AccessLog,
-        AccessLog.user_id == User.id
+        LogAcces,
+        LogAcces.utilisateur_id == User.id
     ).filter(
-        AccessLog.status == 'failed',
-        AccessLog.timestamp >= thirty_days_ago
+        LogAcces.statut == 'echec',
+        LogAcces.date_heure >= thirty_days_ago
     ).group_by(
         User.id
     ).order_by(

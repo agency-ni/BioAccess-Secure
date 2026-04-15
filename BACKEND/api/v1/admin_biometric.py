@@ -198,6 +198,192 @@ def enroll_new_user():
 
 
 # ============================================================
+# ENROLL FACIAL - Enrôlement facial pour utilisateur existant
+# ============================================================
+
+@admin_biometric_bp.route('/enroll/face', methods=['POST'])
+@token_required
+@admin_required
+def enroll_face():
+    """
+    POST /api/v1/admin/enroll/face
+    Enrôle un utilisateur avec donnée faciale
+    
+    Body:
+        {
+            "user_id": "uuid-of-user",
+            "image_b64": "base64-encoded-jpeg"
+        }
+    """
+    try:
+        data = request.get_json() or {}
+        user_id = data.get('user_id', '').strip()
+        image_b64 = data.get('image_b64', '').strip()
+        
+        # Validation
+        if not user_id or not image_b64:
+            return jsonify({
+                'success': False, 
+                'error': 'user_id et image_b64 obligatoires',
+                'code': 'MISSING_FIELDS'
+            }), 400
+        
+        # Vérifier que l'utilisateur existe
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({
+                'success': False,
+                'error': 'Utilisateur non trouvé',
+                'code': 'USER_NOT_FOUND'
+            }), 404
+        
+        # Enrôler le visage
+        enroll_result = enrollment_service.enroll_face_from_upload(
+            user_id=user_id,
+            image_data=image_b64,
+            label=f"Enrôlement facial admin - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            check_duplicate=True
+        )
+        
+        if not enroll_result.success:
+            return jsonify({
+                'success': False,
+                'error': enroll_result.error or 'Erreur enrôlement facial',
+                'code': 'ENROLLMENT_FAILED'
+            }), 400
+        
+        # Journaliser
+        audit_service.log_action(
+            action='FACE_ENROLLED',
+            user_id=user_id,
+            details={
+                'email': user.email,
+                'enrolled_by': g.user_id,
+                'timestamp': datetime.now().isoformat()
+            }
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Enrôlement facial réussi pour {user.email}',
+            'user_id': user_id,
+            'confidence': enroll_result.confidence if hasattr(enroll_result, 'confidence') else None
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Face enrollment error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur serveur: ' + str(e),
+            'code': 'SERVER_ERROR'
+        }), 500
+
+
+# ============================================================
+# ENROLL VOCAL - Enrôlement vocal pour utilisateur existant
+# ============================================================
+
+@admin_biometric_bp.route('/enroll/voice', methods=['POST'])
+@token_required
+@admin_required
+def enroll_voice():
+    """
+    POST /api/v1/admin/enroll/voice
+    Enrôle un utilisateur avec donnée vocale
+    
+    Body:
+        {
+            "user_id": "uuid-of-user",
+            "audio_b64": "base64-encoded-wav"
+        }
+    """
+    try:
+        data = request.get_json() or {}
+        user_id = data.get('user_id', '').strip()
+        audio_b64 = data.get('audio_b64', '').strip()
+        
+        # Validation
+        if not user_id or not audio_b64:
+            return jsonify({
+                'success': False,
+                'error': 'user_id et audio_b64 obligatoires',
+                'code': 'MISSING_FIELDS'
+            }), 400
+        
+        # Vérifier que l'utilisateur existe
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({
+                'success': False,
+                'error': 'Utilisateur non trouvé',
+                'code': 'USER_NOT_FOUND'
+            }), 404
+        
+        # Enrôler la voix (utiliser BiometricService directement)
+        from services.biometric_service import BiometricService
+        import base64
+        import io
+        import numpy as np
+        import cv2
+        
+        try:
+            # Décoder le base64 audio
+            audio_data = base64.b64decode(audio_b64)
+            
+            # Créer un template vocal
+            vocal_template = BiometricService.process_voice_sample(
+                audio_data=audio_data,
+                user_id=user_id,
+                phrase_text=None
+            )
+            
+            if not vocal_template:
+                return jsonify({
+                    'success': False,
+                    'error': 'Impossible de traiter l\'audio',
+                    'code': 'AUDIO_PROCESSING_FAILED'
+                }), 400
+            
+            # Sauvegarder le template
+            db.session.add(vocal_template)
+            db.session.commit()
+            
+        except Exception as e:
+            logger.error(f"Voice template creation error: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': 'Erreur création template vocal: ' + str(e),
+                'code': 'TEMPLATE_CREATION_FAILED'
+            }), 400
+        
+        # Journaliser
+        audit_service.log_action(
+            action='VOICE_ENROLLED',
+            user_id=user_id,
+            details={
+                'email': user.email,
+                'enrolled_by': g.user_id,
+                'timestamp': datetime.now().isoformat()
+            }
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Enrôlement vocal réussi pour {user.email}',
+            'user_id': user_id,
+            'confidence': enroll_result.confidence if hasattr(enroll_result, 'confidence') else None
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Voice enrollment error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur serveur: ' + str(e),
+            'code': 'SERVER_ERROR'
+        }), 500
+
+
+# ============================================================
 # DESKTOP USERS - Gestion utilisateurs Desktop
 # ============================================================
 

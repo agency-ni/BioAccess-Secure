@@ -93,3 +93,83 @@ class Validators:
             return True
         except:
             return False
+    
+    # ========== VALIDATEURS BIOMÉTRIQUES ==========
+    
+    @staticmethod
+    def validate_base64_image(image_data_b64, max_size_bytes=5 * 1024 * 1024):
+        """
+        Valide une image en base64
+        
+        Args:
+            image_data_b64: Chaîne base64
+            max_size_bytes: Taille max (défaut 5MB)
+        
+        Returns:
+            (is_valid, error_message, decoded_bytes)
+        """
+        import base64
+        
+        if not image_data_b64:
+            return False, "Image manquante", None
+        
+        try:
+            # Décoder
+            image_bytes = base64.b64decode(image_data_b64)
+            
+            # Vérifier la taille
+            if len(image_bytes) > max_size_bytes:
+                size_mb = len(image_bytes) / 1024 / 1024
+                max_mb = max_size_bytes / 1024 / 1024
+                return False, f"Image trop volumineux: {size_mb:.1f}MB (max {max_mb:.1f}MB)", None
+            
+            # Vérifier la signature de fichier (magic bytes)
+            # JPEG: FF D8 FF
+            # PNG: 89 50 4E 47
+            # BMP: 42 4D
+            valid_signatures = [
+                (b'\xFF\xD8\xFF', 'JPEG'),
+                (b'\x89PNG', 'PNG'),
+                (b'BM', 'BMP'),
+                (b'GIF', 'GIF')
+            ]
+            
+            is_image = any(image_bytes.startswith(sig) for sig, _ in valid_signatures)
+            if not is_image:
+                return False, "Format image non valide (JPEG, PNG, BMP, GIF attendus)", None
+            
+            return True, "Valide", image_bytes
+        
+        except base64.binascii.Error:
+            return False, "Format base64 invalide", None
+        except Exception as e:
+            return False, f"Erreur validation image: {str(e)}", None
+    
+    @staticmethod
+    def validate_face_similarity_score(score):
+        """Valide un score de similarité faciale (0.0 - 1.0)"""
+        try:
+            score = float(score)
+            if 0.0 <= score <= 1.0:
+                return True, "OK"
+            else:
+                return False, "Score doit être entre 0.0 et 1.0"
+        except:
+            return False, "Score invalide"
+    
+    @staticmethod
+    def validate_biometric_template(template_data):
+        """Valide un template biométrique"""
+        if not template_data:
+            return False, "Template manquant"
+        
+        if not isinstance(template_data, (list, bytes)):
+            return False, "Template doit être un array ou bytes"
+        
+        if isinstance(template_data, list):
+            if len(template_data) == 0:
+                return False, "Template vide"
+            if len(template_data) > 1000000:  # Limite raisonnable
+                return False, "Template trop volumineux"
+        
+        return True, "Valide"

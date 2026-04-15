@@ -209,6 +209,70 @@ def demo_full_flow():
     return True
 
 
+def demo_apiresponse_format():
+    """Demo: Nouveau format APIResponse standardisé"""
+    print("\n" + "="*60)
+    print("DEMO 5: New APIResponse Format")
+    print("="*60 + "\n")
+    
+    if not BiometricAPI.is_healthy():
+        print("⚠️  API non accessible - demo skipped")
+        return None
+    
+    print("📋 Example: Handling new standardized API responses\n")
+    
+    print("Backend now returns standardized responses:")
+    print("""
+    ✨ NEW FORMAT:
+    {
+        "status": "success",
+        "code": 200,
+        "timestamp": "2026-04-12T10:30:45Z",
+        "message": "Operation successful",
+        "data": {
+            "token": "eyJhbGciOiJIUzUxMiIs...",
+            "user_id": "user123",
+            "role": "admin"
+        }
+    }
+    
+    LEGACY FORMAT (still supported):
+    {
+        "success": true,
+        "token": "eyJhbGciOiJIUzUxMiIs...",
+        "user_id": "user123"
+    }
+    """)
+    
+    print("\n✅ Client handles BOTH formats automatically:\n")
+    
+    print("""
+    from biometric import BiometricAPI
+    
+    # This works with BOTH old and new backend formats
+    response = BiometricAPI.face_verify(
+        email="admin@example.com",
+        image_base64="..."
+    )
+    
+    # Standard response object (same regardless of backend format)
+    if response.success:
+        print(f"✅ Success: {response.status_code}")
+        print(f"   Token: {response.data.get('token')}")
+        print(f"   User ID: {response.data.get('user_id')}")
+    else:
+        print(f"❌ Error: {response.error_message}")
+    """)
+    
+    print("✅ Benefits:")
+    print("   • Backward compatible with legacy backends")
+    print("   • Automatic format detection")
+    print("   • Standardized error handling")
+    print("   • Consistent across all endpoints")
+    
+    return True
+
+
 def main():
     """Menu principal"""
     print("\n" + "="*60)
@@ -231,6 +295,7 @@ def main():
         ("Cache local", demo_cache),
         ("API communication", demo_api),
         ("Flux complet", demo_full_flow),
+        ("APIResponse format (NEW)", demo_apiresponse_format),
     ]
     
     print("Demos disponibles:")
@@ -240,7 +305,7 @@ def main():
     
     while True:
         try:
-            choice = input("\nSélectionnez une demo (0-4): ").strip()
+            choice = input("\nSélectionnez une demo (0-5): ").strip()
             choice_num = int(choice)
             
             if choice_num == 0:

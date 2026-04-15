@@ -240,12 +240,25 @@ async function authenticateWithFace(imageBase64, mode = 'live') {
             timeout: 30000
         });
 
-        if (response.data.success) {
+        // Normaliser la réponse au nouveau format APIResponse
+        let authData = response.data;
+        
+        // Nouveau format: { status: 'success', data: { access_token, user_id, user_email, user_name } }
+        if (authData.status === 'success' && authData.data) {
+            authData = authData.data;
+        }
+        // Ancien format: { success: true, token, user_id, user_email, user_name }
+        else if (!authData.success && authData.data) {
+            authData = authData.data;
+        }
+        
+        if (authData.success !== false && (authData.token || authData.access_token)) {
             // Store auth data
-            localStorage.setItem('token', response.data.token);
-            localStorage.setItem('user_id', response.data.user_id);
-            localStorage.setItem('user_email', response.data.user_email);
-            localStorage.setItem('user_name', response.data.user_name);
+            const token = authData.access_token || authData.token;
+            localStorage.setItem('token', token);
+            localStorage.setItem('user_id', authData.user_id);
+            localStorage.setItem('user_email', authData.user_email);
+            localStorage.setItem('user_name', authData.user_name);
 
             // Show success
             showSuccess();
@@ -260,12 +273,12 @@ async function authenticateWithFace(imageBase64, mode = 'live') {
             // Authentication failed - log error for admin
             await logAuthenticationError({
                 error_type: 'FACE_NOT_RECOGNIZED',
-                message: response.data.message || 'Visage non reconnu',
+                message: authData.message || 'Visage non reconnu',
                 auth_type: authType,
                 image_base64: imageBase64.substring(0, 50) // Just header for size
             });
 
-            showError(response.data.message || 'Visage non reconnu. Réessayez.');
+            showError(authData.message || 'Visage non reconnu. Réessayez.');
         }
 
     } catch (error) {
@@ -311,7 +324,13 @@ async function sendVerificationCode() {
             auth_type: isDesktopClient() ? 'desktop' : 'web'
         });
 
-        if (response.data.success) {
+        // Normaliser la réponse au nouveau format APIResponse
+        let responseData = response.data;
+        if (response.data.status === 'success' && response.data.data) {
+            responseData = response.data.data;
+        }
+
+        if (responseData.success !== false || response.status === 200) {
             // Show code input section
             document.getElementById('codeSection').classList.remove('hidden');
             document.getElementById('codeInput').focus();
@@ -319,7 +338,7 @@ async function sendVerificationCode() {
             // Log this attempt
             logAuthAttempt('email_code_sent', email, 'success');
         } else {
-            showError(response.data.message || 'Erreur lors de l\'envoi du code');
+            showError(responseData.message || 'Erreur lors de l\'envoi du code');
         }
 
     } catch (error) {
@@ -353,10 +372,17 @@ async function verifyCode() {
             auth_type: isDesktopClient() ? 'desktop' : 'web'
         });
 
-        if (response.data.success) {
-            localStorage.setItem('token', response.data.token);
-            localStorage.setItem('user_id', response.data.user_id);
-            localStorage.setItem('user_email', response.data.user_email);
+        // Normaliser la réponse au nouveau format APIResponse
+        let responseData = response.data;
+        if (response.data.status === 'success' && response.data.data) {
+            responseData = response.data.data;
+        }
+
+        if (responseData.success !== false || response.status === 200) {
+            const token = responseData.access_token || responseData.token;
+            localStorage.setItem('token', token);
+            localStorage.setItem('user_id', responseData.user_id);
+            localStorage.setItem('user_email', responseData.user_email);
 
             logAuthAttempt('email_verification', email, 'success');
             showSuccess();

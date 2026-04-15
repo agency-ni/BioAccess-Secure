@@ -18,6 +18,27 @@ let liveMode = 'enroll'; // 'enroll' ou 'modal'
 // INITIALIZATION
 // ============================================
 
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+// Normalise les réponses au nouveau format APIResponse
+function normalizeResponse(data) {
+    // Si déjà au nouveau format, retourner tel quel
+    if (data.status && (data.status === 'success' || data.status === 'error')) {
+        return data;
+    }
+    
+    // Sinon, convertir ancien format vers nouveau format pour backward compatibility
+    // Ancien format: { success, ... }
+    return {
+        status: data.success !== false ? 'success' : 'error',
+        code: data.code || 200,
+        message: data.message || (data.success ? 'Succès' : 'Erreur'),
+        data: data.data || data  // Le reste des données
+    };
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     loadAdminDashboard();
     setupTabNavigation();
@@ -34,14 +55,20 @@ async function loadAdminDashboard() {
             headers: { Authorization: `Bearer ${TOKEN}` }
         });
 
-        if (response.data.success) {
-            document.getElementById('stat-users').textContent = response.data.stats.total_users || '--';
-            document.getElementById('stat-auth').textContent = response.data.stats.auth_24h || '--';
-            document.getElementById('stat-errors').textContent = response.data.stats.errors_24h || '--';
+        const normalizedData = normalizeResponse(response.data);
+        const data = normalizedData.status === 'success' ? 
+            (normalizedData.data || normalizedData) : 
+            normalizedData;
+
+        if (normalizedData.status === 'success') {
+            const stats = data.stats || data;
+            document.getElementById('stat-users').textContent = stats.total_users || '--';
+            document.getElementById('stat-auth').textContent = stats.auth_24h || '--';
+            document.getElementById('stat-errors').textContent = stats.errors_24h || '--';
             document.getElementById('stat-rate').textContent = 
-                (response.data.stats.success_rate || 0).toFixed(1) + '%';
+                (stats.success_rate || 0).toFixed(1) + '%';
             
-            document.getElementById('adminName').textContent = response.data.admin_name || 'Admin';
+            document.getElementById('adminName').textContent = data.admin_name || 'Admin';
         }
     } catch (error) {
         console.error('Erreur chargement dashboard:', error);
@@ -269,8 +296,13 @@ async function analyzeImageQuality(imageBase64) {
             headers: { Authorization: `Bearer ${TOKEN}` }
         });
 
-        if (response.data.success) {
-            const quality = Math.round(response.data.quality_score * 100);
+        const normalizedData = normalizeResponse(response.data);
+        const data = normalizedData.status === 'success' ? 
+            (normalizedData.data || normalizedData) : 
+            normalizedData;
+
+        if (normalizedData.status === 'success') {
+            const quality = Math.round(data.quality_score * 100);
             document.getElementById('qualityPercent').textContent = quality + '%';
             document.getElementById('qualityBar').style.width = quality + '%';
             document.getElementById('qualityStatus').classList.remove('hidden');
@@ -337,7 +369,12 @@ async function submitEnrollment() {
             headers: { Authorization: `Bearer ${TOKEN}` }
         });
 
-        if (response.data.success) {
+        const normalizedData = normalizeResponse(response.data);
+        const data = normalizedData.status === 'success' ? 
+            (normalizedData.data || normalizedData) : 
+            normalizedData;
+
+        if (normalizedData.status === 'success') {
             showMessage('enrollmentResult', 
                 `Utilisateur "${email}" enregistré avec succès!`, 'success');
             
@@ -354,7 +391,7 @@ async function submitEnrollment() {
                 loadDesktopUsers(); // Refresh users list
             }, 2000);
         } else {
-            showMessage('enrollmentResult', response.data.message || 'Erreur lors de l\'enregistrement', 'error');
+            showMessage('enrollmentResult', normalizedData.message || 'Erreur lors de l\'enregistrement', 'error');
         }
     } catch (error) {
         const message = error.response?.data?.message || 'Erreur serveur';
@@ -379,8 +416,13 @@ async function loadDesktopUsers() {
             headers: { Authorization: `Bearer ${TOKEN}` }
         });
 
-        if (response.data.success) {
-            renderDesktopUsersTable(response.data.users || []);
+        const normalizedData = normalizeResponse(response.data);
+        const data = normalizedData.status === 'success' ? 
+            (normalizedData.data || normalizedData) : 
+            normalizedData;
+
+        if (normalizedData.status === 'success') {
+            renderDesktopUsersTable(data.users || []);
         }
     } catch (error) {
         console.error('Erreur chargement desktop users:', error);
@@ -456,9 +498,13 @@ async function removeUserBiometric(userId) {
             headers: { Authorization: `Bearer ${TOKEN}` }
         });
 
-        if (response.data.success) {
+        const normalizedData = normalizeResponse(response.data);
+
+        if (normalizedData.status === 'success') {
             alert('Données biométriques supprimées');
             loadDesktopUsers();
+        } else {
+            alert(normalizedData.message || 'Erreur lors de la suppression');
         }
     } catch (error) {
         alert('Erreur lors de la suppression');
@@ -518,14 +564,19 @@ async function loadAuthLogs() {
             headers: { Authorization: `Bearer ${TOKEN}` }
         });
 
-        if (response.data.success) {
-            renderLogsTable(response.data.logs || []);
+        const normalizedData = normalizeResponse(response.data);
+        const data = normalizedData.status === 'success' ? 
+            (normalizedData.data || normalizedData) : 
+            normalizedData;
+
+        if (normalizedData.status === 'success') {
+            renderLogsTable(data.logs || []);
             
             // Update pagination
             document.getElementById('prevPageBtn').disabled = currentLogsPage === 0;
-            document.getElementById('nextPageBtn').disabled = !response.data.has_next;
+            document.getElementById('nextPageBtn').disabled = !data.has_next;
             document.getElementById('paginationInfo').textContent = 
-                `Page ${currentLogsPage + 1} / ${response.data.total_pages || 1}`;
+                `Page ${currentLogsPage + 1} / ${data.total_pages || 1}`;
         }
     } catch (error) {
         console.error('Erreur chargement logs:', error);
@@ -590,8 +641,13 @@ async function loadErrorAlerts() {
             headers: { Authorization: `Bearer ${TOKEN}` }
         });
 
-        if (response.data.success) {
-            renderErrorAlerts(response.data.critical_errors || [], response.data.recent_errors || []);
+        const normalizedData = normalizeResponse(response.data);
+        const data = normalizedData.status === 'success' ? 
+            (normalizedData.data || normalizedData) : 
+            normalizedData;
+
+        if (normalizedData.status === 'success') {
+            renderErrorAlerts(data.critical_errors || [], data.recent_errors || []);
         }
     } catch (error) {
         console.error('Erreur chargement alertes:', error);
@@ -662,8 +718,11 @@ async function alertUserError(errorId) {
         const response = await axios.post(`${API_BASE}/admin/biometric/alert-error`, { error_id: errorId }, {
             headers: { Authorization: `Bearer ${TOKEN}` }
         });
-        if (response.data.success) {
+        const normalizedData = normalizeResponse(response.data);
+        if (normalizedData.status === 'success') {
             alert('Alerte envoyée à l\'utilisateur');
+        } else {
+            alert(normalizedData.message || 'Erreur lors de l\'envoi de l\'alerte');
         }
     } catch (error) {
         alert('Erreur lors de l\'envoi de l\'alerte');
@@ -675,8 +734,11 @@ async function resolveError(errorId) {
         const response = await axios.post(`${API_BASE}/admin/biometric/resolve-error`, { error_id: errorId }, {
             headers: { Authorization: `Bearer ${TOKEN}` }
         });
-        if (response.data.success) {
+        const normalizedData = normalizeResponse(response.data);
+        if (normalizedData.status === 'success') {
             loadErrorAlerts();
+        } else {
+            alert(normalizedData.message || 'Erreur lors de la résolution');
         }
     } catch (error) {
         alert('Erreur lors de la résolution');
@@ -700,8 +762,13 @@ async function loadAnalytics() {
             headers: { Authorization: `Bearer ${TOKEN}` }
         });
 
-        if (response.data.success) {
-            renderAnalytics(response.data);
+        const normalizedData = normalizeResponse(response.data);
+        const data = normalizedData.status === 'success' ? 
+            (normalizedData.data || normalizedData) : 
+            normalizedData;
+
+        if (normalizedData.status === 'success') {
+            renderAnalytics(data);
         }
     } catch (error) {
         console.error('Erreur chargement analytics:', error);

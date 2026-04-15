@@ -426,8 +426,8 @@
                         </div>
                     </div>
                     
-                    <!-- LIGNE 2: Utilisateur, Type accès, Statut, IP, Boutons -->
-                    <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                    <!-- LIGNE 2: Utilisateur, Type accès, Source, Statut, IP, Boutons -->
+                    <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
                         <!-- Utilisateur -->
                         <div>
                             <label class="block text-xs text-gray-500 mb-2 font-semibold">Utilisateur</label>
@@ -446,6 +446,15 @@
                                 <option value="Porte">Porte</option>
                             </select>
                         </div>
+                        <!-- Source -->
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-2 font-semibold">Source</label>
+                            <select id="filterSource" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="">Tous</option>
+                                <option value="DESKTOP">🟦 DESKTOP</option>
+                                <option value="DOOR">🟩 DOOR</option>
+                            </select>
+                        </div>
                         <!-- Statut -->
                         <div>
                             <label class="block text-xs text-gray-500 mb-2 font-semibold">Statut</label>
@@ -461,12 +470,12 @@
                             <input type="text" id="filterIP" placeholder="192.168.1.x" class="w-full p-2 border rounded-lg text-sm">
                         </div>
                         <!-- Boutons d'action -->
-                        <div class="flex gap-3 items-end">
-                            <button id="filterBtn" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition font-medium">
-                                <i class="fas fa-search mr-2"></i>Filtrer
+                        <div class="flex gap-2 items-end">
+                            <button id="filterBtn" class="flex-1 bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-indigo-700 transition font-medium">
+                                <i class="fas fa-search mr-1"></i>Filtrer
                             </button>
-                            <button id="resetBtn" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-300 transition font-medium">
-                                <i class="fas fa-redo mr-2"></i>Réinitialiser
+                            <button id="resetBtn" class="flex-1 bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-300 transition font-medium">
+                                <i class="fas fa-redo mr-1"></i>Réinit
                             </button>
                         </div>
                     </div>
@@ -480,6 +489,7 @@
                                 <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Horodatage</th>
                                 <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Utilisateur</th>
                                 <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Source</th>
                                 <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
                                 <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">Raison</th>
                                 <th class="p-4 text-left text-xs font-medium text-gray-500 uppercase">IP</th>
@@ -522,11 +532,11 @@
     <script>
         // ========== LOGIQUE FILTRES LOGS ==========
         const logs = [
-            { timestamp: '10/03/2026 09:34', user: 'Jean Dupont', type: 'Poste', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.15', hash: 'a3f2e8b9c1d4e5f6' },
-            { timestamp: '10/03/2026 08:15', user: 'Claire Martin', type: 'Porte', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.20', hash: 'b4e3f9c2d5e6f7a1' },
-            { timestamp: '10/03/2026 07:45', user: 'Jean Dupont', type: 'Poste', status: 'Échec', reason: 'Reconnaissance échouée', ip: '192.168.1.15', hash: 'c5f4g0d3e6f7g8b2' },
-            { timestamp: '09/03/2026 14:20', user: 'Claire Martin', type: 'Porte', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.20', hash: 'd6g5h1e4f7g8h9c3' },
-            { timestamp: '09/03/2026 12:00', user: 'Jean Dupont', type: 'Poste', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.15', hash: 'e7h6i2f5g8h9i0d4' },
+            { timestamp: '10/03/2026 09:34', user: 'Jean Dupont', type: 'Poste', source: 'DESKTOP', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.15', hash: 'a3f2e8b9c1d4e5f6' },
+            { timestamp: '10/03/2026 08:15', user: 'Claire Martin', type: 'Porte', source: 'DOOR', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.20', hash: 'b4e3f9c2d5e6f7a1' },
+            { timestamp: '10/03/2026 07:45', user: 'Jean Dupont', type: 'Poste', source: 'DESKTOP', status: 'Échec', reason: 'Reconnaissance échouée', ip: '192.168.1.15', hash: 'c5f4g0d3e6f7g8b2' },
+            { timestamp: '09/03/2026 14:20', user: 'Claire Martin', type: 'Porte', source: 'DOOR', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.20', hash: 'd6g5h1e4f7g8h9c3' },
+            { timestamp: '09/03/2026 12:00', user: 'Jean Dupont', type: 'Poste', source: 'DESKTOP', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.15', hash: 'e7h6i2f5g8h9i0d4' },
         ];
 
         function isValidDateRange() {
@@ -578,6 +588,7 @@
             const dateTo = document.getElementById('dateTo').value;
             const filterUser = document.getElementById('filterUser').value.trim();
             const filterType = document.getElementById('filterType').value.trim();
+            const filterSource = document.getElementById('filterSource').value.trim();
             const filterStatus = document.getElementById('filterStatus').value.trim();
             const filterIP = document.getElementById('filterIP').value.trim().toLowerCase();
 
@@ -585,10 +596,11 @@
                 const dateMatch = isDateInRange(log.timestamp, dateFrom, dateTo);
                 const userMatch = !filterUser || log.user === filterUser;
                 const typeMatch = !filterType || log.type === filterType;
+                const sourceMatch = !filterSource || log.source === filterSource;
                 const statusMatch = !filterStatus || log.status === filterStatus;
                 const ipMatch = !filterIP || log.ip.toLowerCase().includes(filterIP);
 
-                return dateMatch && userMatch && typeMatch && statusMatch && ipMatch;
+                return dateMatch && userMatch && typeMatch && sourceMatch && statusMatch && ipMatch;
             });
 
             renderLogs(filtered);
@@ -619,10 +631,19 @@
                     statusClass = 'font-semibold status-badge failure';
                 }
                 
+                // Badge source avec couleurs distinctes
+                let sourceBadge = '';
+                if (log.source === 'DESKTOP') {
+                    sourceBadge = '<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium">🟦 DESKTOP</span>';
+                } else if (log.source === 'DOOR') {
+                    sourceBadge = '<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium">🟩 DOOR</span>';
+                }
+                
                 row.innerHTML = `
                     <td class="p-4">${log.timestamp}</td>
                     <td class="p-4">${log.user}</td>
                     <td class="p-4"><span class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium">${log.type}</span></td>
+                    <td class="p-4">${sourceBadge}</td>
                     <td class="p-4"><span style="background: ${statusBg}; color: ${statusColor};" class="px-3 py-1 rounded text-xs ${statusClass}">${log.status}</span></td>
                     <td class="p-4 text-gray-600">${log.reason}</td>
                     <td class="p-4 font-mono text-xs">${log.ip}</td>
@@ -652,10 +673,11 @@
                         timestamp: cells[0].textContent.trim(),
                         user: cells[1].textContent.trim(),
                         type: cells[2].textContent.trim(),
-                        status: cells[3].textContent.trim(),
-                        reason: cells[4].textContent.trim(),
-                        ip: cells[5].textContent.trim(),
-                        hash: cells[6].textContent.trim()
+                        source: cells[3].textContent.trim(),
+                        status: cells[4].textContent.trim(),
+                        reason: cells[5].textContent.trim(),
+                        ip: cells[6].textContent.trim(),
+                        hash: cells[7].textContent.trim()
                     });
                 }
             });
@@ -696,9 +718,10 @@
             doc.setFont(undefined, 'bold');
             doc.text('Timestamp', 10, yPos);
             doc.text('Utilisateur', 40, yPos);
-            doc.text('Type', 80, yPos);
-            doc.text('Statut', 105, yPos);
-            doc.text('IP', 140, yPos);
+            doc.text('Type', 75, yPos);
+            doc.text('Source', 100, yPos);
+            doc.text('Statut', 125, yPos);
+            doc.text('IP', 155, yPos);
             
             doc.setFont(undefined, 'normal');
             yPos += 7;
@@ -711,9 +734,10 @@
                 doc.setFontSize(8);
                 doc.text(log.timestamp, 10, yPos);
                 doc.text(log.user.substring(0, 15), 40, yPos);
-                doc.text(log.type, 80, yPos);
-                doc.text(log.status, 105, yPos);
-                doc.text(log.ip, 140, yPos);
+                doc.text(log.type, 75, yPos);
+                doc.text(log.source, 100, yPos);
+                doc.text(log.status, 125, yPos);
+                doc.text(log.ip, 155, yPos);
                 yPos += 6;
             });
             
@@ -725,15 +749,16 @@
             const wb = XLSX.utils.book_new();
             
             const excelData = [
-                ['Timestamp', 'Utilisateur', 'Type', 'Statut', 'Raison', 'IP', 'Hash'],
-                ...logsData.map(l => [l.timestamp, l.user, l.type, l.status, l.reason, l.ip, l.hash])
+                ['Timestamp', 'Utilisateur', 'Type', 'Source', 'Statut', 'Raison', 'IP', 'Hash'],
+                ...logsData.map(l => [l.timestamp, l.user, l.type, l.source, l.status, l.reason, l.ip, l.hash])
             ];
             
             const ws = XLSX.utils.aoa_to_sheet(excelData);
             ws['!cols'] = [
                 { wch: 20 },
                 { wch: 20 },
-                { wch: 15 },
+                { wch: 12 },
+                { wch: 10 },
                 { wch: 12 },
                 { wch: 25 },
                 { wch: 15 },
@@ -748,10 +773,10 @@
         function exportLogsToCSV(logsData, filename) {
             let csv = 'Logs BioAccess Secure\n';
             csv += `Généré le;${new Date().toLocaleString('fr-FR')}\n\n`;
-            csv += 'Timestamp;Utilisateur;Type;Statut;Raison;IP;Hash\n';
+            csv += 'Timestamp;Utilisateur;Type;Source;Statut;Raison;IP;Hash\n';
             
             logsData.forEach(log => {
-                csv += `${log.timestamp};${log.user};${log.type};${log.status};${log.reason};${log.ip};${log.hash}\n`;
+                csv += `${log.timestamp};${log.user};${log.type};${log.source};${log.status};${log.reason};${log.ip};${log.hash}\n`;
             });
             
             downloadFile(csv, `${filename}.csv`, 'text/csv;charset=utf-8;');
@@ -777,6 +802,7 @@
         document.getElementById('dateTo').addEventListener('change', applyFilters);
         document.getElementById('filterUser').addEventListener('change', applyFilters);
         document.getElementById('filterType').addEventListener('change', applyFilters);
+        document.getElementById('filterSource').addEventListener('change', applyFilters);
         document.getElementById('filterStatus').addEventListener('change', applyFilters);
         document.getElementById('filterIP').addEventListener('input', applyFilters);
 
@@ -786,6 +812,7 @@
             document.getElementById('dateTo').value = '';
             document.getElementById('filterUser').value = '';
             document.getElementById('filterType').value = '';
+            document.getElementById('filterSource').value = '';
             document.getElementById('filterStatus').value = '';
             document.getElementById('filterIP').value = '';
             renderLogs(logs);

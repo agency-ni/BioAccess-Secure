@@ -1,0 +1,24 @@
+[Unit]
+Description=BioLock Door System - Authentification biométrique faciale et vocale
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/pi/door-system/main.py
+WorkingDirectory=/home/pi/door-system
+Restart=always
+RestartSec=5
+User=pi
+StandardOutput=journal
+StandardError=journal
+StandardInput=tty-force
+Environment="PYTHONUNBUFFERED=1"
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/pi/.local/bin"
+
+# Permissions GPIO
+PermissionsStartOnly=true
+ExecStartPre=+/bin/chmod 666 /dev/gpiomem
+
+[Install]
+WantedBy=multi-user.target

@@ -10,9 +10,11 @@ from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 from flask_compress import Compress
 from prometheus_flask_exporter import PrometheusMetrics
+from flasgger import Flasgger
 
 # Configuration
 from config import config_by_name
+from openapi import OPENAPI_SPEC
 
 # Core
 from core.database import db, init_db, health_check
@@ -21,16 +23,18 @@ from core.logger import setup_logger
 from core.errors import register_error_handlers
 from core.cache import init_cache
 from core.queue import init_queue
+from core.sentry import SentryConfig, SentryAlerting
 
 # Middlewares
 from api.middlewares.rate_limit import limiter, init_rate_limiter
 from api.middlewares.security_headers import SecurityHeadersMiddleware
 from api.middlewares.audit import AuditMiddleware
+from api.middlewares.sentry_middleware import setup_sentry_middleware
 
 # Blueprints
 from api.v1 import (
     auth_bp, users_bp, logs_bp, alerts_bp,
-    dashboard_bp, biometric_bp, access_bp, audit_bp, facial_bp
+    dashboard_bp, biometric_bp, access_bp, audit_bp, facial_bp, health_bp
 )
 
 # Utils
@@ -79,6 +83,22 @@ def create_app(config_name=None):
     metrics = PrometheusMetrics(app, path='/metrics')
     metrics.info('bioaccess_info', 'BioAccess Secure API', version='2.0.0')
     
+    # Monitoring Sentry (Error Tracking & Alerting)
+    SentryConfig.init_sentry(app)
+    
+    # Documentation API OpenAPI/Swagger
+    swagger = Flasgger(
+        app,
+        spec=OPENAPI_SPEC,
+        title='BioAccess Secure API',
+        version='2.0.0',
+        uiversion=3,
+        swagger_ui_path='/api/docs',
+        swagger_ui_bundle_js='//cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui-bundle.js',
+        swagger_ui_standalone_preset_js='//cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui-standalone-preset.js',
+        swagger_css='//cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui.css',
+    )
+    
     # ============================================
     # MIDDLEWARES PERSONNALISÉS
     # ============================================
@@ -88,6 +108,9 @@ def create_app(config_name=None):
     
     # Audit logging
     app.wsgi_app = AuditMiddleware(app.wsgi_app, app.config)
+    
+    # Sentry monitoring (Error tracking & alerting)
+    setup_sentry_middleware(app, app.config)
     
     # ============================================
     # LOGGING
@@ -189,6 +212,7 @@ def create_app(config_name=None):
     
     api_prefix = app.config['API_PREFIX']
     
+    app.register_blueprint(health_bp, url_prefix=f"{api_prefix}")
     app.register_blueprint(auth_bp, url_prefix=f"{api_prefix}/auth")
     app.register_blueprint(facial_bp, url_prefix=f"{api_prefix}/facial")
     app.register_blueprint(users_bp, url_prefix=f"{api_prefix}/users")

@@ -25,6 +25,9 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%234f46e5'/%3E%3Cpath d='M30 40 L45 70 L60 40' stroke='white' stroke-width='8' fill='none' stroke-linecap='round' /%3E%3Ccircle cx='35' cy='35' r='6' fill='white'/%3E%3Ccircle cx='65' cy='35' r='6' fill='white'/%3E%3C/svg%3E">
     
+    <!-- Configuration Frontend (DOIT être chargé avant les autres scripts) -->
+    <script src="config.js"></script>
+    
     <style>
         * {
             font-family: 'Inter', sans-serif;
@@ -536,15 +539,37 @@
 
     <script>
         // === CONFIGURATION GOOGLE OAUTH ===
-        // Charger depuis les variables d'environnement ou utiliser placeholder
-        const GOOGLE_CLIENT_ID = window.CONFIG?.GOOGLE_CLIENT_ID || (
-            typeof process !== 'undefined' && process.env.REACT_APP_GOOGLE_CLIENT_ID 
-                ? process.env.REACT_APP_GOOGLE_CLIENT_ID 
-                : 'VOTRE_CLIENT_ID_GOOGLE.apps.googleusercontent.com'
-        );
+        const GOOGLE_CLIENT_ID = window.CONFIG?.GOOGLE_CLIENT_ID;
+        
+        // Vérifier que le Client ID est configuré
+        function isGoogleConfigured() {
+            if (!GOOGLE_CLIENT_ID) return false;
+            if (GOOGLE_CLIENT_ID.includes('YOUR_CLIENT_ID_HERE')) return false;
+            if (GOOGLE_CLIENT_ID.includes('VOTRE_CLIENT_ID')) return false;
+            return GOOGLE_CLIENT_ID.length > 10;
+        }
         
         // Initialisation de Google Identity Services
         window.onload = function() {
+            const googleContainer = document.getElementById('googleButtonContainer');
+            
+            if (!isGoogleConfigured()) {
+                // Client ID non configuré - afficher message d'erreur
+                googleContainer.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm">
+                        <p class="font-semibold text-red-700 mb-2">⚠️ Authentification Google non configurée</p>
+                        <p class="text-red-600 text-xs mb-2">Pour activer Google Sign-In:</p>
+                        <ol class="text-red-600 text-xs list-decimal list-inside space-y-1">
+                            <li>Aller sur <a href="https://console.cloud.google.com/" target="_blank" class="underline">Google Cloud Console</a></li>
+                            <li>Créer une application OAuth 2.0</li>
+                            <li>Copier le Client ID</li>
+                            <li>Éditer <code>FRONTEND/config.js</code> et <code>BACKEND/.env</code></li>
+                        </ol>
+                    </div>
+                `;
+                return;
+            }
+            
             if (typeof google !== 'undefined' && google.accounts) {
                 google.accounts.id.initialize({
                     client_id: GOOGLE_CLIENT_ID,
@@ -555,7 +580,7 @@
                 
                 // Rendre le bouton Google
                 google.accounts.id.renderButton(
-                    document.getElementById('googleButtonContainer'),
+                    googleContainer,
                     {
                         type: 'standard',
                         theme: 'outline',
@@ -568,12 +593,12 @@
                 );
             } else {
                 // Fallback si le script Google ne charge pas
-                document.getElementById('googleButtonContainer').innerHTML = `
+                googleContainer.innerHTML = `
                     <button type="button" 
                             onclick="simulateGoogleLogin()"
                             class="w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-3 shadow-sm">
                         <img src="https://www.google.com/favicon.ico" alt="Google" class="w-5 h-5">
-                        <span>Continuer avec Google (simulé)</span>
+                        <span>Continuer avec Google (fallback)</span>
                     </button>
                 `;
             }
@@ -631,21 +656,34 @@
                 .then(data => {
                     console.log('Données reçues:', data);
                     
-                    if (data.success && data.token) {
+                    // Nouveau format APIResponse: { status, code, message, data: { access_token, token_type, user } }
+                    if (data.status === 'success' && data.data) {
                         // Connexion réussie
                         console.log('✓ Authentification réussie');
-                        sessionStorage.setItem('token', data.token);
-                        if (data.refresh_token) {
-                            sessionStorage.setItem('refresh_token', data.refresh_token);
+                        const accessToken = data.data.access_token || data.data.token;
+                        sessionStorage.setItem('token', accessToken);
+                        if (data.data.refresh_token) {
+                            sessionStorage.setItem('refresh_token', data.data.refresh_token);
                         }
-                        if (data.user) {
-                            sessionStorage.setItem('user', btoa(JSON.stringify(data.user)));
+                        if (data.data.user) {
+                            sessionStorage.setItem('user', btoa(JSON.stringify(data.data.user)));
                         }
                         window.location.href = 'dashboard.html';
-                    } else if (data.error) {
-                        throw new Error(data.error);
                     } else {
-                        throw new Error(data.message || 'Authentification échouée');
+                        // Fallback ancien format pour compatibilité
+                        if (data.success && data.token) {
+                            console.log('✓ Authentification réussie (ancien format)');
+                            sessionStorage.setItem('token', data.token);
+                            if (data.refresh_token) {
+                                sessionStorage.setItem('refresh_token', data.refresh_token);
+                            }
+                            if (data.user) {
+                                sessionStorage.setItem('user', btoa(JSON.stringify(data.user)));
+                            }
+                            window.location.href = 'dashboard.html';
+                        } else {
+                            throw new Error(data.message || data.error || 'Authentification échouée');
+                        }
                     }
                 })
                 .catch(error => {
@@ -820,44 +858,78 @@
             loginBtn.innerHTML = '<div class="spinner mr-2"></div> Connexion...';
             
             try {
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Appel API au backend
+                const response = await fetch(`${window.API_URL || 'http://localhost:5000/api'}/v1/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password,
+                        remember: document.getElementById('remember').checked
+                    })
+                });
                 
-                if (email === 'admin@bioaccess.com' && password === 'admin123') {
+                const data = await response.json();
+                console.log('Réponse login:', data);
+                
+                if (!response.ok) {
+                    throw new Error(data.message || data.error || 'Authentification échouée');
+                }
+                
+                // Nouveau format APIResponse: { status, code, message, data: { access_token, refresh_token, user } }
+                if (data.status === 'success' && data.data) {
                     successMsg.classList.remove('hidden');
                     errorMsg.classList.add('hidden');
                     
-                    sessionStorage.setItem('token', btoa('demo-token-' + Date.now()));
+                    const accessToken = data.data.access_token || data.data.token;
+                    sessionStorage.setItem('token', accessToken);
                     
-                    const userData = {
-                        nom: 'Admin',
-                        prenom: 'Système',
-                        email: email,
-                        role: 'super_admin',
-                        exp: Date.now() + 3600000
-                    };
-                    sessionStorage.setItem('user', btoa(JSON.stringify(userData)));
+                    if (data.data.refresh_token) {
+                        sessionStorage.setItem('refresh_token', data.data.refresh_token);
+                    }
+                    if (data.data.user) {
+                        sessionStorage.setItem('user', btoa(JSON.stringify(data.data.user)));
+                    }
                     
                     setTimeout(() => {
                         window.location.href = 'dashboard.html';
-                    }, 1500);
+                    }, 1000);
                 } else {
-                    errorText.textContent = 'Email ou mot de passe incorrect';
-                    errorMsg.classList.remove('hidden');
-                    successMsg.classList.add('hidden');
-                    
-                    loginBtn.disabled = false;
-                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
-                    
-                    setTimeout(() => {
+                    // Fallback ancien format pour compatibilité
+                    if (data.success && data.token) {
+                        successMsg.classList.remove('hidden');
                         errorMsg.classList.add('hidden');
-                    }, 3000);
+                        
+                        sessionStorage.setItem('token', data.token);
+                        if (data.refresh_token) {
+                            sessionStorage.setItem('refresh_token', data.refresh_token);
+                        }
+                        if (data.user) {
+                            sessionStorage.setItem('user', btoa(JSON.stringify(data.user)));
+                        }
+                        
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.html';
+                        }, 1000);
+                    } else {
+                        throw new Error(data.message || 'Authentification échouée');
+                    }
                 }
             } catch (error) {
                 console.error('Erreur de connexion:', error);
-                errorText.textContent = 'Erreur réseau. Veuillez réessayer.';
+                errorText.textContent = error.message || 'Erreur réseau. Veuillez réessayer.';
                 errorMsg.classList.remove('hidden');
+                successMsg.classList.add('hidden');
+                
                 loginBtn.disabled = false;
                 loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
+                
+                setTimeout(() => {
+                    errorMsg.classList.add('hidden');
+                }, 5000);
             }
         });
         

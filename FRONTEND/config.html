@@ -345,12 +345,12 @@
                         
                         <div>
                             <label class="block text-sm font-medium mb-1">Tentatives max avant blocage</label>
-                            <input type="number" value="3" min="1" max="10" class="w-24 p-2 border rounded-lg">
+                            <input type="number" id="maxAttempts" value="3" min="1" max="10" class="w-24 p-2 border rounded-lg">
                         </div>
                         
                         <div>
                             <label class="block text-sm font-medium mb-1">Durée blocage (minutes)</label>
-                            <input type="number" value="15" class="w-24 p-2 border rounded-lg">
+                            <input type="number" id="blockDuration" value="15" class="w-24 p-2 border rounded-lg">
                         </div>
                         
                         <div class="flex items-center justify-between">
@@ -359,14 +359,14 @@
                                 <p class="text-sm text-gray-500">Anti-spoofing par analyse de clignement</p>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" checked class="sr-only peer">
+                                <input type="checkbox" id="liveDetection" checked class="sr-only peer">
                                 <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
                             </label>
                         </div>
                         
                         <div>
                             <label class="block text-sm font-medium mb-1">Timeout session (minutes)</label>
-                            <input type="number" value="480" class="w-24 p-2 border rounded-lg">
+                            <input type="number" id="sessionTimeout" value="480" class="w-24 p-2 border rounded-lg">
                         </div>
                     </div>
                     
@@ -679,10 +679,10 @@
             // Collecter les données du tab Sécurité
             const facialThreshold = document.getElementById('facialThreshold').value;
             const voiceThreshold = document.getElementById('voiceThreshold').value;
-            const maxAttempts = document.querySelector('input[type="number"]:nth-child(1)').value;
-            const blockDuration = document.querySelector('input[type="number"]:nth-child(2)').value;
-            const liveDetection = document.querySelectorAll('input[type="checkbox"]')[0].checked;
-            const sessionTimeout = document.querySelector('input[type="number"]:nth-child(5)').value;
+            const maxAttempts = document.getElementById('maxAttempts').value;
+            const blockDuration = document.getElementById('blockDuration').value;
+            const liveDetection = document.getElementById('liveDetection').checked;
+            const sessionTimeout = document.getElementById('sessionTimeout').value;
 
             // Collecter les données du tab Accès physique
             const lockDelay = document.getElementById('lockDelay')?.value;
@@ -695,6 +695,12 @@
             const logRetention = document.getElementById('logRetention')?.value;
             const autoArchive = document.getElementById('autoArchive')?.checked;
             const secureBackup = document.getElementById('secureBackup')?.checked;
+
+            // Collecter les données du tab Notifications
+            const emailAlerts = document.getElementById('emailAlerts')?.checked;
+            const smsAlerts = document.getElementById('smsAlerts')?.checked;
+            const systemAlerts = document.getElementById('systemAlerts')?.checked;
+            const alertLevel = document.getElementById('alertLevel')?.value;
 
             // Collecter les données du tab API
             const apiEnabled = document.getElementById('apiEnabled')?.checked;
@@ -718,6 +724,12 @@
                     doorOpenTime,
                     antiTailgating,
                     accessAlarm
+                },
+                notifications: {
+                    emailAlerts,
+                    smsAlerts,
+                    systemAlerts,
+                    alertLevel
                 },
                 journalisation: {
                     logLevel,
@@ -766,6 +778,14 @@
                         document.getElementById('doorOpenTime').value = config.acces.doorOpenTime || 3;
                         document.getElementById('antiTailgating').checked = config.acces.antiTailgating !== false;
                         document.getElementById('accessAlarm').checked = config.acces.accessAlarm !== false;
+                    }
+                    
+                    // Restaurer les valeurs Notifications
+                    if (config.notifications) {
+                        document.getElementById('emailAlerts').checked = config.notifications.emailAlerts !== false;
+                        document.getElementById('smsAlerts').checked = config.notifications.smsAlerts === true;
+                        document.getElementById('systemAlerts').checked = config.notifications.systemAlerts !== false;
+                        document.getElementById('alertLevel').value = config.notifications.alertLevel || 'all';
                     }
                     
                     // Restaurer les valeurs Journalisation

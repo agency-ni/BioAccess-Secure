@@ -34,6 +34,7 @@ class LogAcces(db.Model):
     details = db.Column(db.JSON, nullable=True)
     user_agent = db.Column(db.String(256))
     resource = db.Column(db.String(100))  # poste-102, porte-serveur, etc.
+    source_type = db.Column(db.String(10), default='DESKTOP', nullable=False)  # DESKTOP ou DOOR
     
     # Immutabilité - hash chaîné (blockchain-like)
     hash_precedent = db.Column(db.String(64), nullable=True)

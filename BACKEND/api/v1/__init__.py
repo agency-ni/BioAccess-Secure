@@ -9,6 +9,7 @@ from .biometric_enrollment import enrollment_bp
 from .admin_biometric import admin_biometric_bp
 from .dashboard import dashboard_bp
 from .facial_auth import facial_bp
+from .health import health_bp
 
 # Import des autres blueprints s'il en existe
 try:
@@ -43,6 +44,7 @@ __all__ = [
     'admin_biometric_bp',
     'dashboard_bp',
     'facial_bp',
+    'health_bp',
     'users_bp',
     'logs_bp',
     'alerts_bp',

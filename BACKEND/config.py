@@ -13,11 +13,22 @@ class Config:
     """Configuration de base"""
     
     # Flask
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-key-change-en-production')
     FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
     FLASK_APP = os.environ.get('FLASK_APP', 'run.py')
     DEBUG = False
     TESTING = False
+    
+    # SECRET_KEY - CRITIQUE: Doit être défini en production
+    if FLASK_ENV == 'production':
+        secret = os.environ.get('SECRET_KEY')
+        if not secret or secret.startswith('dev-key'):
+            raise ValueError(
+                '❌ ERREUR CRITIQUE: SECRET_KEY non configurée en production!\n'
+                'Définir une clé sécurisée: export SECRET_KEY=<256-bits-hex>'
+            )
+        SECRET_KEY = secret
+    else:
+        SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-key-change-en-production')
     
     # Base de données
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')

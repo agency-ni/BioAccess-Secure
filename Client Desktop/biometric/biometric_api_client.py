@@ -151,7 +151,7 @@ class BioAccessAPIClient:
                 verify=self.verify_ssl
             )
             
-            # Parser réponse
+            # Parser réponse - Nouveau format APIResponse
             try:
                 response_data = response.json()
             except:
@@ -159,11 +159,33 @@ class BioAccessAPIClient:
             
             success = response.status_code in [200, 201]
             
+            # Extraire erreur et données en gérant les deux formats
+            # Nouveau format: { status: 'success'|'error', code, message, data, error_code }
+            # Ancien format: { success: bool, error: str, ... }
+            error_msg = None
+            data_payload = None
+            
+            if isinstance(response_data, dict):
+                # Nouveau format APIResponse
+                if 'status' in response_data and 'message' in response_data:
+                    # Nouveau format - success est dans 'status', données dans 'data'
+                    data_payload = response_data.get('data', {}) if response_data.get('status') == 'success' else None
+                    error_msg = response_data.get('message', '')
+                # Ancien format
+                elif 'success' in response_data or 'error' in response_data:
+                    error_msg = response_data.get('error', '')
+                    data_payload = response_data if success else None
+                else:
+                    # Format inconnu - retourner tel quel
+                    data_payload = response_data if success else None
+            else:
+                data_payload = response_data if success else None
+            
             return APIResponse(
                 success=success,
                 status_code=response.status_code,
-                data=response_data if success else None,
-                error_message=response_data.get('error') if isinstance(response_data, dict) else str(response_data),
+                data=data_payload,
+                error_message=error_msg or str(response_data),
                 timestamp=datetime.now()
             )
             

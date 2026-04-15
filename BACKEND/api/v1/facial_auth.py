@@ -65,7 +65,19 @@ def register_face() -> Tuple[Dict, int]:
         # Décoder l'image base64
         try:
             image_bytes = base64.b64decode(data['image_data'])
+            
+            # ✅ VALIDATION: Vérifier la taille de l'image
+            # Max 5MB pour images biométriques (plus petit que le limit global 10MB)
+            MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
+            if len(image_bytes) > MAX_IMAGE_SIZE:
+                raise ValidationError(
+                    f"Image trop volumineux: {len(image_bytes) / 1024 / 1024:.1f}MB "
+                    f"(max {MAX_IMAGE_SIZE / 1024 / 1024:.1f}MB)"
+                )
+            
             image_file = io.BytesIO(image_bytes)
+        except base64.binascii.Error as e:
+            raise ValidationError(f"Format base64 invalide: {e}")
         except Exception as e:
             raise ValidationError(f"Erreur décodage image: {e}")
         
@@ -211,7 +223,7 @@ def verify_face() -> Tuple[Dict, int]:
             
             if similarity > best_similarity:
                 best_similarity = similarity
-                if similarity > 0.6:  # Seuil configurable
+                if similarity >= 0.85:  # Seuil minimum 0.85 pour visage
                     matched = True
                     template.date_derniere_utilisation = datetime.now()
         
@@ -449,7 +461,7 @@ def verify_voice() -> Tuple[Dict, int]:
             
             if similarity > best_similarity:
                 best_similarity = similarity
-                if similarity > 0.7:  # Seuil configurable
+                if similarity >= 0.85:  # Seuil minimum 0.85 pour voix
                     matched = True
                     template.date_derniere_utilisation = datetime.now()
         

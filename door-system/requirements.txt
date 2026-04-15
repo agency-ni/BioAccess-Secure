@@ -1,0 +1,25 @@
+# Dépendances BioLock Door System pour Raspberry Pi
+
+# Framework réseau
+requests==2.31.0
+python-dotenv==1.0.0
+
+# Interface GPIO Raspberry Pi
+RPi.GPIO==0.7.0
+
+# Traitement images
+opencv-python==4.8.1.78
+numpy==1.24.3
+
+# Traitement audio
+pyaudio==0.2.13
+
+# Outils système
+pyyaml==6.0
+
+# Logging et monitoring
+python-json-logger==2.0.7
+
+# Tests et développement
+pytest==7.4.3
+pytest-cov==4.1.0
