@@ -6,9 +6,19 @@ Intégration de monitoring, logging et alerting pour production
 import os
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlAlchemyIntegration
-from sentry_sdk.integrations.redis import RedisIntegration
-from sentry_sdk.integrations.celery import CeleryIntegration
+# SqlAlchemyIntegration moved in recent versions - using conditional import
+try:
+    from sentry_sdk.integrations.sqlalchemy import SqlAlchemyIntegration
+except ImportError:
+    SqlAlchemyIntegration = None
+try:
+    from sentry_sdk.integrations.redis import RedisIntegration
+except ImportError:
+    RedisIntegration = None
+try:
+    from sentry_sdk.integrations.celery import CeleryIntegration
+except ImportError:
+    CeleryIntegration = None
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.tracing import trace
 
@@ -28,19 +38,27 @@ class SentryConfig:
             return
         
         if sentry_dsn:
+            # Construire les intégrations disponibles
+            integrations = [
+                FlaskIntegration(),
+                LoggingIntegration(
+                    level=20,  # INFO
+                    event_level=40  # ERROR
+                ),
+            ]
+            
+            # Ajouter les intégrations optionnelles si disponibles
+            if SqlAlchemyIntegration is not None:
+                integrations.append(SqlAlchemyIntegration())
+            if RedisIntegration is not None:
+                integrations.append(RedisIntegration())
+            if CeleryIntegration is not None:
+                integrations.append(CeleryIntegration())
+            
             # Intégrations multiples
             sentry_sdk.init(
                 dsn=sentry_dsn,
-                integrations=[
-                    FlaskIntegration(),
-                    SqlAlchemyIntegration(),
-                    RedisIntegration(),
-                    CeleryIntegration(),
-                    LoggingIntegration(
-                        level=20,  # INFO
-                        event_level=40  # ERROR
-                    ),
-                ],
+                integrations=integrations,
                 environment=environment,
                 traces_sample_rate=0.1,  # 10% des transactions (performance monitoring)
                 profiles_sample_rate=0.1,  # 10% pour profiling

@@ -29,6 +29,9 @@ def init_db(app):
             # Créer les tables si elles n'existent pas
             db.create_all()
             
+            # Seed les phrases aléatoires
+            seed_random_phrases()
+            
             logger.info("✅ Base de données initialisée avec succès")
         except OperationalError as e:
             logger.error(f"❌ Erreur de connexion à la BDD: {e}")
@@ -38,6 +41,61 @@ def init_db(app):
         except Exception as e:
             logger.error(f"❌ Erreur initialisation BDD: {e}")
             raise
+
+
+def seed_random_phrases():
+    """Initialise les 20 phrases aléatoires pour l'authentification vocale"""
+    try:
+        from models.biometric import PhraseAleatoire
+        import uuid
+        from datetime import datetime
+        
+        # Vérifier si déjà créées
+        if PhraseAleatoire.query.count() > 0:
+            logger.info("Phrases aléatoires déjà présentes en BD")
+            return
+        
+        # 20 phrases de défi vocales en français
+        phrases = [
+            "Bonjour, je suis une personne autorisée.",
+            "Mon code d'accès est personnel et unique.",
+            "Je reconnais les conditions d'utilisation.",
+            "La sécurité biométrique est essentielle.",
+            "Mon visage identifie qui je suis.",
+            "Ma voix est un code de sécurité.",
+            "J'accepte les politiques de confidentialité.",
+            "Ces données biométriques sont protégées.",
+            "L'authentification multifacteurs est forte.",
+            "Mes empreintes digitales sont confidentielles.",
+            "La reconnaissance faciale est précise.",
+            "Je confirme mon authentification vocale.",
+            "Aucun partage de données biométriques.",
+            "La protection des données est prioritaire.",
+            "Ces informations restent confidentielles.",
+            "L'accès est contrôlé et sécurisé.",
+            "Je valide cette tentative d'authentification.",
+            "Mes identifiants biométriques sont uniques.",
+            "La cryptographie protège mes données.",
+            "L'audit trail enregistre tous les accès."
+        ]
+        
+        for texte in phrases:
+            phrase = PhraseAleatoire(
+                id=str(uuid.uuid4()),
+                texte=texte,
+                langue='fr',
+                utilisateur_id=None,  # Phrases globales
+                date_creation=datetime.utcnow()
+            )
+            db.session.add(phrase)
+        
+        db.session.commit()
+        logger.info(f"✅ {len(phrases)} phrases aléatoires créées en BD")
+        
+    except Exception as e:
+        logger.warning(f"⚠️  Erreur seed phrases: {e} (non-critique)")
+        db.session.rollback()
+        # Ne pas bloquer l'initialisation si les phrases échouent
 
 def get_db_engine(uri, pool_size=10, max_overflow=20, pool_timeout=30, pool_recycle=1800):
     """Crée un moteur SQLAlchemy avec pooling optimisé"""

@@ -19,7 +19,7 @@ from core.biometric_permissions import (
 logger = logging.getLogger(__name__)
 
 # Blueprint
-biometric_blueprint = Blueprint('biometric', __name__, url_prefix='/api/v1/biometric')
+biometric_bp = Blueprint('biometric', __name__, url_prefix='/api/v1/biometric')
 
 
 def require_admin(f):
@@ -39,7 +39,7 @@ def require_admin(f):
 # PERMISSIONS - GET
 # ============════════════════════════════════════════════════════════════
 
-@biometric_blueprint.route('/permissions/<user_id>', methods=['GET'])
+@biometric_bp.route('/permissions/<user_id>', methods=['GET'])
 def get_user_permissions(user_id: str) -> Tuple[Dict, int]:
     """
     Récupérer les permissions d'un utilisateur
@@ -83,7 +83,7 @@ def get_user_permissions(user_id: str) -> Tuple[Dict, int]:
         }), 500
 
 
-@biometric_blueprint.route('/check-permission', methods=['POST'])
+@biometric_bp.route('/check-permission', methods=['POST'])
 def check_permission() -> Tuple[Dict, int]:
     """
     Vérifier une permission spécifique
@@ -142,7 +142,7 @@ def check_permission() -> Tuple[Dict, int]:
 # PERMISSIONS - SET/GRANT/REVOKE
 # ============════════════════════════════════════════════════════════════
 
-@biometric_blueprint.route('/permissions/<user_id>/grant', methods=['POST'])
+@biometric_bp.route('/permissions/<user_id>/grant', methods=['POST'])
 @require_admin
 def grant_permission(user_id: str) -> Tuple[Dict, int]:
     """
@@ -190,7 +190,7 @@ def grant_permission(user_id: str) -> Tuple[Dict, int]:
         }), 500
 
 
-@biometric_blueprint.route('/permissions/<user_id>/revoke', methods=['POST'])
+@biometric_bp.route('/permissions/<user_id>/revoke', methods=['POST'])
 @require_admin
 def revoke_permission(user_id: str) -> Tuple[Dict, int]:
     """
@@ -238,7 +238,7 @@ def revoke_permission(user_id: str) -> Tuple[Dict, int]:
         }), 500
 
 
-@biometric_blueprint.route('/permissions/<user_id>/setup-default', methods=['POST'])
+@biometric_bp.route('/permissions/<user_id>/setup-default', methods=['POST'])
 @require_admin
 def setup_default_perms(user_id: str) -> Tuple[Dict, int]:
     """
@@ -286,7 +286,7 @@ def setup_default_perms(user_id: str) -> Tuple[Dict, int]:
 # LOGS
 # ============════════════════════════════════════════════════════════════
 
-@biometric_blueprint.route('/access-log', methods=['GET'])
+@biometric_bp.route('/access-log', methods=['GET'])
 @require_admin
 def get_access_log() -> Tuple[Dict, int]:
     """
@@ -316,7 +316,7 @@ def get_access_log() -> Tuple[Dict, int]:
         }), 500
 
 
-@biometric_blueprint.route('/export-config', methods=['GET'])
+@biometric_bp.route('/export-config', methods=['GET'])
 @require_admin
 def export_config() -> Tuple[Dict, int]:
     """
@@ -344,7 +344,7 @@ def export_config() -> Tuple[Dict, int]:
 # DEVICE STATUS
 # ============════════════════════════════════════════════════════════════
 
-@biometric_blueprint.route('/device-access-level', methods=['GET'])
+@biometric_bp.route('/device-access-level', methods=['GET'])
 def get_device_access_level() -> Tuple[Dict, int]:
     """
     Obtenir le niveau d'accès pour un périphérique
@@ -379,7 +379,7 @@ def get_device_access_level() -> Tuple[Dict, int]:
         }), 500
 
 
-@biometric_blueprint.route('/health', methods=['GET'])
+@biometric_bp.route('/health', methods=['GET'])
 def biometric_health() -> Tuple[Dict, int]:
     """
     Vérifier l'état des services biométriques
@@ -393,7 +393,7 @@ def biometric_health() -> Tuple[Dict, int]:
     }), 200
 
 
-@biometric_blueprint.route('/analyze-quality', methods=['POST'])
+@biometric_bp.route('/analyze-quality', methods=['POST'])
 def analyze_quality_public() -> Tuple[Dict, int]:
     """
     Analyze image quality (PUBLIC - no auth required)
@@ -430,5 +430,5 @@ def analyze_quality_public() -> Tuple[Dict, int]:
 # Enregistrer le blueprint
 def register_biometric_routes(app):
     """Enregistrer les routes biométriques"""
-    app.register_blueprint(biometric_blueprint)
+    app.register_blueprint(biometric_bp)
     logger.info("Routes biométriques enregistrées")

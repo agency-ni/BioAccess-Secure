@@ -16,7 +16,6 @@ from typing import Optional, Dict, Any, Tuple
 from flask import current_app, request, g
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 import logging
@@ -195,16 +194,20 @@ class SecurityManager:
     @staticmethod
     def get_fernet():
         """Récupère une instance Fernet (chiffrement symétrique)"""
-        # Dériver une clé à partir du SECRET_KEY
-        kdf = PBKDF2(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=b'bioaccess_salt',
-            iterations=100000
+        # Dériver une clé à partir du SECRET_KEY via PBKDF2
+        secret_key = current_app.config['SECRET_KEY'].encode()
+        salt = b'bioaccess_salt'
+        iterations = 100000
+        
+        # Utiliser hashlib.pbkdf2_hmac au lieu de cryptography.PBKDF2
+        key_material = hashlib.pbkdf2_hmac(
+            'sha256',
+            secret_key,
+            salt,
+            iterations,
+            dklen=32  # 32 bytes pour Fernet
         )
-        key = base64.urlsafe_b64encode(kdf.derive(
-            current_app.config['SECRET_KEY'].encode()
-        ))
+        key = base64.urlsafe_b64encode(key_material)
         return Fernet(key)
     
     @staticmethod

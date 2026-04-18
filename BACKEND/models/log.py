@@ -121,6 +121,7 @@ class Alerte(db.Model):
     """
     Modèle Alerte
     Conforme au diagramme de classes
+    Enrichi avec gestion d'accès (allow_access)
     """
     __tablename__ = 'alertes'
     
@@ -132,6 +133,18 @@ class Alerte(db.Model):
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
     traitee = db.Column(db.Boolean, default=False)
     
+    # NOUVEAU: Gestion d'accès - Permet d'autoriser/bloquer malgré alerte
+    allow_access = db.Column(db.Boolean, default=False, nullable=False)  # False = bloqué, True = autorisé
+    access_modified_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
+    access_modified_at = db.Column(db.DateTime, nullable=True)
+    
+    # NOUVEAU: Champs supplémentaires pour UI
+    titre = db.Column(db.String(255), nullable=True)  # Titre court pour UI
+    description = db.Column(db.String(1000), nullable=True)  # Description détaillée
+    statut = db.Column(db.String(50), default='Non traitée')  # Non traitée|En cours|Traitée
+    priorite = db.Column(db.String(20), default='Moyenne')  # Haute|Moyenne|Basse
+    resource = db.Column(db.String(100), default='general')  # poste-102, salle-serveur, etc
+    
     # Clés étrangères
     utilisateur_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
     log_id = db.Column(db.String(36), db.ForeignKey('logs_acces.id'), nullable=True)
@@ -140,11 +153,15 @@ class Alerte(db.Model):
     assignee_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
     date_traitement = db.Column(db.DateTime, nullable=True)
     commentaire = db.Column(db.Text, nullable=True)
+    admin_action = db.Column(db.String(50), nullable=True)  # autoriser|bloquer
+    admin_notes = db.Column(db.String(500), nullable=True)  # Notes admin
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relations
     log = db.relationship('LogAcces', foreign_keys=[log_id])
     utilisateur = db.relationship('User', foreign_keys=[utilisateur_id])
     assignee = db.relationship('User', foreign_keys=[assignee_id])
+    access_modifier = db.relationship('User', foreign_keys=[access_modified_by])
     
     # Méthodes (conformes au diagramme)
     def envoyer(self):
@@ -195,10 +212,23 @@ class Alerte(db.Model):
             'type': self.type,
             'gravite': self.gravite,
             'message': self.message,
+            'titre': self.titre or self.message[:100],
+            'description': self.description or self.message,
             'date_creation': self.date_creation.isoformat(),
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'traitee': self.traitee,
+            'statut': self.statut,
+            'priorite': self.priorite,
+            'status': self.statut,  # Alias pour frontend
+            'priority': self.priorite,  # Alias pour frontend
+            'allow_access': self.allow_access,  # CLEF: True = accès autorisé, False = bloqué
+            'resource': self.resource,
+            'access_modified_at': self.access_modified_at.isoformat() if self.access_modified_at else None,
             'date_traitement': self.date_traitement.isoformat() if self.date_traitement else None,
             'utilisateur': self.utilisateur.full_name if self.utilisateur else None,
+            'utilisateur_id': self.utilisateur_id,
             'assignee': self.assignee.full_name if self.assignee else None,
+            'admin_action': self.admin_action,
+            'admin_notes': self.admin_notes,
             'commentaire': self.commentaire
         }

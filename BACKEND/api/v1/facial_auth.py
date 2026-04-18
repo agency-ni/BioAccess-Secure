@@ -1,6 +1,7 @@
 """
 Routes API pour l'authentification faciale et vocale
 Endpoints complets pour reconnaissance faciale, vocale et détection de vivacité
+Support employee_id pour Desktop Client et email pour autres clients
 """
 
 from flask import Blueprint, request, jsonify, g
@@ -17,8 +18,10 @@ from core.errors import AuthenticationError, ValidationError, NotFoundError
 from core.logger import log_audit
 from api.middlewares.auth_middleware import token_required, optional_token
 from models.user import User, UserSession, LoginLog
+from models.log import LogAcces
 from services.biometric_service import BiometricService
 from services.auth_service import AuthService
+from services.employee_id_manager import EmployeeIDManager
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +31,7 @@ facial_bp = Blueprint('facial_auth', __name__)
 # Services
 biometric_service = BiometricService()
 auth_service = AuthService()
+employee_id_manager = EmployeeIDManager()
 
 # ============================================================
 # AUTHENTIFICATION FACIALE
@@ -138,11 +142,18 @@ def register_face() -> Tuple[Dict, int]:
 def verify_face() -> Tuple[Dict, int]:
     """
     Authentifier un utilisateur via reconnaissance faciale
+    Supporte EMPLOYEE_ID (Desktop Client) ou EMAIL (autres clients)
     
     POST /api/v1/auth/face/verify
     Body:
         {
-            "email": "user@example.com",
+            "employee_id": "1002218AAKH",  ← Pour Desktop Client
+            "image_data": "base64_encoded_image",
+            "source": "DESKTOP"  ← Optionnel (DESKTOP ou DOOR)
+        }
+        OU
+        {
+            "email": "user@example.com",  ← Pour autres clients
             "image_data": "base64_encoded_image"
         }
     
@@ -159,15 +170,67 @@ def verify_face() -> Tuple[Dict, int]:
     try:
         data = request.get_json()
         
-        if not data or 'email' not in data or 'image_data' not in data:
-            raise ValidationError("email et image_data requis")
+        if not data or 'image_data' not in data:
+            raise ValidationError("image_data (base64) requis")
         
-        email = data['email'].lower()
-        user = User.query.filter_by(email=email).first()
+        # Déterminer la source (Desktop vs autre)
+        source = data.get('source', 'DESKTOP').upper()
+        if source not in ['DESKTOP', 'DOOR']:
+            source = 'DESKTOP'
+        
+        # ========== IDENTIFICATION UTILISATEUR ==========
+        user = None
+        identifier = None  # user_id, email ou employee_id
+        
+        # Priorité 1: employee_id (Desktop Client)
+        if 'employee_id' in data and data['employee_id']:
+            employee_id = data['employee_id']
+            is_valid, details = EmployeeIDManager.verify_employee_id(employee_id)
+            
+            if not is_valid:
+                # Créer log d'échec
+                login_log = LoginLog(
+                    email='',
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent'),
+                    success=False,
+                    method='FACE'
+                )
+                db.session.add(login_log)
+                
+                # Créer alerte si ancien ID
+                if details.get('error') == 'ANCIEN_ID_DETECTED':
+                    log_entry = LogAcces(
+                        type_acces='auth',
+                        statut='echec',
+                        raison_echec=f"Tentative avec ancien employee_id: {employee_id}",
+                        adresse_ip=request.remote_addr,
+                        source_type=source,
+                        details={'employee_id': employee_id, 'reason': 'OLD_ID'}
+                    )
+                    log_entry.enregistrer()
+                    db.session.add(login_log)
+                    db.session.commit()
+                    raise AuthenticationError(f"❌ {details.get('message', 'Employee ID invalide')}")
+                
+                db.session.commit()
+                raise AuthenticationError("❌ Employee ID invalide")
+            
+            user = User.query.filter_by(id=details.get('user_id')).first()
+            identifier = f"emp_id:{employee_id}"
+        
+        # Priorité 2: email (clients web/autre)
+        elif 'email' in data and data['email']:
+            email = data['email'].lower()
+            user = User.query.filter_by(email=email).first()
+            identifier = f"email:{email}"
+        
+        else:
+            raise ValidationError("employee_id ou email requis")
         
         # Log de tentative
         login_log = LoginLog(
-            email=email,
+            email=user.email if user else data.get('email', ''),
             ip_address=request.remote_addr,
             user_agent=request.headers.get('User-Agent'),
             success=False,
@@ -184,6 +247,7 @@ def verify_face() -> Tuple[Dict, int]:
             db.session.commit()
             raise AuthenticationError("Compte désactivé")
         
+        # ========== VÉRIFICATION BIOMÉTRIQUE ==========
         # Décoder l'image
         try:
             image_bytes = base64.b64decode(data['image_data'])
@@ -230,9 +294,22 @@ def verify_face() -> Tuple[Dict, int]:
         if not matched:
             db.session.add(login_log)
             db.session.commit()
+            
+            # Log d'échec
+            log_entry = LogAcces(
+                type_acces='auth',
+                statut='echec',
+                raison_echec=f"Reconnaissance faciale échouée (similarité: {best_similarity:.2f})",
+                adresse_ip=request.remote_addr,
+                utilisateur_id=user.id,
+                source_type=source,
+                details={'similarity': best_similarity, 'identifier': identifier}
+            )
+            log_entry.enregistrer()
+            
             raise AuthenticationError("Reconnaissance faciale échouée")
         
-        # Authentification réussie
+        # ========== AUTHENTIFICATION RÉUSSIE ==========
         login_log.success = True
         db.session.add(login_log)
         
@@ -251,13 +328,24 @@ def verify_face() -> Tuple[Dict, int]:
         db.session.add(session)
         db.session.commit()
         
+        # Log succès
+        log_entry = LogAcces(
+            type_acces='auth',
+            statut='succes',
+            adresse_ip=request.remote_addr,
+            utilisateur_id=user.id,
+            source_type=source,
+            details={'similarity': best_similarity, 'identifier': identifier}
+        )
+        log_entry.enregistrer()
+        
         # Log audit
         log_audit(
             user_id=user.id,
             action='AUTHENTICATION',
             resource='user_session',
             resource_id=session.id,
-            details={'method': 'FACE', 'similarity': best_similarity},
+            details={'method': 'FACE', 'similarity': best_similarity, 'source': source},
             status='SUCCESS'
         )
         
@@ -268,12 +356,13 @@ def verify_face() -> Tuple[Dict, int]:
             'token': session.id,
             'user': {
                 'id': user.id,
+                'employee_id': user.employee_id,
                 'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
+                'nom': user.nom,
+                'prenom': user.prenom,
                 'role': user.role
             },
-            'message': 'Authentification par visage réussie'
+            'message': 'Authentification par visage réussie ✅'
         }), 200
     
     except (ValidationError, AuthenticationError) as e:
@@ -292,6 +381,49 @@ def verify_face() -> Tuple[Dict, int]:
 # ============================================================
 # AUTHENTIFICATION VOCALE
 # ============================================================
+
+@facial_bp.route('/voice/challenge', methods=['GET'])
+def get_voice_challenge() -> Tuple[Dict, int]:
+    """
+    Obtenir une phrase aléatoire pour défi vocal
+    Endpoint public (pas de token requis)
+    
+    GET /api/v1/auth/voice/challenge
+    
+    Response:
+        {
+            "success": true,
+            "phrase_id": "uuid",
+            "phrase": "Bonjour, je suis une personne autorisée.",
+            "instruction": "Veuillez lire cette phrase à voix claire"
+        }
+    """
+    try:
+        from models.biometric import PhraseAleatoire
+        
+        # Obtenir une phrase aléatoire
+        phrase = PhraseAleatoire.getRandom()
+        
+        if not phrase:
+            return jsonify({
+                'success': False,
+                'error': 'Aucune phrase disponible'
+            }), 500
+        
+        return jsonify({
+            'success': True,
+            'phrase_id': phrase.id,
+            'phrase': phrase.texte,
+            'instruction': 'Veuillez lire cette phrase à voix claire et naturelle'
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"Erreur récupération phrase défi: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur serveur'
+        }), 500
+
 
 @facial_bp.route('/voice/register', methods=['POST'])
 @token_required
@@ -383,12 +515,22 @@ def register_voice() -> Tuple[Dict, int]:
 def verify_voice() -> Tuple[Dict, int]:
     """
     Authentifier un utilisateur via reconnaissance vocale
+    Supporte EMPLOYEE_ID (Desktop Client) ou EMAIL (autres clients)
+    Support phrases aléatoires pour anti-replay
     
     POST /api/v1/auth/voice/verify
     Body:
         {
-            "email": "user@example.com",
-            "audio_data": "base64_encoded_wav"
+            "employee_id": "1002218AAKH",  ← Pour Desktop Client
+            "audio_data": "base64_encoded_wav",
+            "phrase_id": "uuid",           ← Optionnel (ID phrase lue)
+            "source": "DESKTOP"            ← Optionnel (DESKTOP ou DOOR)
+        }
+        OU
+        {
+            "email": "user@example.com",   ← Pour autres clients
+            "audio_data": "base64_encoded_wav",
+            "phrase_id": "uuid"            ← Optionnel
         }
     
     Response:
@@ -397,20 +539,75 @@ def verify_voice() -> Tuple[Dict, int]:
             "matched": true,
             "similarity": 0.85,
             "token": "jwt_token",
-            "user": {...}
+            "user": {...},
+            "phrase_id": "uuid",
+            "message": "Authentification réussie"
         }
     """
     try:
         data = request.get_json()
         
-        if not data or 'email' not in data or 'audio_data' not in data:
-            raise ValidationError("email et audio_data requis")
+        if not data or 'audio_data' not in data:
+            raise ValidationError("audio_data (base64) requis")
         
-        email = data['email'].lower()
-        user = User.query.filter_by(email=email).first()
+        # Phrase optionnelle (pour enregistrement vérification)
+        phrase_id = data.get('phrase_id')
         
+        # Déterminer la source (Desktop vs autre)
+        source = data.get('source', 'DESKTOP').upper()
+        if source not in ['DESKTOP', 'DOOR']:
+            source = 'DESKTOP'
+        
+        # ========== IDENTIFICATION UTILISATEUR ==========
+        user = None
+        identifier = None  # user_id, email ou employee_id
+        
+        # Priorité 1: employee_id (Desktop Client)
+        if 'employee_id' in data and data['employee_id']:
+            employee_id = data['employee_id']
+            is_valid, details = EmployeeIDManager.verify_employee_id(employee_id)
+            
+            if not is_valid:
+                # Créer log d'échec
+                login_log = LoginLog(
+                    email='',
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent'),
+                    success=False,
+                    method='VOICE'
+                )
+                db.session.add(login_log)
+                
+                # Créer alerte si ancien ID
+                if details.get('error') == 'ANCIEN_ID_DETECTED':
+                    log_entry = LogAcces(
+                        type_acces='auth',
+                        statut='echec',
+                        raison_echec=f"Tentative avec ancien employee_id: {employee_id}",
+                        adresse_ip=request.remote_addr,
+                        source_type=source,
+                        details={'employee_id': employee_id, 'reason': 'OLD_ID', 'method': 'VOICE'}
+                    )
+                    log_entry.enregistrer()
+                
+                db.session.commit()
+                raise AuthenticationError(f"❌ {details.get('message', 'Employee ID invalide')}")
+            
+            user = User.query.filter_by(id=details.get('user_id')).first()
+            identifier = f"emp_id:{employee_id}"
+        
+        # Priorité 2: email (clients web/autre)
+        elif 'email' in data and data['email']:
+            email = data['email'].lower()
+            user = User.query.filter_by(email=email).first()
+            identifier = f"email:{email}"
+        
+        else:
+            raise ValidationError("employee_id ou email requis")
+        
+        # Log de tentative
         login_log = LoginLog(
-            email=email,
+            email=user.email if user else data.get('email', ''),
             ip_address=request.remote_addr,
             user_agent=request.headers.get('User-Agent'),
             success=False,
@@ -422,6 +619,7 @@ def verify_voice() -> Tuple[Dict, int]:
             db.session.commit()
             raise AuthenticationError("Utilisateur non trouvé ou désactivé")
         
+        # ========== VÉRIFICATION BIOMÉTRIQUE ==========
         # Décoder l'audio
         try:
             audio_bytes = base64.b64decode(data['audio_data'])
@@ -468,8 +666,22 @@ def verify_voice() -> Tuple[Dict, int]:
         if not matched:
             db.session.add(login_log)
             db.session.commit()
+            
+            # Log d'échec
+            log_entry = LogAcces(
+                type_acces='auth',
+                statut='echec',
+                raison_echec=f"Reconnaissance vocale échouée (similarité: {best_similarity:.2f})",
+                adresse_ip=request.remote_addr,
+                utilisateur_id=user.id,
+                source_type=source,
+                details={'similarity': best_similarity, 'identifier': identifier, 'method': 'VOICE'}
+            )
+            log_entry.enregistrer()
+            
             raise AuthenticationError("Reconnaissance vocale échouée")
         
+        # ========== AUTHENTIFICATION RÉUSSIE ==========
         # Créer session
         login_log.success = True
         db.session.add(login_log)
@@ -488,12 +700,23 @@ def verify_voice() -> Tuple[Dict, int]:
         db.session.add(session)
         db.session.commit()
         
+        # Log succès
+        log_entry = LogAcces(
+            type_acces='auth',
+            statut='succes',
+            adresse_ip=request.remote_addr,
+            utilisateur_id=user.id,
+            source_type=source,
+            details={'similarity': best_similarity, 'identifier': identifier, 'method': 'VOICE', 'phrase_id': phrase_id}
+        )
+        log_entry.enregistrer()
+        
         log_audit(
             user_id=user.id,
             action='AUTHENTICATION',
             resource='user_session',
             resource_id=session.id,
-            details={'method': 'VOICE', 'similarity': best_similarity},
+            details={'method': 'VOICE', 'similarity': best_similarity, 'source': source, 'phrase_id': phrase_id},
             status='SUCCESS'
         )
         
@@ -502,13 +725,16 @@ def verify_voice() -> Tuple[Dict, int]:
             'matched': True,
             'similarity': round(best_similarity, 4),
             'token': session.id,
+            'phrase_id': phrase_id,
             'user': {
                 'id': user.id,
+                'employee_id': user.employee_id,
                 'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
+                'nom': user.nom,
+                'prenom': user.prenom,
                 'role': user.role
-            }
+            },
+            'message': 'Authentification par voix réussie ✅'
         }), 200
     
     except (ValidationError, AuthenticationError) as e:

@@ -72,16 +72,58 @@ class BiometricService:
             raise ValidationError(f"Erreur traitement facial: {str(e)}")
     
     @staticmethod
-    def process_voice_sample(audio_data, user_id, phrase_text=None):
+    def extract_voice_features(audio_file, phrase_text=None):
         """
-        Traite un échantillon vocal
-        (Version simplifiée - utiliser Vosk en production)
+        Extrait les caractéristiques vocales d'un fichier audio
+        Retourne un embedding 128-dimensionnel
+        
+        Args:
+            audio_file: BytesIO object avec données WAV/MP3
+            phrase_text: Texte de la phrase prononcée (ignoré pour version simplifiée)
+            
+        Returns:
+            np.array de shape (128,) - embedding vocal
         """
         try:
-            # Simuler l'extraction de caractéristiques vocales
-            # En production, utiliser Vosk ou Google Speech-to-Text
+            import hashlib
+            import numpy as np
+            from io import BytesIO
             
-            # Générer un template simulé
+            # Lire les données audio
+            if isinstance(audio_file, BytesIO):
+                audio_data = audio_file.getvalue()
+            else:
+                audio_data = audio_file.read() if hasattr(audio_file, 'read') else audio_file
+            
+            # En production: utiliser librosa ou audio features extraction
+            # Pour maintenant: générer deterministic embedding basé sur audio hash
+            audio_hash = hashlib.sha256(audio_data).digest()
+            
+            # Seed numpy avec le hash pour deterministic embedding
+            np.random.seed(int.from_bytes(audio_hash[:4], 'little'))
+            
+            # Générer embedding 128-dimensionnel (simulé, en prod: vrai MFCC/spectrogramme)
+            voice_encoding = np.random.rand(128).astype(np.float32)
+            
+            # Ajouter du "bruit" basé sur audio length pour plus de variation
+            voice_encoding = voice_encoding + (len(audio_data) % 256) / 1000.0
+            
+            # Normaliser entre 0 et 1
+            voice_encoding = np.clip(voice_encoding, 0, 1).astype(np.float32)
+            
+            logger.info(f"Voice features extracted: shape={voice_encoding.shape}, audio_size={len(audio_data)}")
+            return voice_encoding
+            
+        except Exception as e:
+            logger.error(f"Erreur extraction features vocales: {e}")
+            return None
+    
+    @staticmethod
+    def process_voice_sample(audio_data, user_id, phrase_text=None):
+        """
+        Traite un échantillon vocal (DEPRECATED - utiliser extract_voice_features)
+        """
+        try:
             import hashlib
             import numpy as np
             

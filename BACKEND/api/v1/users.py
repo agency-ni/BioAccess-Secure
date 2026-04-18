@@ -19,6 +19,7 @@ from api.middlewares.auth_middleware import token_required, admin_required
 from api.response_handler import APIResponse
 
 from models.user import User
+from services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,10 @@ def create_user():
             date_modification=datetime.utcnow()
         )
         
+        # Générer employee_id unique (format: 1002218AAKH)
+        new_user.employee_id = User.generate_employee_id()
+        new_user.employee_id_created_at = datetime.utcnow()
+        
         # Générer mot de passe temporaire (admin doit le changer)
         temporary_password = str(uuid.uuid4())[:12]
         new_user.set_password(temporary_password)
@@ -120,11 +125,12 @@ def create_user():
         db.session.add(new_user)
         db.session.commit()
         
-        logger.info(f"Utilisateur créé: {new_user.id} ({email})")
+        logger.info(f"Utilisateur créé: {new_user.id} ({email}) - Employee ID: {new_user.employee_id}")
         
         return APIResponse.success(
             {
                 'user_id': new_user.id,
+                'employee_id': new_user.employee_id,
                 'statut': 'PENDING',
                 'nom': nom,
                 'prenom': prenom,
@@ -133,7 +139,7 @@ def create_user():
                 'departement': departement,
                 'created_at': new_user.date_creation.isoformat()
             },
-            "Utilisateur créé avec succès (statut PENDING)",
+            "Utilisateur créé avec succès (statut PENDING) - Employee ID pour authentification Desktop",
             status_code=201
         )
     
@@ -330,6 +336,76 @@ def delete_user(user_id):
         return APIResponse.error(
             "Erreur lors de la suppression",
             error_code="DELETE_USER_ERROR",
+            status_code=500
+        )
+
+
+@users_bp.route('/<user_id>/send-employee-id', methods=['POST'])
+@admin_required
+def send_employee_id_email(user_id):
+    """
+    Envoyer l'Employee ID à l'utilisateur via email
+    
+    POST /api/v1/users/<user_id>/send-employee-id
+    Response: {
+        "status": "success",
+        "code": 200,
+        "message": "Employee ID envoyé à l'utilisateur",
+        "data": {
+            "user_id": "uuid",
+            "email": "user@example.com",
+            "employee_id": "1002218AAKH",
+            "email_sent": true
+        }
+    }
+    """
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return APIResponse.error(
+                "Utilisateur non trouvé",
+                error_code="USER_NOT_FOUND",
+                status_code=404
+            )
+        
+        # Vérifier que l'utilisateur a un employee_id
+        if not user.employee_id:
+            return APIResponse.error(
+                "Cet utilisateur n'a pas encore d'Employee ID",
+                error_code="NO_EMPLOYEE_ID",
+                status_code=400
+            )
+        
+        # Envoyer l'email
+        from services.email_service import EmailService
+        EmailService.send_employee_id_email(user)
+        
+        # Log audit
+        AuditService.log_action(
+            'SEND_EMPLOYEE_ID',
+            details={'recipient_email': user.email, 'employee_id': user.employee_id, 'recipient_id': user_id}
+        )
+        
+        logger.info(f"Employee ID envoyé à {user.email} pour user {user_id}")
+        
+        return APIResponse.success(
+            {
+                'user_id': user.id,
+                'email': user.email,
+                'employee_id': user.employee_id,
+                'email_sent': True,
+                'nom': user.nom,
+                'prenom': user.prenom
+            },
+            f"✅ Employee ID ({user.employee_id}) envoyé à {user.email}",
+            status_code=200
+        )
+    
+    except Exception as e:
+        logger.error(f"Erreur envoi employee_id pour user {user_id}: {e}")
+        return APIResponse.error(
+            "Erreur lors de l'envoi de l'email",
+            error_code="SEND_EMAIL_ERROR",
             status_code=500
         )
 

@@ -4,12 +4,31 @@ Respecte strictement le diagramme de classes
 """
 
 from datetime import datetime, timedelta
-from flask_login import UserMixin
+# Optional: flask_login import (not strictly needed if using JWT tokens)
+try:
+    from flask_login import UserMixin
+except ImportError:
+    # Fallback if flask-login not installed
+    class UserMixin:
+        @property
+        def is_authenticated(self):
+            return True
+        @property
+        def is_active(self):
+            return True
+        @property
+        def is_anonymous(self):
+            return False
+        def get_id(self):
+            return str(self.id)
+
 from core.database import db
 from core.security import SecurityManager
 import uuid
 import hashlib
 import json
+import random
+import string
 
 class User(UserMixin, db.Model):
     """
@@ -26,6 +45,12 @@ class User(UserMixin, db.Model):
     departement = db.Column(db.String(50), nullable=True)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
     date_modification = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # ID Employé - Clé d'authentification Desktop (format: 1002218AAKH)
+    # Numérique (séquentiel) + 4 caractères aléatoires
+    employee_id = db.Column(db.String(12), unique=True, nullable=True, index=True)
+    employee_id_created_at = db.Column(db.DateTime, nullable=True)
+    last_employee_id = db.Column(db.String(12), nullable=True)  # Obsolète si réinstallation
     
     # Attributs de sécurité (non visibles dans le diagramme mais essentiels)
     password_hash = db.Column(db.String(256), nullable=False)
@@ -49,6 +74,33 @@ class User(UserMixin, db.Model):
     alertes = db.relationship('Alerte', backref='utilisateur', lazy='dynamic', cascade='all, delete-orphan')
     sessions = db.relationship('UserSession', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     
+    # ========== MÉTHODE STATIQUE - GÉNÉRATION EMPLOYEE_ID ==========
+    @staticmethod
+    def generate_employee_id():
+        """
+        Génère un ID employé unique au format: XXXXXXXXXAAAA
+        - 7 chiffres numériques (séquentiel à partir de 1000000)
+        - 4 lettres aléatoires (A-Z)
+        
+        Exemple: 1002218AAKH
+        Garantit l'unicité par contrainte de base de données
+        """
+        # Obtenir le compte total d'utilisateurs + offset
+        count = User.query.count()
+        numeric_part = str(1000000 + count).zfill(7)
+        
+        # Générer 4 caractères aléatoires (A-Z)
+        random_part = ''.join(random.choices(string.ascii_uppercase, k=4))
+        
+        employee_id = numeric_part + random_part
+        
+        # Vérifier l'unicité (au cas où collision très improbable)
+        while User.query.filter_by(employee_id=employee_id).first():
+            random_part = ''.join(random.choices(string.ascii_uppercase, k=4))
+            employee_id = numeric_part + random_part
+        
+        return employee_id
+    
     # Méthodes (conformes au diagramme)
     def getInfos(self):
         """Retourne les informations publiques de l'utilisateur"""
@@ -62,6 +114,7 @@ class User(UserMixin, db.Model):
             'is_active': self.is_active,
             'email_verified': self.email_verified,
             'twofa_enabled': self.twofa_enabled,
+            'employee_id': self.employee_id,
             'created_at': self.date_creation.isoformat() if self.date_creation else None,
             'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None
         }

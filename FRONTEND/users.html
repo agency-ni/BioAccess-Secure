@@ -675,6 +675,22 @@
             document.getElementById('modalContent').innerHTML = `
                 <div class="space-y-4">
                     <div><label class="text-xs text-gray-500">ID</label><p class="font-mono font-bold">#${String(user.id).padStart(3, '0')}</p></div>
+                    
+                    <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                        <label class="text-xs text-gray-500 font-semibold block mb-2">
+                            <i class="fas fa-laptop mr-2 text-blue-600"></i>Clé d'authentification Desktop (Employee ID)
+                        </label>
+                        <div class="flex gap-2 items-center">
+                            <p class="font-mono font-bold text-lg flex-1">${user.employee_id || 'Non généré'}</p>
+                            <button onclick="copyToClipboard('${user.employee_id}')" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700" title="Copier">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <button onclick="sendEmployeeIdEmail('${user.id}', '${user.email}')" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700" title="Envoyer par email">
+                                <i class="fas fa-envelope"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
                     <div><label class="text-xs text-gray-500">Nom</label><p>${user.nom}</p></div>
                     <div><label class="text-xs text-gray-500">Email</label><p>${user.email}</p></div>
                     <div><label class="text-xs text-gray-500">Département</label><p>${user.department}</p></div>
@@ -689,6 +705,55 @@
                 <button onclick="openEditModal('${userId}')" class="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded ml-2">Éditer</button>
             `;
             modal.style.display = 'flex';
+        }
+        
+        // ========== FONCTION COPIER DANS LE PRESSE-PAPIERS ==========
+        function copyToClipboard(text) {
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ Copié : ' + text);
+            }).catch(() => {
+                alert('❌ Erreur lors de la copie');
+            });
+        }
+
+        // ========== FONCTION ENVOYER EMPLOYEE ID PAR EMAIL ==========
+        async function sendEmployeeIdEmail(userId, userEmail) {
+            if (!confirm(`Envoyer l'Employee ID par email à ${userEmail} ?`)) {
+                return;
+            }
+
+            try {
+                // Afficher le chargement
+                const button = event.target.closest('button');
+                button.disabled = true;
+                const originalHTML = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+                const response = await fetch(`/api/v1/users/${userId}/send-employee-id`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const data = await response.json();
+
+                button.innerHTML = originalHTML;
+                button.disabled = false;
+
+                if (data.status === 'success') {
+                    alert(`✅ ${data.message}\n\nEmail envoyé à: ${data.data.email}`);
+                } else {
+                    alert(`❌ Erreur: ${data.error || 'Erreur lors de l\'envoi'}`);
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                alert(`❌ Erreur réseau: ${error.message}`);
+                event.target.closest('button').innerHTML = '<i class="fas fa-envelope"></i>';
+                event.target.closest('button').disabled = false;
+            }
         }
 
         // ========== FONCTION POUR ÉDITER ==========
@@ -744,9 +809,14 @@
                 
                 <!-- TAB FACE -->
                 <div id="tab-face" class="space-y-4" style="display: none;">
+                    <div class="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-700">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        ⚠️ Les infos de l'onglet <strong>Infos</strong> (Nom, Email, Département) doivent être remplies avant l'enrôlement
+                    </div>
+                    
                     <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700">
                         <i class="fas fa-info-circle mr-2"></i>
-                        Enrôlement facial - Choisissez votre méthode
+                        📷 Enrôlement facial - Choisissez votre méthode (live 3s ou upload)
                     </div>
                     
                     <!-- Options -->
@@ -768,9 +838,14 @@
                 
                 <!-- TAB VOICE -->
                 <div id="tab-voice" class="space-y-4" style="display: none;">
+                    <div class="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-700">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        ⚠️ Les infos de l'onglet <strong>Infos</strong> (Nom, Email, Département) doivent être remplies avant l'enrôlement
+                    </div>
+                    
                     <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700">
                         <i class="fas fa-info-circle mr-2"></i>
-                        Enrôlement vocal - Choisissez votre méthode
+                        🎤 Enrôlement vocal - Choisissez votre méthode (live 3s ou upload)
                     </div>
                     
                     <!-- Options -->
@@ -821,16 +896,54 @@
             event.target.closest('.edit-tab').style.color = '#4f46e5';
         }
         
+        // ========== VALIDATION DES INFOS OBLIGATOIRES ==========
+        function validateUserInfo() {
+            const nom = document.getElementById('editNom').value.trim();
+            const email = document.getElementById('editEmail').value.trim();
+            const dept = document.getElementById('editDept').value.trim();
+            
+            if (!nom || !email || !dept) {
+                return {
+                    valid: false,
+                    message: '❌ Les infos obligatoires manquent : Nom, Email, Département requis avant enrôlement'
+                };
+            }
+            
+            if (!email.includes('@')) {
+                return {
+                    valid: false,
+                    message: '❌ Email invalide'
+                };
+            }
+            
+            return { valid: true };
+        }
+        
         // ========== CONFIGURATION ENRÔLEMENT ==========
         function setupEnrollmentListeners(user) {
+            // Helper pour vérifier et afficher l'erreur
+            const checkUserInfoBeforeEnroll = (tabId) => {
+                const validation = validateUserInfo();
+                if (!validation.valid) {
+                    const statusDiv = document.getElementById(tabId);
+                    statusDiv.innerHTML = `<span class="text-red-600"><i class="fas fa-exclamation-circle"></i> ${validation.message}</span>`;
+                    return false;
+                }
+                return true;
+            };
+            
             // FACE - Live
             document.getElementById('enrollFaceLiveBtn').onclick = async () => {
-                await enrollFaceLive(user);
+                if (checkUserInfoBeforeEnroll('faceStatus')) {
+                    await enrollFaceLive(user);
+                }
             };
             
             // FACE - Upload
             document.getElementById('enrollFaceUploadBtn').onclick = () => {
-                document.getElementById('faceFileInput').click();
+                if (checkUserInfoBeforeEnroll('faceStatus')) {
+                    document.getElementById('faceFileInput').click();
+                }
             };
             
             document.getElementById('faceFileInput').onchange = async (e) => {
@@ -841,12 +954,16 @@
             
             // VOICE - Live
             document.getElementById('enrollVoiceLiveBtn').onclick = async () => {
-                await enrollVoiceLive(user);
+                if (checkUserInfoBeforeEnroll('voiceStatus')) {
+                    await enrollVoiceLive(user);
+                }
             };
             
             // VOICE - Upload
             document.getElementById('enrollVoiceUploadBtn').onclick = () => {
-                document.getElementById('voiceFileInput').click();
+                if (checkUserInfoBeforeEnroll('voiceStatus')) {
+                    document.getElementById('voiceFileInput').click();
+                }
             };
             
             document.getElementById('voiceFileInput').onchange = async (e) => {

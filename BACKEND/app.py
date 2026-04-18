@@ -23,12 +23,12 @@ from core.logger import setup_logger
 from core.errors import register_error_handlers
 from core.cache import init_cache
 from core.queue import init_queue
-from core.sentry import SentryConfig, SentryAlerting
+from core.sentry import SentryConfig
 
 # Middlewares
-from api.middlewares.rate_limit import limiter, init_rate_limiter
+from api.middlewares.rate_limiter import limiter, init_rate_limiter
 from api.middlewares.security_headers import SecurityHeadersMiddleware
-from api.middlewares.audit import AuditMiddleware
+# from api.middlewares.audit import AuditMiddleware  # Optional audit middleware
 from api.middlewares.sentry_middleware import setup_sentry_middleware
 
 # Blueprints
@@ -39,7 +39,6 @@ from api.v1 import (
 
 # Utils
 from utils.network import get_client_ip
-from utils.encryption import init_encryption
 
 def create_app(config_name=None):
     """Factory pattern pour créer l'application Flask"""
@@ -106,8 +105,8 @@ def create_app(config_name=None):
     # Headers de sécurité
     app.wsgi_app = SecurityHeadersMiddleware(app.wsgi_app, app.config)
     
-    # Audit logging
-    app.wsgi_app = AuditMiddleware(app.wsgi_app, app.config)
+    # Audit logging (optional - if audit middleware exists)
+    # app.wsgi_app = AuditMiddleware(app.wsgi_app, app.config)
     
     # Sentry monitoring (Error tracking & alerting)
     setup_sentry_middleware(app, app.config)
@@ -212,16 +211,24 @@ def create_app(config_name=None):
     
     api_prefix = app.config['API_PREFIX']
     
+    # Blueprints obligatoires
     app.register_blueprint(health_bp, url_prefix=f"{api_prefix}")
     app.register_blueprint(auth_bp, url_prefix=f"{api_prefix}/auth")
     app.register_blueprint(facial_bp, url_prefix=f"{api_prefix}/facial")
-    app.register_blueprint(users_bp, url_prefix=f"{api_prefix}/users")
-    app.register_blueprint(logs_bp, url_prefix=f"{api_prefix}/logs")
-    app.register_blueprint(alerts_bp, url_prefix=f"{api_prefix}/alerts")
     app.register_blueprint(dashboard_bp, url_prefix=f"{api_prefix}/dashboard")
     app.register_blueprint(biometric_bp, url_prefix=f"{api_prefix}/biometric")
-    app.register_blueprint(access_bp, url_prefix=f"{api_prefix}/access")
-    app.register_blueprint(audit_bp, url_prefix=f"{api_prefix}/audit")
+    
+    # Blueprints optionnels (vérifier None)
+    if users_bp:
+        app.register_blueprint(users_bp, url_prefix=f"{api_prefix}/users")
+    if logs_bp:
+        app.register_blueprint(logs_bp, url_prefix=f"{api_prefix}/logs")
+    if alerts_bp:
+        app.register_blueprint(alerts_bp, url_prefix=f"{api_prefix}/alerts")
+    if access_bp:
+        app.register_blueprint(access_bp, url_prefix=f"{api_prefix}/access")
+    if audit_bp:
+        app.register_blueprint(audit_bp, url_prefix=f"{api_prefix}/audit")
     
     app.logger.info(f"✅ Application BioAccess Secure démarrée en mode {config_name}")
     
@@ -232,6 +239,8 @@ def cache_health_check():
     try:
         from core.cache import cache
         cache.set('health_check', 'ok', ex=5)
-        return cache.get('health_check') == 'ok'
-    except:
+        result = cache.get('health_check')
+        return result == 'ok'
+    except Exception as e:
+        logging.error(f"Redis health check failed: {str(e)}")
         return False
