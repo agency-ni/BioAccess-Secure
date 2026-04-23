@@ -364,20 +364,10 @@
                         </div>
                     </div>
                     
-                    <!-- reCAPTCHA (checkbox fonctionnelle) -->
-                    <div class="flex items-center space-x-3 py-2">
-                        <div class="relative flex items-center">
-                            <input type="checkbox" 
-                                   id="recaptcha"
-                                   name="recaptcha"
-                                   class="w-5 h-5 border-2 border-gray-300 rounded text-indigo-600 focus:ring-indigo-500 focus:ring-2 transition-all cursor-pointer"
-                                   required
-                                   aria-label="Je ne suis pas un robot">
-                        </div>
-                        <label for="recaptcha" class="text-sm text-gray-600 cursor-pointer select-none hover:text-indigo-600 transition">
-                            Je ne suis pas un robot
-                        </label>
-                        <i class="fas fa-shield-alt text-green-500 ml-auto text-lg" aria-hidden="true"></i>
+                    <!-- reCAPTCHA v3 (invisible) -->
+                    <input type="hidden" id="recaptchaToken" name="recaptcha_token" value="">
+                    <div id="recaptchaContainer" class="text-right text-xs text-gray-400 py-1">
+                        <span>Protégé par <a href="https://www.google.com/intl/fr/policies/privacy/" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-600 transition">Google Privacy</a></span>
                     </div>
                     
                     <!-- Bouton de connexion principal -->

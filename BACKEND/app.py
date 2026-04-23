@@ -28,6 +28,7 @@ from core.sentry import SentryConfig
 # Middlewares
 from api.middlewares.rate_limiter import limiter, init_rate_limiter
 from api.middlewares.security_headers import SecurityHeadersMiddleware
+from api.middlewares.csrf_protection import csrf, init_csrf, CSRFValidationMiddleware
 # from api.middlewares.audit import AuditMiddleware  # Optional audit middleware
 from api.middlewares.sentry_middleware import setup_sentry_middleware
 
@@ -55,6 +56,9 @@ def create_app(config_name=None):
     
     # Compression Gzip
     Compress(app)
+    
+    # Protection CSRF (OWASP A01 - Broken Access Control)
+    init_csrf(app)
     
     # CORS sécurisé
     CORS(
@@ -141,6 +145,11 @@ def create_app(config_name=None):
         # Vérification basique de sécurité
         if request.content_length and request.content_length > app.config['MAX_CONTENT_LENGTH']:
             return jsonify({'error': 'Fichier trop volumineux'}), 413
+        
+        # Validation CSRF renforcée pour les requêtes sensibles
+        csrf_error = CSRFValidationMiddleware.validate_csrf_headers()
+        if csrf_error:
+            return csrf_error
     
     @app.after_request
     def after_request(response):
