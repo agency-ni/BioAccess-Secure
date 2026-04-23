@@ -19,13 +19,14 @@ csrf = CSRFProtect()
 
 def init_csrf(app):
     """Initialise la protection CSRF pour l'application"""
-    csrf.init_app(app)
-    
     # Configuration renforcée
     app.config['WTF_CSRF_CHECK_DEFAULT'] = True  # Par défaut, vérifier CSRF sur toutes les méthodes non-safe
     app.config['WTF_CSRF_TIME_LIMIT'] = None  # Tokens CSRF n'expire pas
     app.config['WTF_CSRF_METHODS'] = ['POST', 'PUT', 'PATCH', 'DELETE']  # Méthodes sensibles
+    app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken', 'X-CSRF-Token']
     app.config['WTF_CSRF_SSL_STRICT'] = True  # Strict SSL en production
+
+    csrf.init_app(app)
     
     # Headers de réponse renforçant la sécurité
     @app.after_request

@@ -364,7 +364,16 @@
                         </div>
                     </div>
                     
-                    <!-- reCAPTCHA v3 (invisible) -->
+                    <!-- reCAPTCHA / Anti-bot visible -->
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox"
+                               id="recaptcha"
+                               name="recaptcha"
+                               class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                               aria-required="true"
+                               required>
+                        <label for="recaptcha" class="text-sm text-gray-600">Je ne suis pas un robot</label>
+                    </div>
                     <input type="hidden" id="recaptchaToken" name="recaptcha_token" value="">
                     <div id="recaptchaContainer" class="text-right text-xs text-gray-400 py-1">
                         <span>Protégé par <a href="https://www.google.com/intl/fr/policies/privacy/" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-600 transition">Google Privacy</a></span>
@@ -539,9 +548,34 @@
             return GOOGLE_CLIENT_ID.length > 10;
         }
         
+        async function fetchCsrfToken() {
+            const apiUrl = (window.API_URL || window.CONFIG?.API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
+            const csrfInput = document.getElementById('csrfToken');
+            const backendRoot = apiUrl.replace(/\/api\/?$/, '');
+
+            try {
+                const response = await fetch(`${backendRoot || apiUrl}/`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const token = response.headers.get('X-CSRFToken');
+                if (token && csrfInput) {
+                    csrfInput.value = token;
+                    window.csrfToken = token;
+                }
+            } catch (e) {
+                console.warn('Impossible de récupérer le token CSRF:', e);
+            }
+        }
+
         // Initialisation de Google Identity Services
         window.onload = function() {
             const googleContainer = document.getElementById('googleButtonContainer');
+            fetchCsrfToken();
             
             if (!isGoogleConfigured()) {
                 // Client ID non configuré - afficher message d'erreur
@@ -617,11 +651,13 @@
                 console.log('Payload:', { credential: credential.substring(0, 50) + '...' });
                 
                 // Envoyer le credential au backend pour vérification
+                const csrfToken = document.getElementById('csrfToken')?.value || window.csrfToken || '';
                 fetch(googleAuthUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify(payload)
                 })
@@ -811,8 +847,9 @@
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // Vérification du reCAPTCHA
-            if (!document.getElementById('recaptcha').checked) {
+            // Vérification du captcha anti-bot
+            const recaptchaCheckbox = document.getElementById('recaptcha');
+            if (recaptchaCheckbox && !recaptchaCheckbox.checked) {
                 alert('Veuillez confirmer que vous n\'êtes pas un robot');
                 return;
             }
@@ -849,11 +886,13 @@
             
             try {
                 // Appel API au backend
+                const csrfToken = document.getElementById('csrfToken')?.value || window.csrfToken || '';
                 const response = await fetch(`${window.API_URL || 'http://localhost:5000/api'}/v1/auth/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({
                         email: email,
