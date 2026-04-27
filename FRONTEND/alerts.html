@@ -8,9 +8,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="theme.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>* { font-family: 'Poppins', sans-serif; }
-        
-        /* Style sidebar avec scroll */
+    <style>
+        * { font-family: 'Poppins', sans-serif; }
+
+        /* ── Sidebar ─────────────────────────────────────────────────────── */
         .sidebar {
             height: 100vh;
             display: flex;
@@ -18,7 +19,6 @@
             background: white;
             box-shadow: 2px 0 10px rgba(0,0,0,0.05);
         }
-        
         .sidebar-menu {
             flex: 1;
             overflow-y: auto;
@@ -26,24 +26,10 @@
             scrollbar-width: thin;
             scrollbar-color: #cbd5e1 #f1f5f9;
         }
-        
-        .sidebar-menu::-webkit-scrollbar {
-            width: 4px;
-        }
-        
-        .sidebar-menu::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        
-        .sidebar-menu::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        
-        .sidebar-menu::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-        
+        .sidebar-menu::-webkit-scrollbar { width: 4px; }
+        .sidebar-menu::-webkit-scrollbar-track { background: #f1f5f9; }
+        .sidebar-menu::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .sidebar-menu::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .sidebar-item {
             display: flex;
             align-items: center;
@@ -53,687 +39,931 @@
             transition: all 0.2s;
             border-left: 3px solid transparent;
         }
-        
-        .sidebar-item:hover:not(.active) {
-            background: #f3f4f6;
-            border-left-color: #9ca3af;
-        }
-        
-        .sidebar-item.active {
-            background: #4f46e5;
-            color: white;
-            border-left-color: #1e1b4b;
-        }
-        
-        .sidebar-item.active i {
-            color: white;
-        }
-        
+        .sidebar-item:hover:not(.active) { background: #f3f4f6; border-left-color: #9ca3af; }
+        .sidebar-item.active { background: #4f46e5; color: white; border-left-color: #1e1b4b; }
+        .sidebar-item.active i { color: white; }
         .sidebar-footer {
             padding: 1rem;
             border-top: 1px solid #e5e7eb;
             background: white;
         }
-        
-        /* Dark Mode Styles - Harmonized with theme.js - COMPLETE COVERAGE */
-        :root.dark-mode {
-            --color-bg-primary: #111827;
-            --color-bg-secondary: #1f2937;
-            --color-text-primary: #f3f4f6;
-            --color-text-secondary: #d1d5db;
-            --color-border: #374151;
-        }
-        
-        :root.dark-mode body {
-            background-color: #111827 !important;
-            color: #f3f4f6 !important;
-        }
-        
-        :root.dark-mode .sidebar {
-            background: #1f2937 !important;
-            color: #f3f4f6 !important;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.5) !important;
-        }
-        
-        :root.dark-mode .sidebar-menu {
-            scrollbar-color: #4b5563 #1f2937 !important;
-        }
-        
-        :root.dark-mode .sidebar-menu::-webkit-scrollbar-track {
-            background: #1f2937 !important;
-        }
-        
-        :root.dark-mode .sidebar-menu::-webkit-scrollbar-thumb {
-            background: #4b5563 !important;
-        }
-        
-        :root.dark-mode .sidebar-item {
-            color: #d1d5db !important;
-        }
-        
-        :root.dark-mode .sidebar-item:hover:not(.active) {
-            background: #374151 !important;
-        }
-        
-        :root.dark-mode .sidebar-footer {
-            border-top-color: #374151 !important;
-            background: #1f2937 !important;
-        }
-        
-        :root.dark-mode .bg-white {
-            background-color: #1f2937 !important;
-            color: #f3f4f6 !important;
-        }
-        
-        :root.dark-mode .bg-gray-50 {
-            background-color: #374151 !important;
-        }
-        
-        :root.dark-mode .bg-gray-100 {
-            background-color: #2d3748 !important;
-        }
-        
-        :root.dark-mode .text-gray-400 {
-            color: #9ca3af !important;
-        }
-        
-        :root.dark-mode .text-gray-500 {
-            color: #a6adb8 !important;
-        }
-        
-        :root.dark-mode .text-gray-600,
-        :root.dark-mode .text-gray-700 {
-            color: #d1d5db !important;
-        }
-        
-        :root.dark-mode .text-gray-800 {
-            color: #f3f4f6 !important;
-        }
-        
-        :root.dark-mode .border {
-            border-color: #374151 !important;
-        }
-        
-        :root.dark-mode .divide-y > * {
-            border-bottom-color: #374151 !important;
-        }
-        
-        :root.dark-mode .divide-y > *:last-child {
-            border-bottom-color: transparent !important;
-        }
-        
-        :root.dark-mode .border-b {
-            border-bottom-color: #374151 !important;
-        }
-        
-        :root.dark-mode .border-l-4 {
-            border-left-color: inherit !important;
-        }
-        
-        :root.dark-mode .hover\:bg-gray-50:hover {
-            background-color: #374151 !important;
-        }
-        
-        :root.dark-mode input,
-        :root.dark-mode select,
-        :root.dark-mode textarea {
-            background-color: #374151 !important;
-            color: #f3f4f6 !important;
-            border-color: #4b5563 !important;
-        }
-        
-        :root.dark-mode .bg-red-100 {
-            background-color: #7f1d1d !important;
-        }
-        
-        :root.dark-mode .text-red-700 {
-            color: #fca5a5 !important;
-        }
-        
-        :root.dark-mode .bg-yellow-100 {
-            background-color: #78350f !important;
-        }
-        
-        :root.dark-mode .text-yellow-700 {
-            color: #fcd34d !important;
-        }
-        
-        :root.dark-mode .bg-green-100 {
-            background-color: #065f46 !important;
-        }
-        
-        :root.dark-mode .text-green-700 {
-            color: #86efac !important;
-        }
-        
-        :root.dark-mode .bg-blue-100 {
-            background-color: #1e3a8a !important;
-        }
 
-        :root.dark-mode .text-blue-700,
-        :root.dark-mode .text-blue-800 {
-            color: #93c5fd !important;
+        /* ── Alerte d'intégrité : surbrillance rouge pulsante ────────────── */
+        .integrity-alert-row {
+            border-left: 4px solid #dc2626 !important;
+            background: linear-gradient(90deg, #fff1f1 0%, #ffffff 100%);
+            animation: integrityPulse 2.5s ease-in-out infinite;
         }
-        
-        :root.dark-mode .bg-indigo-100 {
-            background-color: #312e81 !important;
+        @keyframes integrityPulse {
+            0%, 100% { background: linear-gradient(90deg, #fff1f1 0%, #ffffff 100%); }
+            50%       { background: linear-gradient(90deg, #fecaca 0%, #fff1f1 100%); }
         }
-        
-        :root.dark-mode .text-indigo-600 {
-            color: #a5b4fc !important;
+        .integrity-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #dc2626;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
         }
+        .integrity-meta-box {
+            background: #1a1a2e;
+            border: 1px solid #dc2626;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.72rem;
+            color: #f87171;
+            margin-top: 8px;
+        }
+        .integrity-meta-box .meta-key { color: #94a3b8; }
+        .integrity-meta-box .meta-val { color: #fca5a5; font-weight: 600; }
 
-        /* Modal Styles */
-        #accessModal {
-            animation: fadeIn 0.3s ease-in-out;
+        /* KPI intégrité */
+        .kpi-integrity {
+            background: linear-gradient(135deg, #1a0a0a 0%, #3b0000 100%);
+            border-left: 4px solid #dc2626;
+            position: relative;
+            overflow: hidden;
         }
+        .kpi-integrity::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 8px,
+                rgba(220,38,38,0.07) 8px,
+                rgba(220,38,38,0.07) 16px
+            );
+        }
+        .kpi-integrity-count {
+            color: #fca5a5;
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .kpi-integrity-label { color: #f87171; font-size: 0.8rem; font-weight: 600; }
+        .kpi-integrity-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2.5rem;
+            opacity: 0.18;
+            color: #dc2626;
+        }
+        @keyframes shieldPulse {
+            0%, 100% { opacity: 0.18; transform: translateY(-50%) scale(1); }
+            50%       { opacity: 0.32; transform: translateY(-50%) scale(1.08); }
+        }
+        .kpi-integrity-icon { animation: shieldPulse 2s ease-in-out infinite; }
 
+        /* ── Modal intégrité ─────────────────────────────────────────────── */
+        #integrityModal {
+            animation: fadeIn 0.25s ease-in-out;
+        }
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
+            from { opacity: 0; transform: scale(0.95); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        .modal-integrity-header {
+            background: linear-gradient(135deg, #1a0a0a, #3b0000);
+            border-bottom: 2px solid #dc2626;
+            border-radius: 12px 12px 0 0;
+            padding: 20px 24px;
         }
 
-        :root.dark-mode #accessModal .bg-white {
-            background-color: #1f2937 !important;
-            color: #f3f4f6 !important;
-        }
+        /* ── Modal accès (existant) ──────────────────────────────────────── */
+        #accessModal { animation: fadeIn 0.3s ease-in-out; }
 
-        :root.dark-mode #accessModal .text-gray-800 {
-            color: #f3f4f6 !important;
+        /* ── Dark mode ───────────────────────────────────────────────────── */
+        :root.dark-mode { --color-bg-primary:#111827; --color-bg-secondary:#1f2937; --color-text-primary:#f3f4f6; --color-text-secondary:#d1d5db; --color-border:#374151; }
+        :root.dark-mode body { background-color:#111827 !important; color:#f3f4f6 !important; }
+        :root.dark-mode .sidebar { background:#1f2937 !important; color:#f3f4f6 !important; box-shadow:2px 0 10px rgba(0,0,0,0.5) !important; }
+        :root.dark-mode .sidebar-menu { scrollbar-color:#4b5563 #1f2937 !important; }
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-track { background:#1f2937 !important; }
+        :root.dark-mode .sidebar-menu::-webkit-scrollbar-thumb { background:#4b5563 !important; }
+        :root.dark-mode .sidebar-item { color:#d1d5db !important; }
+        :root.dark-mode .sidebar-item:hover:not(.active) { background:#374151 !important; }
+        :root.dark-mode .sidebar-footer { border-top-color:#374151 !important; background:#1f2937 !important; }
+        :root.dark-mode .bg-white { background-color:#1f2937 !important; color:#f3f4f6 !important; }
+        :root.dark-mode .bg-gray-50 { background-color:#374151 !important; }
+        :root.dark-mode .bg-gray-100 { background-color:#2d3748 !important; }
+        :root.dark-mode .text-gray-400 { color:#9ca3af !important; }
+        :root.dark-mode .text-gray-500 { color:#a6adb8 !important; }
+        :root.dark-mode .text-gray-600, :root.dark-mode .text-gray-700 { color:#d1d5db !important; }
+        :root.dark-mode .text-gray-800 { color:#f3f4f6 !important; }
+        :root.dark-mode .border { border-color:#374151 !important; }
+        :root.dark-mode .divide-y > * { border-bottom-color:#374151 !important; }
+        :root.dark-mode .divide-y > *:last-child { border-bottom-color:transparent !important; }
+        :root.dark-mode .border-b { border-bottom-color:#374151 !important; }
+        :root.dark-mode .border-l-4 { border-left-color:inherit !important; }
+        :root.dark-mode .hover\:bg-gray-50:hover { background-color:#374151 !important; }
+        :root.dark-mode input, :root.dark-mode select, :root.dark-mode textarea { background-color:#374151 !important; color:#f3f4f6 !important; border-color:#4b5563 !important; }
+        :root.dark-mode .bg-red-100 { background-color:#7f1d1d !important; }
+        :root.dark-mode .text-red-700 { color:#fca5a5 !important; }
+        :root.dark-mode .bg-yellow-100 { background-color:#78350f !important; }
+        :root.dark-mode .text-yellow-700 { color:#fcd34d !important; }
+        :root.dark-mode .bg-green-100 { background-color:#065f46 !important; }
+        :root.dark-mode .text-green-700 { color:#86efac !important; }
+        :root.dark-mode .bg-blue-100 { background-color:#1e3a8a !important; }
+        :root.dark-mode .text-blue-700, :root.dark-mode .text-blue-800 { color:#93c5fd !important; }
+        :root.dark-mode .bg-indigo-100 { background-color:#312e81 !important; }
+        :root.dark-mode .text-indigo-600 { color:#a5b4fc !important; }
+        :root.dark-mode .integrity-alert-row {
+            background: linear-gradient(90deg, #3b0000 0%, #1f2937 100%) !important;
+            animation: integrityPulseDark 2.5s ease-in-out infinite;
         }
-
-        :root.dark-mode #accessModal .bg-gray-50 {
-            background-color: #374151 !important;
+        @keyframes integrityPulseDark {
+            0%, 100% { background: linear-gradient(90deg, #3b0000 0%, #1f2937 100%) !important; }
+            50%       { background: linear-gradient(90deg, #7f1d1d 0%, #374151 100%) !important; }
         }
-
-        :root.dark-mode #accessModal .text-gray-600 {
-            color: #d1d5db !important;
-        }
-
-        :root.dark-mode #accessModal .text-gray-700 {
-            color: #f3f4f6 !important;
-        }
+        :root.dark-mode #accessModal .bg-white { background-color:#1f2937 !important; color:#f3f4f6 !important; }
+        :root.dark-mode #accessModal .text-gray-800 { color:#f3f4f6 !important; }
+        :root.dark-mode #accessModal .bg-gray-50 { background-color:#374151 !important; }
+        :root.dark-mode #accessModal .text-gray-600 { color:#d1d5db !important; }
+        :root.dark-mode #accessModal .text-gray-700 { color:#f3f4f6 !important; }
+        :root.dark-mode #integrityModal .bg-white { background-color:#1f2937 !important; }
     </style>
 </head>
 <body class="bg-gray-50">
-    <div class="flex h-screen overflow-hidden">
-        <!-- SIDEBAR (avec scroll corrigé) -->
-        <div class="w-64 sidebar">
-            <!-- Logo - fixe en haut -->
-            <div class="p-6 border-b flex-shrink-0">
-                <div class="flex items-center gap-2">
-                    <div class="bg-indigo-600 w-8 h-8 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-fingerprint text-white text-sm"></i>
-                    </div>
-                    <span class="font-bold text-gray-800">BioAccess Secure</span>
+<div class="flex h-screen overflow-hidden">
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- SIDEBAR                                                           -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div class="w-64 sidebar">
+        <div class="p-6 border-b flex-shrink-0">
+            <div class="flex items-center gap-2">
+                <div class="bg-indigo-600 w-8 h-8 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-fingerprint text-white text-sm"></i>
                 </div>
-                <div class="mt-1 text-xs text-gray-400">Administration</div>
+                <span class="font-bold text-gray-800">BioAccess Secure</span>
             </div>
-            
-            <!-- Menu avec scroll -->
-            <div class="sidebar-menu">
-                <div class="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase">Principal</div>
-                <a href="dashboard.html" class="sidebar-item">
-                    <i class="fas fa-chart-pie w-5"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="users.html" class="sidebar-item">
-                    <i class="fas fa-users w-5"></i>
-                    <span>Utilisateurs</span>
-                </a>
-                <a href="logs.html" class="sidebar-item">
-                    <i class="fas fa-history w-5"></i>
-                    <span>Logs</span>
-                </a>
-                <a href="alerts.html" class="sidebar-item active">
-                    <i class="fas fa-bell w-5"></i>
-                    <span>Alertes</span>
-                    <span id="sidebarAlertCount" class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">0</span>
-                </a>
-                
-                <div class="px-4 mt-6 mb-2 text-xs font-semibold text-gray-400 uppercase">Gestion</div>
-                <a href="reports.html" class="sidebar-item">
-                    <i class="fas fa-file-alt w-5"></i>
-                    <span>Rapports</span>
-                </a>
-                <a href="config.html" class="sidebar-item">
-                    <i class="fas fa-sliders-h w-5"></i>
-                    <span>Configuration</span>
-                </a>
-                <a href="audit.html" class="sidebar-item">
-                    <i class="fas fa-shield-alt w-5"></i>
-                    <span>Audit</span>
-                </a>
-                
-                <div class="px-4 mt-6 mb-2 text-xs font-semibold text-gray-400 uppercase">Compte</div>
-                <a href="profile.html" class="sidebar-item">
-                    <i class="fas fa-user-circle w-5"></i>
-                    <span>Profil</span>
-                </a>
-                <a href="login.html" class="sidebar-item" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt w-5"></i>
-                    <span>Déconnexion</span>
-                </a>
-            </div>
-            
-            <!-- Footer sidebar - fixe en bas -->
-            <div class="sidebar-footer flex-shrink-0">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                        <span class="text-indigo-600 font-bold text-sm" id="userInitials">AD</span>
-                    </div>
-                    <div class="flex-1">
-                        <div class="text-sm font-medium" id="adminName">Admin Système</div>
-                        <div class="text-xs text-gray-400" id="adminRole">Super Admin</div>
-                    </div>
-                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                </div>
-            </div>
+            <div class="mt-1 text-xs text-gray-400">Administration</div>
         </div>
-        
-        <!-- Contenu -->
-        <div class="flex-1 overflow-auto">
-            <div class="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
-                <h1 class="text-2xl font-bold text-gray-800">Centre d'alertes</h1>
-                <div class="flex items-center gap-4">
-                    <div class="relative">
-                        <a href="alerts.html">
-                            <i class="fas fa-bell text-indigo-600 text-xl cursor-pointer hover:text-indigo-700"></i>
-                            <span id="headerAlertCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">0</span>
-                        </a>
-                    </div>                    <button id="themeToggleBtn" class="text-gray-400 text-xl cursor-pointer hover:text-indigo-600 transition" title="Mode sombre">
-                        <i class="fas fa-moon"></i>
-                    </button>                </div>
-            </div>
-            
-            <div class="p-6">
-                <!-- KPIs Alertes -->
-                <div class="grid grid-cols-3 gap-6 mb-6">
-                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-red-500">
-                        <p class="text-sm text-gray-500">Haute priorité</p>
-                        <h3 class="text-3xl font-bold text-gray-800" id="kpiHaute">0</h3>
-                    </div>
-                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-yellow-500">
-                        <p class="text-sm text-gray-500">Moyenne priorité</p>
-                        <h3 class="text-3xl font-bold text-gray-800" id="kpiMoyenne">0</h3>
-                    </div>
-                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500">
-                        <p class="text-sm text-gray-500">Basse priorité</p>
-                        <h3 class="text-3xl font-bold text-gray-800" id="kpiBasse">0</h3>
-                    </div>
+
+        <div class="sidebar-menu">
+            <div class="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase">Principal</div>
+            <a href="dashboard.html" class="sidebar-item"><i class="fas fa-chart-pie w-5"></i><span>Dashboard</span></a>
+            <a href="users.html"     class="sidebar-item"><i class="fas fa-users w-5"></i><span>Utilisateurs</span></a>
+            <a href="logs.html"      class="sidebar-item"><i class="fas fa-history w-5"></i><span>Logs</span></a>
+            <a href="alerts.html"    class="sidebar-item active">
+                <i class="fas fa-bell w-5"></i>
+                <span>Alertes</span>
+                <span id="sidebarAlertCount" class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">0</span>
+            </a>
+
+            <div class="px-4 mt-6 mb-2 text-xs font-semibold text-gray-400 uppercase">Gestion</div>
+            <a href="reports.html" class="sidebar-item"><i class="fas fa-file-alt w-5"></i><span>Rapports</span></a>
+            <a href="config.html"  class="sidebar-item"><i class="fas fa-sliders-h w-5"></i><span>Configuration</span></a>
+            <a href="audit.html"   class="sidebar-item"><i class="fas fa-shield-alt w-5"></i><span>Audit</span></a>
+
+            <div class="px-4 mt-6 mb-2 text-xs font-semibold text-gray-400 uppercase">Compte</div>
+            <a href="profile.html" class="sidebar-item"><i class="fas fa-user-circle w-5"></i><span>Profil</span></a>
+            <a href="login.html"   class="sidebar-item" id="logoutBtn"><i class="fas fa-sign-out-alt w-5"></i><span>Déconnexion</span></a>
+        </div>
+
+        <div class="sidebar-footer flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <span class="text-indigo-600 font-bold text-sm" id="userInitials">AD</span>
                 </div>
-                
-                <!-- Liste alertes -->
-                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                    <div class="p-4 border-b bg-gray-50">
-                        <select id="alertFilter" class="border rounded px-3 py-2 text-sm">
-                            <option value="">Toutes les alertes</option>
-                            <option value="Non traitée">Non traitées</option>
-                            <option value="En cours">En cours</option>
-                            <option value="Traitée">Traitées</option>
-                        </select>
-                    </div>
-                    
-                    <div id="alertsList" class="divide-y">
-                        <!-- Alertes générées par JavaScript -->
-                    </div>
+                <div class="flex-1">
+                    <div class="text-sm font-medium" id="adminName">Admin Système</div>
+                    <div class="text-xs text-gray-400" id="adminRole">Super Admin</div>
                 </div>
+                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Gestion Accès -->
-    <div id="accessModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-800">Gérer l'alerte</h2>
-                <button class="text-gray-500 hover:text-gray-700 close-modal"><i class="fas fa-times"></i></button>
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- CONTENU PRINCIPAL                                                 -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div class="flex-1 overflow-auto">
+
+        <!-- Header -->
+        <div class="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
+            <h1 class="text-2xl font-bold text-gray-800">Centre d'alertes</h1>
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <a href="alerts.html">
+                        <i class="fas fa-bell text-indigo-600 text-xl cursor-pointer hover:text-indigo-700"></i>
+                        <span id="headerAlertCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">0</span>
+                    </a>
+                </div>
+                <button id="themeToggleBtn" class="text-gray-400 text-xl cursor-pointer hover:text-indigo-600 transition" title="Mode sombre">
+                    <i class="fas fa-moon"></i>
+                </button>
             </div>
-            <div id="modalContent"></div>
-            <div class="flex gap-3 mt-6">
-                <button class="flex-1 bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 close-modal" title="Annuler cette action">Annuler</button>
-                <button id="authorizeBtn" class="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-semibold" title="Permettre l'accès malgré l'alerte"><i class="fas fa-unlock"></i> Permettre</button>
-                <button id="blockBtn" class="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-semibold" title="Refuser l'accès"><i class="fas fa-lock"></i> Refuser</button>
+        </div>
+
+        <div class="p-6">
+
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- BANNIÈRE ALERTE INTÉGRITÉ CRITIQUE (visible si ≥ 1)      -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <div id="integrityBanner" class="hidden mb-6 rounded-xl overflow-hidden border-2 border-red-600 shadow-lg">
+                <div class="bg-red-700 px-5 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-shield-virus text-white text-xl animate-pulse"></i>
+                        <span class="text-white font-bold text-sm uppercase tracking-wide">
+                            Compromis d'intégrité détecté
+                        </span>
+                        <span id="integrityBannerCount"
+                              class="bg-white text-red-700 text-xs font-black px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <span class="text-red-200 text-xs">Alerte émise automatiquement par le poste client</span>
+                </div>
+                <div class="bg-red-50 px-5 py-3 text-sm text-red-800">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Un ou plusieurs postes ont signalé une violation d'intégrité applicative.
+                    Consultez les alertes ci-dessous et prenez une décision d'accès immédiate.
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- KPIs — 4 cartes dont 1 dédiée intégrité                  -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500">
+                    <p class="text-sm text-gray-500">Haute priorité</p>
+                    <h3 class="text-3xl font-bold text-gray-800" id="kpiHaute">0</h3>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-yellow-500">
+                    <p class="text-sm text-gray-500">Moyenne priorité</p>
+                    <h3 class="text-3xl font-bold text-gray-800" id="kpiMoyenne">0</h3>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
+                    <p class="text-sm text-gray-500">Basse priorité</p>
+                    <h3 class="text-3xl font-bold text-gray-800" id="kpiBasse">0</h3>
+                </div>
+                <!-- KPI intégrité -->
+                <div class="kpi-integrity rounded-xl shadow-sm p-5 relative">
+                    <i class="fas fa-shield-virus kpi-integrity-icon"></i>
+                    <p class="kpi-integrity-label relative z-10">Intégrité compromise</p>
+                    <h3 class="kpi-integrity-count relative z-10" id="kpiIntegrity">0</h3>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- LISTE ALERTES                                             -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+
+                <!-- Barre de filtres -->
+                <div class="p-4 border-b bg-gray-50 flex flex-wrap gap-3 items-center">
+                    <select id="alertFilter" class="border rounded px-3 py-2 text-sm">
+                        <option value="">Toutes les alertes</option>
+                        <option value="Non traitée">Non traitées</option>
+                        <option value="En cours">En cours</option>
+                        <option value="Traitée">Traitées</option>
+                    </select>
+
+                    <!-- Filtre type intégrité (NOUVEAU) -->
+                    <select id="typeFilter" class="border rounded px-3 py-2 text-sm">
+                        <option value="">Tous les types</option>
+                        <option value="integrity_violation">🛡 Intégrité compromise</option>
+                        <option value="other">Autres alertes</option>
+                    </select>
+
+                    <!-- Compteur résultats -->
+                    <span id="filterCount" class="ml-auto text-xs text-gray-400"></span>
+                </div>
+
+                <div id="alertsList" class="divide-y">
+                    <!-- Généré par JS -->
+                </div>
             </div>
         </div>
     </div>
-    
-    <script>
-        // ========== DONNÉES ALERTES ==========
-        let alerts = [
-            { id: 1, titre: "Tentative d'usurpation - Jean Dupont", description: "3 échecs consécutifs sur poste PC-102 en 5 minutes", date: "10/03/2026 09:45", status: "Non traitée", priorite: "Haute", couleur: "#dc2626", allow_access: false, resource: "poste-102", gravite: "haute", traitee: false },
-            { id: 2, titre: "Accès non autorisé - Claire Martin", description: "Tentative accès salle serveur (département RH)", date: "10/03/2026 08:15", status: "Non traitée", priorite: "Haute", couleur: "#dc2626", allow_access: false, resource: "salle-serveur", gravite: "haute", traitee: false },
-            { id: 3, titre: "Accès hors horaire - Thomas Petit", description: "Accès salle serveur à 22h30 (horaire autorisé: 8h-20h)", date: "09/03/2026 22:30", status: "En cours", priorite: "Moyenne", couleur: "#f59e0b", allow_access: false, resource: "salle-serveur", gravite: "moyenne", traitee: false },
-            { id: 4, titre: "Nouvel employé enrôlé", description: "Sophie Martin - Département Comptabilité", date: "08/03/2026 14:20", status: "Traitée", priorite: "Basse", couleur: "#16a34a", allow_access: true, resource: "general", gravite: "basse", traitee: true }
-        ];
+</div>
 
-        let currentAlertId = null;
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL GESTION ACCÈS (original, inchangé)                             -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<div id="accessModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-800">Gérer l'alerte</h2>
+            <button class="text-gray-500 hover:text-gray-700 close-modal"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="modalContent"></div>
+        <div class="flex gap-3 mt-6">
+            <button class="flex-1 bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 close-modal" title="Annuler">Annuler</button>
+            <button id="authorizeBtn" class="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-semibold" title="Permettre l'accès malgré l'alerte">
+                <i class="fas fa-unlock"></i> Permettre
+            </button>
+            <button id="blockBtn" class="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-semibold" title="Refuser l'accès">
+                <i class="fas fa-lock"></i> Refuser
+            </button>
+        </div>
+    </div>
+</div>
 
-        // Transformer les données API en format d'affichage
-        function transformAlertFromAPI(apiAlert) {
-            const prioriteMap = {
-                'haute': 'Haute',
-                'moyenne': 'Moyenne',
-                'basse': 'Basse'
-            };
-            
-            const colorMap = {
-                'haute': '#dc2626',
-                'moyenne': '#f59e0b',
-                'basse': '#16a34a'
-            };
-            
-            const status = apiAlert.traitee ? 'Traitée' : 'Non traitée';
-            
-            return {
-                id: apiAlert.id,
-                titre: apiAlert.titre || apiAlert.type || 'Alerte',
-                description: apiAlert.description || apiAlert.message || '',
-                date: apiAlert.date_creation || new Date().toLocaleDateString(),
-                status: status,
-                priorite: prioriteMap[apiAlert.gravite?.toLowerCase()] || 'Moyenne',
-                couleur: colorMap[apiAlert.gravite?.toLowerCase()] || '#f59e0b',
-                allow_access: apiAlert.allow_access || false,
-                resource: apiAlert.resource || 'general',
-                gravite: apiAlert.gravite,
-                traitee: apiAlert.traitee,
-                commentaire: apiAlert.commentaire || ''
-            };
-        }
-
-        // Charger les alertes depuis l'API
-        async function loadAlerts() {
-            try {
-                const token = localStorage.getItem('token');
-                const response = await fetch('/api/v1/alerts?per_page=100', {
-                    headers: {
-                        'Authorization': 'Bearer ' + token
-                    }
-                });
-                
-                if (!response.ok) {
-                    console.warn('Impossible de charger les alertes depuis l\'API');
-                    return false;
-                }
-                
-                const data = await response.json();
-                if (data.status === 'success' && data.data) {
-                    alerts = data.data.map(transformAlertFromAPI);
-                    return true;
-                } else if (data.data && Array.isArray(data.data)) {
-                    alerts = data.data.map(transformAlertFromAPI);
-                    return true;
-                }
-            } catch (error) {
-                console.warn('Erreur chargement alertes:', error);
-            }
-            return false;
-        }
-
-        // Mettre à jour les KPIs
-        function updateKPIs() {
-            const haute = alerts.filter(a => a.priorite === 'Haute' && !a.traitee).length;
-            const moyenne = alerts.filter(a => a.priorite === 'Moyenne' && !a.traitee).length;
-            const basse = alerts.filter(a => a.priorite === 'Basse' && !a.traitee).length;
-
-            document.getElementById('kpiHaute').textContent = haute;
-            document.getElementById('kpiMoyenne').textContent = moyenne;
-            document.getElementById('kpiBasse').textContent = basse;
-        }
-
-        // Mettre à jour les compteurs d'alertes (cloche et sidebar)
-        function updateAlertCounts() {
-            const totalUntreated = alerts.filter(a => !a.traitee).length;
-            
-            const headerCount = document.getElementById('headerAlertCount');
-            const sidebarCount = document.getElementById('sidebarAlertCount');
-            
-            if (headerCount) {
-                headerCount.textContent = totalUntreated;
-                headerCount.style.display = totalUntreated > 0 ? 'flex' : 'none';
-            }
-            
-            if (sidebarCount) {
-                sidebarCount.textContent = totalUntreated;
-                sidebarCount.style.display = totalUntreated > 0 ? 'inline-block' : 'none';
-            }
-        }
-
-        function renderAlerts(filter = "") {
-            const alertsList = document.getElementById('alertsList');
-            alertsList.innerHTML = '';
-
-            const filtered = filter ? alerts.filter(a => a.status === filter) : alerts;
-
-            if (filtered.length === 0) {
-                alertsList.innerHTML = '<div class="p-6 text-center text-gray-500"><p>Aucune alerte trouvée</p></div>';
-                return;
-            }
-
-            filtered.forEach(alert => {
-                const badge = alert.status === "Traitée" ? "bg-green-100 text-green-700" : (alert.status === "En cours" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700");
-                const button = alert.status === "Traitée" 
-                    ? `<span class="text-green-600 text-sm"><i class="fas fa-check"></i> Traité</span>`
-                    : `<button class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700 treat-btn" data-id="${alert.id}">Traiter</button>`;
-
-                // Bouton Accès
-                const accessButtonClass = alert.allow_access 
-                    ? "bg-green-100 text-green-700 border border-green-300" 
-                    : "bg-red-100 text-red-700 border border-red-300";
-                const accessButtonText = alert.allow_access 
-                    ? '<i class="fas fa-check-circle"></i> Autorisé' 
-                    : '<i class="fas fa-ban"></i> Bloqué';
-
-                const alertDiv = document.createElement('div');
-                alertDiv.className = 'p-4 hover:bg-gray-50 transition';
-                alertDiv.innerHTML = `
-                    <div class="flex items-start gap-4">
-                        <div class="w-2 h-2 rounded-full mt-2" style="background-color: ${alert.couleur}"></div>
-                        <div class="flex-1">
-                            <div class="flex justify-between items-start">
-                                <div class="flex-1">
-                                    <h3 class="font-medium">${alert.titre}</h3>
-                                    <p class="text-sm text-gray-600 mt-1">${alert.description}</p>
-                                    <div class="flex justify-between mt-2 text-xs text-gray-400">
-                                        <span>${alert.date}</span>
-                                        <span>${alert.resource}</span>
-                                    </div>
-                                </div>
-                                <span class="${badge} text-xs px-2 py-1 rounded-full ml-2">${alert.priorite}</span>
-                            </div>
-                            <div class="flex gap-2 mt-3">
-                                ${button}
-                                <button class="access-toggle-btn ${accessButtonClass} px-3 py-1 rounded text-sm hover:opacity-80 transition" data-id="${alert.id}">
-                                    ${accessButtonText}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                alertsList.appendChild(alertDiv);
-            });
-
-            // Event listeners aux boutons
-            document.querySelectorAll('.treat-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const alertId = parseInt(this.dataset.id);
-                    const alert = alerts.find(a => a.id === alertId);
-                    if (alert && alert.status !== "Traitée") {
-                        currentAlertId = alertId;
-                        showAccessModal(alert);
-                    }
-                });
-            });
-
-            document.querySelectorAll('.access-toggle-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const alertId = parseInt(this.dataset.id);
-                    const alert = alerts.find(a => a.id === alertId);
-                    if (alert) {
-                        alert.status = "Traitée";
-                        alert.traitee = true;
-                        saveAlertStatus(alertId, { 
-                            allow_access: alert.allow_access,
-                            action: 'marquer'
-                        });
-                        updateKPIs();
-                        updateAlertCounts();
-                        renderAlerts(document.getElementById('alertFilter').value);
-                    }
-                });
-            });
-        }
-
-        function showAccessModal(alert) {
-            const modal = document.getElementById('accessModal');
-            const modalContent = document.getElementById('modalContent');
-
-            modalContent.innerHTML = `
-                <div class="mb-4">
-                    <p class="text-gray-700 mb-2"><strong>${alert.titre}</strong></p>
-                    <p class="text-sm text-gray-600 mb-4">${alert.description}</p>
-                    <div class="bg-gray-50 p-3 rounded mb-4">
-                        <p class="text-sm"><strong>Ressource :</strong> ${alert.resource}</p>
-                        <p class="text-sm"><strong>Statut actuel :</strong> ${alert.allow_access ? '<span class="text-green-600">Autorisé</span>' : '<span class="text-red-600">Bloqué</span>'}</p>
-                    </div>
-                    <div class="border-l-4 border-blue-500 bg-blue-50 p-3 rounded mb-4">
-                        <p class="text-sm font-semibold text-blue-900 mb-2">Que souhaitez-vous faire ?</p>
-                        <div class="space-y-2 text-xs text-blue-800">
-                            <div>
-                                <i class="fas fa-check-circle text-green-600"></i>
-                                <strong>Autoriser :</strong> Permettre l'accès MALGRÉ L'ALERTE (ouvrir la porte / accéder au poste)
-                            </div>
-                            <div>
-                                <i class="fas fa-ban text-red-600"></i>
-                                <strong>Bloquer :</strong> Refuser l'accès (la porte reste fermée / accès bloqué au poste)
-                            </div>
-                        </div>
-                    </div>
-                    <p class="text-xs text-red-600"><i class="fas fa-exclamation-triangle"></i> <strong>Attention :</strong> Cette décision sera enregistrée dans l'audit de sécurité.</p>
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL DÉTAIL INTÉGRITÉ (NOUVEAU)                                     -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<div id="integrityModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="modal-integrity-header flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-shield-virus text-red-400 text-2xl"></i>
+                <div>
+                    <h2 class="text-white font-bold text-lg">Violation d'intégrité</h2>
+                    <p class="text-red-300 text-xs">Alerte émise automatiquement par le poste client</p>
                 </div>
-            `;
+            </div>
+            <button id="closeIntegrityModal" class="text-red-300 hover:text-white text-xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
 
-            modal.classList.remove('hidden');
-        }
+        <div class="p-6 overflow-y-auto max-h-96">
+            <div id="integrityModalContent"></div>
+        </div>
 
-        function closeAccessModal() {
-            const modal = document.getElementById('accessModal');
-            modal.classList.add('hidden');
-            currentAlertId = null;
-        }
+        <div class="px-6 pb-6 flex gap-3">
+            <button id="integrityBlockBtn"
+                    class="flex-1 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 font-semibold text-sm">
+                <i class="fas fa-lock mr-2"></i>Bloquer l'accès
+            </button>
+            <button id="integrityAllowBtn"
+                    class="flex-1 bg-amber-500 text-white px-4 py-3 rounded-lg hover:bg-amber-600 font-semibold text-sm">
+                <i class="fas fa-unlock-alt mr-2"></i>Autoriser quand même
+            </button>
+            <button id="closeIntegrityModalBtn"
+                    class="px-4 py-3 rounded-lg border text-gray-600 hover:bg-gray-50 text-sm">
+                Fermer
+            </button>
+        </div>
+    </div>
+</div>
 
-        function saveAlertStatus(alertId, data) {
-            const token = localStorage.getItem('token');
-            fetch('/api/v1/alerts/' + alertId, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
-                body: JSON.stringify(data)
-            })
-            .catch(err => console.log('Local mode - changes not persisted'));
-        }
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- JAVASCRIPT                                                            -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<script>
 
-        // ========== EVENT LISTENERS ==========
-        document.getElementById('alertFilter').addEventListener('change', function() {
-            renderAlerts(this.value);
+// ═════════════════════════════════════════════════════════════════════════
+// DONNÉES
+// ═════════════════════════════════════════════════════════════════════════
+
+let alerts = [
+    {
+        id: 1,
+        titre: "Tentative d'usurpation - Jean Dupont",
+        description: "3 échecs consécutifs sur poste PC-102 en 5 minutes",
+        date: "10/03/2026 09:45",
+        status: "Non traitée",
+        priorite: "Haute",
+        couleur: "#dc2626",
+        allow_access: false,
+        resource: "poste-102",
+        gravite: "haute",
+        traitee: false,
+        type: "other"
+    },
+    {
+        id: 2,
+        titre: "Accès non autorisé - Claire Martin",
+        description: "Tentative accès salle serveur (département RH)",
+        date: "10/03/2026 08:15",
+        status: "Non traitée",
+        priorite: "Haute",
+        couleur: "#dc2626",
+        allow_access: false,
+        resource: "salle-serveur",
+        gravite: "haute",
+        traitee: false,
+        type: "other"
+    },
+    {
+        id: 3,
+        titre: "Accès hors horaire - Thomas Petit",
+        description: "Accès salle serveur à 22h30 (horaire autorisé: 8h-20h)",
+        date: "09/03/2026 22:30",
+        status: "En cours",
+        priorite: "Moyenne",
+        couleur: "#f59e0b",
+        allow_access: false,
+        resource: "salle-serveur",
+        gravite: "moyenne",
+        traitee: false,
+        type: "other"
+    },
+    {
+        id: 4,
+        titre: "Nouvel employé enrôlé",
+        description: "Sophie Martin - Département Comptabilité",
+        date: "08/03/2026 14:20",
+        status: "Traitée",
+        priorite: "Basse",
+        couleur: "#16a34a",
+        allow_access: true,
+        resource: "general",
+        gravite: "basse",
+        traitee: true,
+        type: "other"
+    }
+];
+
+let currentAlertId = null;
+let currentIntegrityAlertId = null;
+
+
+// ═════════════════════════════════════════════════════════════════════════
+// TRANSFORMATION DEPUIS L'API
+// ═════════════════════════════════════════════════════════════════════════
+
+function transformAlertFromAPI(apiAlert) {
+    const prioriteMap = { 'haute': 'Haute', 'moyenne': 'Moyenne', 'basse': 'Basse' };
+    const colorMap    = { 'haute': '#dc2626', 'moyenne': '#f59e0b', 'basse': '#16a34a' };
+    const status      = apiAlert.traitee ? 'Traitée' : 'Non traitée';
+    const type        = apiAlert.type || 'other';
+
+    return {
+        id:          apiAlert.id,
+        titre:       apiAlert.titre || apiAlert.type || 'Alerte',
+        description: apiAlert.description || apiAlert.message || '',
+        date:        apiAlert.date_creation || new Date().toLocaleDateString(),
+        status,
+        priorite:    prioriteMap[apiAlert.gravite?.toLowerCase()] || 'Moyenne',
+        couleur:     colorMap[apiAlert.gravite?.toLowerCase()] || '#f59e0b',
+        allow_access: apiAlert.allow_access || false,
+        resource:    apiAlert.resource || 'general',
+        gravite:     apiAlert.gravite,
+        traitee:     apiAlert.traitee,
+        commentaire: apiAlert.commentaire || '',
+        type,
+        // Métadonnées d'intégrité (envoyées par maindesktop.py)
+        metadata:    apiAlert.metadata || null
+    };
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════
+// CHARGEMENT API
+// ═════════════════════════════════════════════════════════════════════════
+
+async function loadAlerts() {
+    try {
+        const token    = localStorage.getItem('token');
+        const response = await fetch('/api/v1/alerts?per_page=100', {
+            headers: { 'Authorization': 'Bearer ' + token }
         });
-
-        document.querySelectorAll('.close-modal').forEach(btn => {
-            btn.addEventListener('click', closeAccessModal);
-        });
-
-        document.getElementById('authorizeBtn').addEventListener('click', function() {
-            if (currentAlertId) {
-                const alert = alerts.find(a => a.id === currentAlertId);
-                if (alert) {
-                    alert.allow_access = true;
-                    alert.status = "Traitée";
-                    alert.traitee = true;
-                    saveAlertStatus(currentAlertId, { 
-                        allow_access: true,
-                        action: 'autoriser'
-                    });
-                    closeAccessModal();
-                    updateKPIs();
-                    updateAlertCounts();
-                    renderAlerts(document.getElementById('alertFilter').value);
-                    // Confirmation visuelle
-                    const alertTitle = alert.titre;
-                    console.log('✅ ACCÈS AUTORISÉ: ' + alertTitle + ' - L\'utilisateur peut accéder malgré l\'alerte');
-                }
-            }
-        });
-
-        document.getElementById('blockBtn').addEventListener('click', function() {
-            if (currentAlertId) {
-                const alert = alerts.find(a => a.id === currentAlertId);
-                if (alert) {
-                    alert.allow_access = false;
-                    alert.status = "Traitée";
-                    alert.traitee = true;
-                    saveAlertStatus(currentAlertId, { 
-                        allow_access: false,
-                        action: 'bloquer'
-                    });
-                    closeAccessModal();
-                    updateKPIs();
-                    updateAlertCounts();
-                    renderAlerts(document.getElementById('alertFilter').value);
-                    // Confirmation visuelle
-                    const alertTitle = alert.titre;
-                    console.log('🚫 ACCÈS REFUSÉ: ' + alertTitle + ' - L\'utilisateur n\'a pas accès');
-                }
-            }
-        });
-
-        // ========== INITIALISATION ==========
-        async function init() {
-            const loaded = await loadAlerts();
-            if (!loaded) {
-                console.log('Chargement depuis API échoué, affichage local...');
-            }
-            updateKPIs();
-            updateAlertCounts();
-            renderAlerts();
-
-            // Theme Toggle
-            const themeToggleBtn = document.getElementById('themeToggleBtn');
-            if (themeToggleBtn && window.themeManager) {
-                themeToggleBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    window.themeManager.toggle();
-                    
-                    const isDark = window.themeManager.isDarkMode();
-                    themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-                    themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
-                });
-                
-                const isDark = window.themeManager.isDarkMode();
-                themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-                themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
-            }
-
-            // Logout
-            const logoutLink = document.querySelector('a[href="login.html"]');
-            if (logoutLink) {
-                logoutLink.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    window.location.href = 'login.html';
-                });
-            }
+        if (!response.ok) return false;
+        const data = await response.json();
+        if (data.data && Array.isArray(data.data)) {
+            alerts = data.data.map(transformAlertFromAPI);
+            return true;
         }
+    } catch (err) {
+        console.warn('Erreur chargement alertes:', err);
+    }
+    return false;
+}
 
-        document.addEventListener('DOMContentLoaded', init);
-    </script>
+
+// ═════════════════════════════════════════════════════════════════════════
+// KPIs
+// ═════════════════════════════════════════════════════════════════════════
+
+function updateKPIs() {
+    const haute     = alerts.filter(a => a.priorite === 'Haute'   && !a.traitee).length;
+    const moyenne   = alerts.filter(a => a.priorite === 'Moyenne' && !a.traitee).length;
+    const basse     = alerts.filter(a => a.priorite === 'Basse'   && !a.traitee).length;
+    const integrity = alerts.filter(a => a.type === 'integrity_violation' && !a.traitee).length;
+
+    document.getElementById('kpiHaute').textContent     = haute;
+    document.getElementById('kpiMoyenne').textContent   = moyenne;
+    document.getElementById('kpiBasse').textContent     = basse;
+    document.getElementById('kpiIntegrity').textContent = integrity;
+
+    // Bannière critique
+    const banner = document.getElementById('integrityBanner');
+    const bannerCount = document.getElementById('integrityBannerCount');
+    if (integrity > 0) {
+        banner.classList.remove('hidden');
+        bannerCount.textContent = integrity;
+    } else {
+        banner.classList.add('hidden');
+    }
+}
+
+function updateAlertCounts() {
+    const total = alerts.filter(a => !a.traitee).length;
+    ['headerAlertCount', 'sidebarAlertCount'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = total;
+        el.style.display = total > 0 ? (id === 'headerAlertCount' ? 'flex' : 'inline-block') : 'none';
+    });
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════
+// RENDU DES ALERTES
+// ═════════════════════════════════════════════════════════════════════════
+
+function renderAlerts(statusFilter = "", typeFilter = "") {
+    const alertsList = document.getElementById('alertsList');
+    alertsList.innerHTML = '';
+
+    let filtered = alerts;
+    if (statusFilter) filtered = filtered.filter(a => a.status === statusFilter);
+    if (typeFilter === 'integrity_violation') {
+        filtered = filtered.filter(a => a.type === 'integrity_violation');
+    } else if (typeFilter === 'other') {
+        filtered = filtered.filter(a => a.type !== 'integrity_violation');
+    }
+
+    document.getElementById('filterCount').textContent =
+        filtered.length + ' alerte' + (filtered.length > 1 ? 's' : '');
+
+    if (filtered.length === 0) {
+        alertsList.innerHTML = '<div class="p-8 text-center text-gray-400"><i class="fas fa-bell-slash text-3xl mb-3 block"></i><p>Aucune alerte trouvée</p></div>';
+        return;
+    }
+
+    filtered.forEach(alert => {
+        const isIntegrity = alert.type === 'integrity_violation';
+
+        // Badge statut
+        const statusBadge = alert.status === 'Traitée'
+            ? 'bg-green-100 text-green-700'
+            : (alert.status === 'En cours' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700');
+
+        // Bouton traiter / traité
+        const actionBtn = alert.status === 'Traitée'
+            ? `<span class="text-green-600 text-sm"><i class="fas fa-check"></i> Traité</span>`
+            : (isIntegrity
+                ? `<button class="integrity-treat-btn bg-red-700 text-white px-3 py-1 rounded text-sm hover:bg-red-800 font-semibold" data-id="${alert.id}">
+                       <i class="fas fa-shield-virus mr-1"></i>Gérer l'intégrité
+                   </button>`
+                : `<button class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700 treat-btn" data-id="${alert.id}">Traiter</button>`
+              );
+
+        // Badge accès
+        const accessClass = alert.allow_access
+            ? 'bg-green-100 text-green-700 border border-green-300'
+            : 'bg-red-100 text-red-700 border border-red-300';
+        const accessText = alert.allow_access
+            ? '<i class="fas fa-check-circle"></i> Autorisé'
+            : '<i class="fas fa-ban"></i> Bloqué';
+
+        // Badge type intégrité
+        const integrityBadgeHtml = isIntegrity
+            ? `<span class="integrity-badge ml-2"><i class="fas fa-shield-virus"></i> Intégrité</span>`
+            : '';
+
+        const div = document.createElement('div');
+        div.className = 'p-4 hover:bg-gray-50 transition' + (isIntegrity ? ' integrity-alert-row' : '');
+        div.innerHTML = `
+            <div class="flex items-start gap-4">
+                <div class="w-2 h-2 rounded-full mt-2 flex-shrink-0" style="background-color:${alert.couleur}"></div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-start gap-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center flex-wrap gap-2">
+                                <h3 class="font-medium truncate">${alert.titre}</h3>
+                                ${integrityBadgeHtml}
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">${alert.description}</p>
+                            <div class="flex justify-between mt-2 text-xs text-gray-400">
+                                <span><i class="fas fa-clock mr-1"></i>${alert.date}</span>
+                                <span><i class="fas fa-desktop mr-1"></i>${alert.resource}</span>
+                            </div>
+                        </div>
+                        <span class="${statusBadge} text-xs px-2 py-1 rounded-full flex-shrink-0">${alert.priorite}</span>
+                    </div>
+                    <div class="flex gap-2 mt-3 flex-wrap">
+                        ${actionBtn}
+                        <button class="access-toggle-btn ${accessClass} px-3 py-1 rounded text-sm hover:opacity-80 transition" data-id="${alert.id}">
+                            ${accessText}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        alertsList.appendChild(div);
+    });
+
+    // ── Event listeners ──────────────────────────────────────────────────
+
+    // Bouton "Traiter" (alertes classiques)
+    document.querySelectorAll('.treat-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id    = parseInt(this.dataset.id);
+            const alert = alerts.find(a => a.id === id);
+            if (alert && alert.status !== 'Traitée') {
+                currentAlertId = id;
+                showAccessModal(alert);
+            }
+        });
+    });
+
+    // Bouton "Gérer l'intégrité" (alertes integrity_violation)
+    document.querySelectorAll('.integrity-treat-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id    = parseInt(this.dataset.id);
+            const alert = alerts.find(a => a.id === id);
+            if (alert) {
+                currentIntegrityAlertId = id;
+                showIntegrityModal(alert);
+            }
+        });
+    });
+
+    // Bouton toggle accès
+    document.querySelectorAll('.access-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id    = parseInt(this.dataset.id);
+            const alert = alerts.find(a => a.id === id);
+            if (alert) {
+                alert.status  = 'Traitée';
+                alert.traitee = true;
+                saveAlertStatus(id, { allow_access: alert.allow_access, action: 'marquer' });
+                updateKPIs();
+                updateAlertCounts();
+                renderAlerts(
+                    document.getElementById('alertFilter').value,
+                    document.getElementById('typeFilter').value
+                );
+            }
+        });
+    });
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════
+// MODAL ALERTE CLASSIQUE (original inchangé)
+// ═════════════════════════════════════════════════════════════════════════
+
+function showAccessModal(alert) {
+    document.getElementById('modalContent').innerHTML = `
+        <div class="mb-4">
+            <p class="text-gray-700 mb-2"><strong>${alert.titre}</strong></p>
+            <p class="text-sm text-gray-600 mb-4">${alert.description}</p>
+            <div class="bg-gray-50 p-3 rounded mb-4">
+                <p class="text-sm"><strong>Ressource :</strong> ${alert.resource}</p>
+                <p class="text-sm"><strong>Statut actuel :</strong>
+                    ${alert.allow_access
+                        ? '<span class="text-green-600">Autorisé</span>'
+                        : '<span class="text-red-600">Bloqué</span>'}
+                </p>
+            </div>
+            <div class="border-l-4 border-blue-500 bg-blue-50 p-3 rounded mb-4">
+                <p class="text-sm font-semibold text-blue-900 mb-2">Que souhaitez-vous faire ?</p>
+                <div class="space-y-2 text-xs text-blue-800">
+                    <div><i class="fas fa-check-circle text-green-600"></i>
+                        <strong>Autoriser :</strong> Permettre l'accès MALGRÉ L'ALERTE</div>
+                    <div><i class="fas fa-ban text-red-600"></i>
+                        <strong>Bloquer :</strong> Refuser l'accès au poste</div>
+                </div>
+            </div>
+            <p class="text-xs text-red-600">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Attention :</strong> Cette décision sera enregistrée dans l'audit de sécurité.
+            </p>
+        </div>
+    `;
+    document.getElementById('accessModal').classList.remove('hidden');
+}
+
+function closeAccessModal() {
+    document.getElementById('accessModal').classList.add('hidden');
+    currentAlertId = null;
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════
+// MODAL ALERTE INTÉGRITÉ (NOUVEAU)
+// ═════════════════════════════════════════════════════════════════════════
+
+function showIntegrityModal(alert) {
+    const meta = alert.metadata || {};
+
+    // Lignes de métadonnées techniques
+    const metaLines = [
+        { k: 'Poste',             v: meta.hostname     || alert.resource },
+        { k: 'Système',           v: meta.platform     || '—' },
+        { k: 'Type de violation', v: meta.status_code  || '—' },
+        { k: 'Hash exe (nouveau)',v: meta.exe_hash_nouveau   ? meta.exe_hash_nouveau.substring(0,24)+'…'   : '—' },
+        { k: 'Hash exe (précéd.)',v: meta.exe_hash_precedent ? meta.exe_hash_precedent.substring(0,24)+'…' : '—' },
+        { k: 'Empreinte machine', v: meta.machine_fp   ? meta.machine_fp.substring(0,24)+'…'   : '—' },
+        { k: 'Nb. installations', v: meta.install_count !== undefined ? meta.install_count : '—' },
+        { k: 'Détecté le',        v: meta.detected_at  ? meta.detected_at.replace('T',' ').substring(0,19) : alert.date },
+    ].map(line =>
+        `<div class="flex justify-between gap-4 py-1 border-b border-red-900">
+            <span class="meta-key">${line.k}</span>
+            <span class="meta-val font-mono">${line.v}</span>
+         </div>`
+    ).join('');
+
+    // Explication selon le code de statut
+    const explanations = {
+        TAMPERED:    '🚨 Le fichier de sceau de sécurité (install.seal) a été modifié ou supprimé manuellement. Cela indique une tentative de contournement de la protection.',
+        REINSTALLED: '⚠ L\'application a été réinstallée ou remplacée sur ce poste. Le hash de l\'exécutable ne correspond plus au sceau enregistré.',
+        DATA_WIPED:  '⚠ Réinstallation détectée ET les données biométriques ont été supprimées. Les utilisateurs devront se réenregistrer.',
+    };
+    const explanation = explanations[meta.status_code] || '⚠ Une anomalie d\'intégrité a été détectée sur ce poste.';
+
+    document.getElementById('integrityModalContent').innerHTML = `
+        <div class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+            ${explanation}
+        </div>
+
+        <div class="integrity-meta-box mb-4">
+            <p class="text-red-400 text-xs uppercase font-bold mb-2 tracking-widest">
+                <i class="fas fa-terminal mr-1"></i> Détails techniques
+            </p>
+            ${metaLines}
+        </div>
+
+        <div class="bg-amber-50 border border-amber-300 rounded-lg p-3 text-sm text-amber-800">
+            <p class="font-semibold mb-1"><i class="fas fa-exclamation-triangle mr-1"></i>Décision requise</p>
+            <p class="text-xs">
+                <strong>Bloquer :</strong> Le poste reste verrouillé — aucun accès autorisé jusqu'à investigation.<br>
+                <strong>Autoriser :</strong> L'utilisateur peut accéder au poste malgré la violation détectée.
+            </p>
+        </div>
+
+        <p class="text-xs text-gray-400 mt-3">
+            <i class="fas fa-archive mr-1"></i>
+            Cette décision sera enregistrée dans le journal d'audit de sécurité.
+        </p>
+    `;
+
+    document.getElementById('integrityModal').classList.remove('hidden');
+}
+
+function closeIntegrityModal() {
+    document.getElementById('integrityModal').classList.add('hidden');
+    currentIntegrityAlertId = null;
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════
+// SAUVEGARDE STATUT (API)
+// ═════════════════════════════════════════════════════════════════════════
+
+function saveAlertStatus(alertId, data) {
+    const token = localStorage.getItem('token');
+    fetch('/api/v1/alerts/' + alertId, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(data)
+    }).catch(() => console.log('Local mode - changes not persisted'));
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═════════════════════════════════════════════════════════════════════════
+
+// Filtre statut
+document.getElementById('alertFilter').addEventListener('change', function () {
+    renderAlerts(this.value, document.getElementById('typeFilter').value);
+});
+
+// Filtre type (NOUVEAU)
+document.getElementById('typeFilter').addEventListener('change', function () {
+    renderAlerts(document.getElementById('alertFilter').value, this.value);
+});
+
+// Modal accès — fermeture
+document.querySelectorAll('.close-modal').forEach(btn =>
+    btn.addEventListener('click', closeAccessModal));
+
+// Modal accès — Autoriser
+document.getElementById('authorizeBtn').addEventListener('click', function () {
+    if (!currentAlertId) return;
+    const alert = alerts.find(a => a.id === currentAlertId);
+    if (alert) {
+        alert.allow_access = true;
+        alert.status  = 'Traitée';
+        alert.traitee = true;
+        saveAlertStatus(currentAlertId, { allow_access: true, action: 'autoriser' });
+        closeAccessModal();
+        updateKPIs(); updateAlertCounts();
+        renderAlerts(document.getElementById('alertFilter').value,
+                     document.getElementById('typeFilter').value);
+    }
+});
+
+// Modal accès — Bloquer
+document.getElementById('blockBtn').addEventListener('click', function () {
+    if (!currentAlertId) return;
+    const alert = alerts.find(a => a.id === currentAlertId);
+    if (alert) {
+        alert.allow_access = false;
+        alert.status  = 'Traitée';
+        alert.traitee = true;
+        saveAlertStatus(currentAlertId, { allow_access: false, action: 'bloquer' });
+        closeAccessModal();
+        updateKPIs(); updateAlertCounts();
+        renderAlerts(document.getElementById('alertFilter').value,
+                     document.getElementById('typeFilter').value);
+    }
+});
+
+// Modal intégrité — Fermeture (NOUVEAU)
+document.getElementById('closeIntegrityModal').addEventListener('click', closeIntegrityModal);
+document.getElementById('closeIntegrityModalBtn').addEventListener('click', closeIntegrityModal);
+
+// Modal intégrité — Bloquer (NOUVEAU)
+document.getElementById('integrityBlockBtn').addEventListener('click', function () {
+    if (!currentIntegrityAlertId) return;
+    const alert = alerts.find(a => a.id === currentIntegrityAlertId);
+    if (alert) {
+        alert.allow_access = false;
+        alert.status  = 'Traitée';
+        alert.traitee = true;
+        saveAlertStatus(currentIntegrityAlertId, { allow_access: false, action: 'bloquer_integrite' });
+        closeIntegrityModal();
+        updateKPIs(); updateAlertCounts();
+        renderAlerts(document.getElementById('alertFilter').value,
+                     document.getElementById('typeFilter').value);
+    }
+});
+
+// Modal intégrité — Autoriser (NOUVEAU)
+document.getElementById('integrityAllowBtn').addEventListener('click', function () {
+    if (!currentIntegrityAlertId) return;
+    const alert = alerts.find(a => a.id === currentIntegrityAlertId);
+    if (alert) {
+        alert.allow_access = true;
+        alert.status  = 'Traitée';
+        alert.traitee = true;
+        saveAlertStatus(currentIntegrityAlertId, { allow_access: true, action: 'autoriser_integrite' });
+        closeIntegrityModal();
+        updateKPIs(); updateAlertCounts();
+        renderAlerts(document.getElementById('alertFilter').value,
+                     document.getElementById('typeFilter').value);
+    }
+});
+
+// Clic hors modal pour fermer
+document.getElementById('integrityModal').addEventListener('click', function (e) {
+    if (e.target === this) closeIntegrityModal();
+});
+document.getElementById('accessModal').addEventListener('click', function (e) {
+    if (e.target === this) closeAccessModal();
+});
+
+
+// ═════════════════════════════════════════════════════════════════════════
+// INITIALISATION
+// ═════════════════════════════════════════════════════════════════════════
+
+async function init() {
+    const loaded = await loadAlerts();
+    if (!loaded) console.log('Mode local — données de démonstration affichées');
+
+    updateKPIs();
+    updateAlertCounts();
+    renderAlerts();
+
+    // Thème
+    const themeBtn = document.getElementById('themeToggleBtn');
+    if (themeBtn && window.themeManager) {
+        themeBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            window.themeManager.toggle();
+            const isDark = window.themeManager.isDarkMode();
+            themeBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            themeBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+        });
+        const isDark = window.themeManager.isDarkMode();
+        themeBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        themeBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
+    }
+
+    // Déconnexion
+    const logoutLink = document.querySelector('a[href="login.html"]');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
 </body>
 </html>
