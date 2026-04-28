@@ -24,12 +24,15 @@ pycryptodome>=3.18.0
 # Base de donnees / Cache
 redis>=5.0.0
 
-# Logging(Monitoring & Cache)
-sentry-sdk>=1.39.0
-redis>=5.0.0
-
 # Utilities
 python-dotenv>=1.0.0
 
 #Outil de complisation de .exe
 pyinstaller>=6.5.0
+=======
+# Logging
+sentry-sdk>=1.39.0
+
+# Utilities
+python-dotenv>=1.0.0
+>>>>>>> 9ca45259047b25d98ee7b0a6505f9b706cba9912

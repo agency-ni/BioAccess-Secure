@@ -110,7 +110,6 @@ REM FONCTIONS
 REM ======================================================================
 
 :progress
-set /a BAR_COUNT=PERCENT/3
 set "BAR="
 for /l %%A in (1,1,30) do (
     if %%A lss !BAR_COUNT! (set "BAR=!BAR!█") else (set "BAR=!BAR! ")

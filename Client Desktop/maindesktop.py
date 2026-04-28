@@ -21,11 +21,7 @@
 """
 
 import os
-import cv2
-import sys
 import time
-import json
-import hmac
 import math
 import random
 import hashlib
@@ -65,6 +61,7 @@ except Exception:
     BIOMETRIC_AVAILABLE = False
     MUSE_AVAILABLE = False
 
+<<<<<<< HEAD
 # CRITIQUE: NumPy MUST be imported before cv2
 try:
     import numpy as np
@@ -80,6 +77,13 @@ try:
 except ImportError as e:
     OPENCV_OK = False
     print(f"[AVERT] OpenCV non disponible : {e}", file=sys.stderr)
+=======
+try:
+    import cv2
+    import numpy as np
+    OPENCV_OK = True
+except ImportError:
+    OPENCV_OK = False
 
 try:
     import vosk
@@ -94,6 +98,7 @@ try:
 except ImportError:
     REQUESTS_OK = False
 
+<<<<<<< HEAD
 # ── Vérification des dépendances critiques ────────────────────────────────────
 CRITICAL_OK = NUMPY_OK and REQUESTS_OK
 if not CRITICAL_OK:
@@ -109,6 +114,10 @@ if not CRITICAL_OK:
     sys.exit(1)
 
 # ╔══════════════════════════════════════════════════════════════════════
+=======
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  MODULE PERMISSIONS BIOMETRIQUES -- integre directement            ║
+# ║  Windows registre + macOS TCC/AVFoundation + Linux v4l2/ALSA       ║
 # ╚══════════════════════════════════════════════════════════════════════
 import os
 import sys
