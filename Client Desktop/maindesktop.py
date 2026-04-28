@@ -96,7 +96,6 @@ except ImportError:
 
 # ── Vérification des dépendances critiques ────────────────────────────────────
 CRITICAL_OK = NUMPY_OK and REQUESTS_OK
-
 if not CRITICAL_OK:
     root = tk.Tk()
     root.withdraw()
@@ -110,8 +109,6 @@ if not CRITICAL_OK:
     sys.exit(1)
 
 # ╔══════════════════════════════════════════════════════════════════════
-# ║  MODULE PERMISSIONS BIOMETRIQUES -- integre directement            ║
-# ║  Windows registre + macOS TCC/AVFoundation + Linux v4l2/ALSA       ║
 # ╚══════════════════════════════════════════════════════════════════════
 import os
 import sys

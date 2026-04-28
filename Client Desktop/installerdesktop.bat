@@ -110,7 +110,6 @@ REM FONCTIONS
 REM ======================================================================
 
 :progress
-set /a PERCENT=(%1*100)/7
 set /a BAR_COUNT=PERCENT/3
 set "BAR="
 for /l %%A in (1,1,30) do (

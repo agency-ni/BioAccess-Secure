@@ -4,7 +4,7 @@ Service biométrique - Reconnaissance faciale et vocale
 
 import numpy as np
 import cv2
-import face_recognition
+#import face_recognition
 import pickle
 import io
 from models.biometric import TemplateBiometrique, TentativeAuth, PhraseAleatoire
