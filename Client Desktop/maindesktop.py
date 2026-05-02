@@ -88,7 +88,8 @@ except ImportError:
 
 try:
     import vosk
-    import pyaudio
+    import sounddevice as sd
+    import queue
     VOSK_OK = True
 except ImportError:
     VOSK_OK = False
@@ -98,6 +99,7 @@ try:
     REQUESTS_OK = True
 except ImportError:
     REQUESTS_OK = False
+
 
 # ── Vérification des dépendances critiques ────────────────────────────────────
 CRITICAL_OK = NUMPY_OK and REQUESTS_OK
@@ -312,20 +314,34 @@ class PermissionManager:
                 )
 
         except FileNotFoundError:
-            # Clé absente = Windows ne gère pas encore cette permission (très ancienne version)
-            # → Tester directement
-            ok, err = self._test_device_access(device)
-            state   = PermissionState.GRANTED if ok else PermissionState.UNAVAILABLE
-            return PermissionResult(
-                device=device, state=state,
-                os_name="Windows",
-                message=f"{'✓' if ok else '✗'} {device_name} — {'accessible' if ok else err}",
-                detail="Clé registre CapabilityAccessManager absente (Windows < 10 v1903)",
-                fix_steps=[] if ok else [
-                    "Vérifiez que le périphérique est bien connecté et reconnu.",
-                    "Mettez à jour Windows ou les pilotes.",
-                ]
-            )
+            # Clé absente = permission jamais demandée
+            # → Demander la permission de manière native
+            device_name = "Caméra" if device == DevicePermission.CAMERA else "Microphone"
+            log.info(f"Clé registre {device_key} absente — Demande de permission native pour {device_name}")
+            
+            granted = self._request_permission_native(device)
+            if granted:
+                # Vérifier l'accès après demande
+                ok, err = self._test_device_access(device)
+                return PermissionResult(
+                    device=device, state=PermissionState.GRANTED,
+                    os_name="Windows",
+                    message=f"✓ {device_name} autorisée",
+                    detail="Permission accordée via demande native"
+                )
+            else:
+                return PermissionResult(
+                    device=device, state=PermissionState.DENIED,
+                    os_name="Windows",
+                    message=f"✗ Permission {device_name.lower()} refusée",
+                    detail="L'utilisateur a refusé l'accès",
+                    can_request=True,
+                    fix_steps=[
+                        f"Ouvrez : Paramètres → Confidentialité → {device_name}",
+                        f"Activez l'accès à la {device_name.lower()} pour les applications de bureau.",
+                        "Relancez l'application.",
+                    ]
+                )
         except OSError as e:
             # Accès registre refusé (GPO)
             return PermissionResult(
@@ -350,6 +366,46 @@ class PermissionManager:
             subprocess.Popen(f"start {page}", shell=True)
         except Exception as e:
             log.warning(f"Impossible d'ouvrir les paramètres Windows : {e}")
+
+    def _request_permission_native(self, device: DevicePermission) -> bool:
+        """
+        Demande la permission de manière native.
+        Affiche la boîte de dialogue système de Windows pour la caméra ou le microphone.
+        Retourne True si permission accordée, False sinon.
+        """
+        device_name = "Caméra" if device == DevicePermission.CAMERA else "Microphone"
+        
+        # Accès direct au périphérique (déclenche la boîte de dialogue native de Windows)
+        log.info(f"Utilisation de l'accès direct au périphérique pour demander permission {device_name.lower()}")
+        if device == DevicePermission.CAMERA:
+            try:
+                import cv2
+                # Tenter d'ouvrir la caméra - cela déclenche la boîte de dialogue native si nécessaire
+                cap = cv2.VideoCapture(0)
+                if cap.isOpened():
+                    cap.release()
+                    log.info("Permission caméra accordée (accès direct)")
+                    return True
+                else:
+                    log.info("Permission caméra refusée ou périphérique indisponible")
+                    return False
+            except Exception as e:
+                log.warning(f"Erreur lors de la demande de permission caméra : {e}")
+                return False
+        else:  # MICROPHONE
+            try:
+                import sounddevice as sd
+                # Tenter d'ouvrir un stream microphone - cela peut déclencher la boîte de dialogue native
+                stream = sd.RawInputStream(samplerate=16000, blocksize=8000, dtype='int16',
+                                         channels=1)
+                stream.start()
+                stream.stop()
+                stream.close()
+                log.info("Permission microphone accordée (accès direct)")
+                return True
+            except Exception as e:
+                log.warning(f"Erreur lors de la demande de permission microphone : {e}")
+                return False
 
 
     @staticmethod
@@ -376,30 +432,28 @@ class PermissionManager:
 
         else:  # MICROPHONE
             try:
-                import pyaudio
-                pa     = pyaudio.PyAudio()
-                count  = pa.get_device_count()
-                if count == 0:
-                    pa.terminate()
-                    return False, "Aucun périphérique audio détecté par PyAudio"
+                import sounddevice as sd
+                # Tester les périphériques d'entrée disponibles
+                devices = sd.query_devices()
+                if devices is None or len(devices) == 0:
+                    return False, "Aucun périphérique audio détecté par sounddevice"
+                
                 # Chercher un périphérique d'entrée valide
                 found_input = False
-                for i in range(count):
-                    info = pa.get_device_info_by_index(i)
-                    if info.get("maxInputChannels", 0) > 0:
+                for i, device_info in enumerate(devices):
+                    if device_info.get("max_input_channels", 0) > 0:
                         found_input = True
                         break
-                pa.terminate()
+                
                 if not found_input:
                     return False, "Aucun périphérique d'entrée (microphone) détecté"
-                # Essai d'ouverture
-                pa2    = pyaudio.PyAudio()
-                stream = pa2.open(
-                    format=pyaudio.paInt16, channels=1,
-                    rate=16000, input=True, frames_per_buffer=1024)
-                stream.stop_stream()
+                
+                # Essai d'ouverture du stream
+                stream = sd.RawInputStream(samplerate=16000, blocksize=8000, dtype='int16',
+                                         channels=1)
+                stream.start()
+                stream.stop()
                 stream.close()
-                pa2.terminate()
                 return True, ""
             except OSError as e:
                 err = str(e).lower()
@@ -1364,6 +1418,7 @@ class BioAccessApp(tk.Tk):
         """
         Vérifie caméra + microphone AVANT de permettre l'authentification.
         BLOQUE l'interface jusqu'à ce que les permissions soient accordées.
+        Affiche le statut COMPLET (accordées + refusées).
         """
         if not PERM_MGR_OK:
             self._permissions_ok = True
@@ -1384,20 +1439,22 @@ class BioAccessApp(tk.Tk):
             
             self._permissions_checked = True
             
-            # Si problème : afficher dialogue BLOQUANT
-            problems = []
-            if not cam_result.granted: problems.append(("Caméra", cam_result))
-            if not mic_result.granted: problems.append(("Microphone", mic_result))
+            # Afficher TOUJOURS le dialogue avec le statut COMPLET des permissions
+            all_results = [
+                ("Caméra", cam_result),
+                ("Microphone", mic_result)
+            ]
             
-            if problems:
-                self.after(0, lambda: self._show_permission_dialog_mandatory(problems, mgr))
+            self.after(0, lambda: self._show_permission_dialog_mandatory(all_results, mgr))
         
         threading.Thread(target=check, daemon=True).start()
 
     def _show_permission_dialog_mandatory(self, problems: list, mgr):
         """
-        Dialogue BLOQUANT pour les permissions manquantes.
-        Affiche l'état des DEUX permissions (caméra + microphone).
+        Dialogue BLOQUANT pour les permissions.
+        Affiche l'état COMPLET des DEUX permissions (caméra + microphone).
+        - Permissions ACCORDÉES : affichage vert avec checkmark
+        - Permissions REFUSÉES : affichage rouge avec étapes correctives
         Permet de demander l'accès via Windows Paramètres nativement.
         """
         os_name = platform.system()
@@ -1411,48 +1468,46 @@ class BioAccessApp(tk.Tk):
         dlg.protocol("WM_DELETE_WINDOW", lambda: None)  # Désactiver le X
         dlg.update_idletasks()
         sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
-        dlg.geometry(f"750x750+{(sw-750)//2}+{(sh-750)//2}")
+        dlg.geometry(f"750x850+{(sw-750)//2}+{(sh-850)//2}")
 
-        # En-tête ROUGE (critique)
-        hdr = tk.Frame(dlg, bg=C_ERROR, height=60)
+        # En-tête : couleur adaptée selon statut global
+        # Si AU MOINS une permission est accordée → EN-TÊTE MIXTE/POSITIF
+        has_granted = any(result.granted for _, result in problems)
+        header_bg = C_SUCCESS if has_granted and all(result.granted for _, result in problems) else C_ERROR
+        header_text = "✓  PERMISSIONS BIOMÉTRIQUES  —  Status Complet" if has_granted else "🔒  PERMISSIONS REQUISES"
+        
+        hdr = tk.Frame(dlg, bg=header_bg, height=60)
         hdr.pack(fill="x"); hdr.pack_propagate(False)
         tk.Label(hdr,
-                 text=f"  🔒  PERMISSIONS REQUISES  —  {os_lbl}",
-                 bg=C_ERROR, fg="white",
+                 text=f"  {header_text}  —  {os_lbl}",
+                 bg=header_bg, fg="white" if header_bg == C_ERROR else C_BG,
                  font=("Courier", 12, "bold")).pack(side="left", padx=12, fill="y")
 
         body = tk.Frame(dlg, bg=C_BG)
         body.pack(fill="both", expand=True, padx=20, pady=12)
         
+        # Texte descriptif adapté au contexte
+        if all(result.granted for _, result in problems):
+            desc_text = "✓ Toutes les permissions biométriques sont ACCORDÉES !\nVous pouvez procéder à l'authentification."
+            desc_color = C_SUCCESS
+        elif any(result.granted for _, result in problems):
+            desc_text = "⚠ Certaines permissions sont accordées, d'autres manquent.\nVeuillez corriger les permissions refusées."
+            desc_color = C_WARNING
+        else:
+            desc_text = "L'authentification biométrique requiert l'accès aux périphériques suivants."
+            desc_color = C_TEXT
+        
         tk.Label(body,
-                 text="L'authentification biométrique requiert l'accès aux périphériques suivants :",
-                 bg=C_BG, fg=C_TEXT, font=("Courier", 9),
+                 text=desc_text,
+                 bg=C_BG, fg=desc_color, font=("Courier", 9),
                  wraplength=700, justify="left").pack(anchor="w", pady=(0, 16))
 
         # Container pour les deux permissions (caméra + microphone)
         perm_frame = tk.Frame(body, bg=C_BG)
         perm_frame.pack(fill="both", expand=True, pady=(0, 12))
 
-        # Construire un dictionnaire d'état pour affichage
-        all_perms = {}
+        # Afficher TOUTES les deux permissions (de problems)
         for device_name, result in problems:
-            all_perms[device_name] = result
-        
-        # Vérifier aussi les permissions qui ne sont PAS dans problems
-        if PERM_MGR_OK:
-            for device_enum in [DevicePermission.CAMERA, DevicePermission.MICROPHONE]:
-                device_name = "Caméra" if device_enum == DevicePermission.CAMERA else "Microphone"
-                if device_name not in all_perms:
-                    # Vérifier l'état de cette permission
-                    result = mgr._dispatch(device_enum)
-                    all_perms[device_name] = result
-
-        # Afficher TOUTES les deux permissions
-        for device_name in ["Caméra", "Microphone"]:
-            result = all_perms.get(device_name)
-            if not result:
-                continue
-
             # Couleur et icône selon l'état
             if result.granted:
                 card_bg = C_SURFACE
@@ -1523,7 +1578,7 @@ class BioAccessApp(tk.Tk):
                              font=("Courier", 8), anchor="w",
                              justify="left", wraplength=680).pack(fill="x", anchor="w", pady=2)
 
-            # Bouton pour ouvrir paramètres (si actionable)
+            # Bouton pour ouvrir paramètres (si actionable ET non accordée)
             if not result.granted and (getattr(result, "actionable", False) or getattr(result, "can_request", False)) and PERM_MGR_OK:
                 dev_enum = DevicePermission.CAMERA if "Caméra" in device_name else DevicePermission.MICROPHONE
                 btn_frame = tk.Frame(content, bg=card_bg)
@@ -1541,6 +1596,7 @@ class BioAccessApp(tk.Tk):
         bf = tk.Frame(dlg, bg=C_BG)
         bf.pack(fill="x", padx=20, pady=(0,14))
         
+        # Bouton "Revérifier" actif en permanence
         tk.Button(bf, text="🔄  REVÉRIFIER LES PERMISSIONS",
                   bg=C_ACCENT2, fg="white",
                   font=("Courier", 10, "bold"),
@@ -2413,23 +2469,37 @@ class BioAccessApp(tk.Tk):
                     [("Microphone", result)], mgr))
                 return
         try:
+            import sounddevice as sd
+            import queue as queue_module
+            
             model  = vosk.Model(mp)
             rec    = vosk.KaldiRecognizer(model, 16000)
-            pa     = pyaudio.PyAudio()
-            stream = pa.open(format=pyaudio.paInt16, channels=1,
-                             rate=16000, input=True, frames_per_buffer=8192)
-            stream.start_stream()
+            
+            # File d'attente pour l'audio avec sounddevice
+            audio_queue = queue_module.Queue()
+            
+            def audio_callback(indata, frames, time, status):
+                if status:
+                    print(status, file=sys.stderr)
+                audio_queue.put(bytes(indata))
+            
+            stream = sd.RawInputStream(samplerate=16000, blocksize=8192, dtype='int16',
+                                      channels=1, callback=audio_callback)
+            stream.start()
         except Exception as e:
             self.after(0, lambda: self._auth_fail(f"Erreur audio : {e}")); return
         transcript = ""; deadline = time.time() + 10
         while not self._stop_event.is_set() and time.time() < deadline:
-            data = stream.read(4096, exception_on_overflow=False)
-            if rec.AcceptWaveform(data):
-                transcript = json.loads(rec.Result()).get("text","").lower().strip()
-                self.after(0, lambda t=transcript:
-                           self.transcript_var.set(f'Reconnu : « {t} »'))
-                break
-        stream.stop_stream(); stream.close(); pa.terminate()
+            try:
+                data = audio_queue.get(timeout=0.1)
+                if rec.AcceptWaveform(data):
+                    transcript = json.loads(rec.Result()).get("text","").lower().strip()
+                    self.after(0, lambda t=transcript:
+                               self.transcript_var.set(f'Reconnu : « {t} »'))
+                    break
+            except queue_module.Empty:
+                continue
+        stream.stop(); stream.close()
         if self._stop_event.is_set(): return
         sim = self._sim(transcript, phrase.lower().strip())
         self.after(0, lambda t=transcript:
@@ -2517,27 +2587,41 @@ class BioAccessApp(tk.Tk):
         if not os.path.exists(mp): return False, "✗ Modèle Vosk introuvable"
         self.after(0, lambda: self.reg_status_var.set("🎙 Dites votre phrase..."))
         try:
+            import sounddevice as sd
+            import queue as queue_module
+            
             model  = vosk.Model(mp)
             rec    = vosk.KaldiRecognizer(model, 16000)
-            pa     = pyaudio.PyAudio()
-            stream = pa.open(format=pyaudio.paInt16, channels=1,
-                             rate=16000, input=True, frames_per_buffer=8192)
-            stream.start_stream()
+            
+            # File d'attente pour l'audio avec sounddevice
+            audio_queue = queue_module.Queue()
+            
+            def audio_callback(indata, frames, time, status):
+                if status:
+                    print(status, file=sys.stderr)
+                audio_queue.put(bytes(indata))
+            
+            stream = sd.RawInputStream(samplerate=16000, blocksize=8192, dtype='int16',
+                                      channels=1, callback=audio_callback)
+            stream.start()
         except Exception as e:
             return False, f"✗ Erreur audio : {e}"
         deadline = time.time() + 8
         while time.time() < deadline:
-            data = stream.read(4096, exception_on_overflow=False)
-            if rec.AcceptWaveform(data):
-                text = json.loads(rec.Result()).get("text","").strip()
-                if text:
-                    stream.stop_stream(); stream.close(); pa.terminate()
-                    u = load_users()
-                    if name not in u: u[name] = {}
-                    u[name]["voice_phrase"] = text
-                    save_users(u)
-                    return True, "✓ Voix enregistrée"
-        stream.stop_stream(); stream.close(); pa.terminate()
+            try:
+                data = audio_queue.get(timeout=0.1)
+                if rec.AcceptWaveform(data):
+                    text = json.loads(rec.Result()).get("text","").strip()
+                    if text:
+                        stream.stop(); stream.close()
+                        u = load_users()
+                        if name not in u: u[name] = {}
+                        u[name]["voice_phrase"] = text
+                        save_users(u)
+                        return True, "✓ Voix enregistrée"
+            except queue_module.Empty:
+                continue
+        stream.stop(); stream.close()
         return False, "✗ Aucune voix détectée"
 
     # ── Helpers communs ────────────────────────────────────────────────────────

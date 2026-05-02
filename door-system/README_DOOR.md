@@ -28,7 +28,7 @@ door-system/
 │   ├── __init__.py
 │   ├── servo_control.py         # Contrôle servomoteur (PWM/GPIO)
 │   ├── camera.py                # Capture vidéo OpenCV (3s)
-│   └── microphone.py            # Enregistrement audio PyAudio (3s)
+│   └── microphone.py            # Enregistrement audio sounddevice (3s)
 ├── biolock-door.service         # Service systemd autostart
 ├── requirements.txt             # Dépendances Python
 ├── migration_auth_logs.sql      # Migration BD (source_type)
@@ -70,7 +70,7 @@ door-system/
                              ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ 5. CAPTURE VOCALE (3 secondes)                                │
-│    - Microphone actif (PyAudio)                              │
+│    - Microphone actif (sounddevice)                              │
 │    - Enregistrement WAV                                      │
 │    - Audio encodé base64                                     │
 └─────────────────────────────────────────────────────────────┘
@@ -153,7 +153,7 @@ sudo apt install -y \
     libatlas3-base \
     libopenexr23 \
     libqtgui4 \
-    python3-pyaudio \
+    python3-sounddevice \
     alsa-utils \
     git
 

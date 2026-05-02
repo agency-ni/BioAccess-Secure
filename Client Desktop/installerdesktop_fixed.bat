@@ -192,20 +192,20 @@ if %errorlevel% neq 0 (
     echo OK  vosk
 )
 
-echo   Installation pyaudio ...
-"%PYTHON_CMD%" -m pip install "pyaudio>=0.2.14" --quiet 2>>"%LOG_FILE%"
+echo   Installation sounddevice ...
+"%PYTHON_CMD%" -m pip install "sounddevice>=0.4.5" --quiet 2>>"%LOG_FILE%"
 if %errorlevel% neq 0 (
     echo   Tentative via pipwin ...
     "%PYTHON_CMD%" -m pip install pipwin --quiet 2>>"%LOG_FILE%"
-    "%PYTHON_CMD%" -m pipwin install pyaudio 2>>"%LOG_FILE%"
+    "%PYTHON_CMD%" -m pipwin install sounddevice 2>>"%LOG_FILE%"
     if %errorlevel% neq 0 (
-        echo AVERT  pyaudio non installe (micro indisponible)
-        echo [%date% %time%] AVERTISSEMENT : pyaudio echec >> "%LOG_FILE%"
+        echo AVERT  sounddevice non installe (micro indisponible)
+        echo [%date% %time%] AVERTISSEMENT : sounddevice echec >> "%LOG_FILE%"
     ) else (
-        echo OK  pyaudio (via pipwin)
+        echo OK  sounddevice (via pipwin)
     )
 ) else (
-    echo OK  pyaudio
+    echo OK  sounddevice
 )
 
 echo   Installation requests ...
@@ -268,7 +268,7 @@ if exist "%SPEC_FILE%" (
     set /p CASCADE_SRC= < "%LOGS_DIR%\cv2path.tmp"
     del "%LOGS_DIR%\cv2path.tmp" >nul 2>&1
 
-    "%PYTHON_CMD%" -m PyInstaller "%MAIN_PY%" --name BioAccessSecure --onefile --windowed --noconfirm --clean --add-data "%CASCADE_SRC%;cv2/data" --hidden-import cv2 --hidden-import cv2.face --hidden-import vosk --hidden-import pyaudio --hidden-import requests --hidden-import numpy --hidden-import tkinter --hidden-import tkinter.ttk --hidden-import tkinter.messagebox --hidden-import ctypes --hidden-import hashlib --hidden-import hmac --hidden-import platform --hidden-import winreg --exclude-module matplotlib --exclude-module pandas --exclude-module scipy --exclude-module IPython 2>>"%LOG_FILE%"
+    "%PYTHON_CMD%" -m PyInstaller "%MAIN_PY%" --name BioAccessSecure --onefile --windowed --noconfirm --clean --add-data "%CASCADE_SRC%;cv2/data" --hidden-import cv2 --hidden-import cv2.face --hidden-import vosk --hidden-import sounddevice --hidden-import requests --hidden-import numpy --hidden-import tkinter --hidden-import tkinter.ttk --hidden-import tkinter.messagebox --hidden-import ctypes --hidden-import hashlib --hidden-import hmac --hidden-import platform --hidden-import winreg --exclude-module matplotlib --exclude-module pandas --exclude-module scipy --exclude-module IPython 2>>"%LOG_FILE%"
     set "COMPILE_OK=%errorlevel%"
 )
 
@@ -288,7 +288,7 @@ if %COMPILE_OK% neq 0 (
     echo   2. Manque d'espace disque (besoin de 2 Go libres minimum)
     echo.
     echo   3. Module manquant - verifiez :
-    echo      %PYTHON_CMD% -m pip install opencv-contrib-python vosk pyaudio
+    echo      %PYTHON_CMD% -m pip install opencv-contrib-python vosk sounddevice
     echo.
     echo   4. Visual C++ Redistributable absent :
     echo      https://aka.ms/vs/17/release/vc_redist.x64.exe
