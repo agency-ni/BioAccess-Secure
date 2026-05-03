@@ -66,7 +66,7 @@ if not exist "%VOSK_MODEL_DIR%\am" (
 call :progress 5 "Configuration des ressources binaires..."
 
 :: Tentative 1 : Extraction dynamique (corrigée)
-for /f "delims=" %%i in ('"%PYTHON_EXE%" -c "import cv2,os; print(os.path.abspath(os.path.join(os.path.dirname(cv2.__file__), 'data')))" 2^>nul') do set "CV2_DATA_PATH=%%i"
+for /f "delims=" %%i in ('"%PYTHON_EXE%" -c "import cv2,os; print(os.path.join(os.path.dirname(cv2.__file__), 'data'))" 2^>nul') do set "CV2_DATA_PATH=%%i"
 
 :: Tentative 2 : Si la 1 a échoué, on force le chemin relatif au VENV
 if "!CV2_DATA_PATH!"=="" (
