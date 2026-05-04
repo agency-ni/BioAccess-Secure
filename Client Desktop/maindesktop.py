@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║         BioAccess Secure — Client Desktop Principal  v2.0                  ║
+║         BioAccess Secure — Client Desktop Principal                  ║
 ║                                                                              ║
 ║  Architecture de sécurité :                                                 ║
 ║  ┌─────────────────────────────────────────────────────────────────────┐    ║
@@ -22,9 +22,8 @@
 
 import os
 import sys
+import cv2
 import time
-import json
-import hmac
 import math
 import random
 import hashlib
@@ -44,11 +43,18 @@ SCRIPT_DIR = Path(__file__).parent.absolute()
 sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR / "biometric"))
 
-def resource_path(rel: str) -> str:
-    try:    base = sys._MEIPASS
-    except: base = os.path.abspath(".")
-    return os.path.join(base, rel)
+def resource_path(relative_path):
+    """ Gestion des chemins pour PyInstaller """
+    if hasattr(sys, '_MEIPASS'):
+        # Mode compilé : PyInstaller stocke les fichiers ici
+        return os.path.join(sys._MEIPASS, relative_path)
+    # Mode développement : on utilise le répertoire du script
+    return str(SCRIPT_DIR / relative_path)
 
+# Charge ton détecteur comme ça :
+FACE_XML = resource_path("haarcascade_frontalface_default.xml")
+face_cascade = cv2.CascadeClassifier(FACE_XML)
+    
 # ── Modules optionnels ────────────────────────────────────────────────────────
 try:
     from biometric import BiometricAPI, get_capture_service, MUSE_AVAILABLE
@@ -56,6 +62,22 @@ try:
 except Exception:
     BIOMETRIC_AVAILABLE = False
     MUSE_AVAILABLE = False
+
+# CRITIQUE: NumPy MUST be imported before cv2
+try:
+    import numpy as np
+    NUMPY_OK = True
+except ImportError:
+    NUMPY_OK = False
+    print("[ERREUR CRITIQUE] NumPy n'est pas installé.", file=sys.stderr)
+    print("Exécutez : fix_deps.bat", file=sys.stderr)
+
+try:
+    import cv2
+    OPENCV_OK = NUMPY_OK  # OpenCV OK seulement si NumPy OK
+except ImportError as e:
+    OPENCV_OK = False
+    print(f"[AVERT] OpenCV non disponible : {e}", file=sys.stderr)
 
 try:
     import cv2
@@ -66,7 +88,8 @@ except ImportError:
 
 try:
     import vosk
-    import pyaudio
+    import sounddevice as sd
+    import queue
     VOSK_OK = True
 except ImportError:
     VOSK_OK = False
@@ -77,6 +100,22 @@ try:
 except ImportError:
     REQUESTS_OK = False
 
+
+# ── Vérification des dépendances critiques ────────────────────────────────────
+CRITICAL_OK = NUMPY_OK and REQUESTS_OK
+if not CRITICAL_OK:
+    root = tk.Tk()
+    root.withdraw()
+    error_msg = "Dépendances critiques manquantes :\n\n"
+    if not NUMPY_OK:
+        error_msg += "✗ NumPy\n"
+    if not REQUESTS_OK:
+        error_msg += "✗ Requests\n"
+    error_msg += "\n" + "Veuillez exécuter : fix_deps.bat"
+    messagebox.showerror("Erreur Démarrage", error_msg)
+    sys.exit(1)
+
+# ╔══════════════════════════════════════════════════════════════════════
 # ╔══════════════════════════════════════════════════════════════════════
 # ║  MODULE PERMISSIONS BIOMETRIQUES -- integre directement            ║
 # ║  Windows registre + macOS TCC/AVFoundation + Linux v4l2/ALSA       ║
@@ -142,8 +181,8 @@ class PermissionResult:
 
 class PermissionManager:
     """
-    Vérifie et demande les permissions biométriques selon l'OS.
-    Multiplateforme : Windows, macOS, Linux.
+    Vérifie et demande les permissions biométriques.
+    Windows uniquement (Windows 10+ v1903, Windows 11).
     """
 
     def __init__(self):
@@ -180,11 +219,17 @@ class PermissionManager:
 
     def _dispatch(self, device: DevicePermission) -> PermissionResult:
         try:
-            if   self.os == "Windows": return self._check_windows(device)
-            elif self.os == "Darwin":  return self._check_macos(device)
-            elif self.os == "Linux":   return self._check_linux(device)
+            if self.os == "Windows": 
+                return self._check_windows(device)
             else:
-                return self._unknown_os(device)
+                return PermissionResult(
+                    device=device,
+                    state=PermissionState.UNKNOWN,
+                    os_name=self.os,
+                    message=f"⚠ BioAccess Secure est configuré pour Windows uniquement.",
+                    detail=f"OS détecté : {self.os}",
+                    fix_steps=[f"Cette application n'est compatible qu'avec Windows 10+ (v1903 ou supérieur)."]
+                )
         except Exception as e:
             log.warning(f"Permission check error ({device.name}): {e}")
             return PermissionResult(
@@ -192,7 +237,7 @@ class PermissionManager:
                 state=PermissionState.UNKNOWN,
                 os_name=self.os,
                 message=f"Impossible de vérifier la permission : {e}",
-                fix_steps=["Vérifiez manuellement les paramètres de confidentialité."]
+                fix_steps=["Vérifiez manuellement les paramètres de confidentialité Windows."]
             )
 
     # ═══════════════════════════════════════════════════════════════════════
@@ -269,20 +314,34 @@ class PermissionManager:
                 )
 
         except FileNotFoundError:
-            # Clé absente = Windows ne gère pas encore cette permission (très ancienne version)
-            # → Tester directement
-            ok, err = self._test_device_access(device)
-            state   = PermissionState.GRANTED if ok else PermissionState.UNAVAILABLE
-            return PermissionResult(
-                device=device, state=state,
-                os_name="Windows",
-                message=f"{'✓' if ok else '✗'} {device_name} — {'accessible' if ok else err}",
-                detail="Clé registre CapabilityAccessManager absente (Windows < 10 v1903)",
-                fix_steps=[] if ok else [
-                    "Vérifiez que le périphérique est bien connecté et reconnu.",
-                    "Mettez à jour Windows ou les pilotes.",
-                ]
-            )
+            # Clé absente = permission jamais demandée
+            # → Demander la permission de manière native
+            device_name = "Caméra" if device == DevicePermission.CAMERA else "Microphone"
+            log.info(f"Clé registre {device_key} absente — Demande de permission native pour {device_name}")
+            
+            granted = self._request_permission_native(device)
+            if granted:
+                # Vérifier l'accès après demande
+                ok, err = self._test_device_access(device)
+                return PermissionResult(
+                    device=device, state=PermissionState.GRANTED,
+                    os_name="Windows",
+                    message=f"✓ {device_name} autorisée",
+                    detail="Permission accordée via demande native"
+                )
+            else:
+                return PermissionResult(
+                    device=device, state=PermissionState.DENIED,
+                    os_name="Windows",
+                    message=f"✗ Permission {device_name.lower()} refusée",
+                    detail="L'utilisateur a refusé l'accès",
+                    can_request=True,
+                    fix_steps=[
+                        f"Ouvrez : Paramètres → Confidentialité → {device_name}",
+                        f"Activez l'accès à la {device_name.lower()} pour les applications de bureau.",
+                        "Relancez l'application.",
+                    ]
+                )
         except OSError as e:
             # Accès registre refusé (GPO)
             return PermissionResult(
@@ -308,498 +367,53 @@ class PermissionManager:
         except Exception as e:
             log.warning(f"Impossible d'ouvrir les paramètres Windows : {e}")
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # macOS
-    # ═══════════════════════════════════════════════════════════════════════
-
-    def _check_macos(self, device: DevicePermission) -> PermissionResult:
+    def _request_permission_native(self, device: DevicePermission) -> bool:
         """
-        Interroge le TCC (Transparency, Consent and Control) de macOS.
-        Méthodes par ordre de fiabilité :
-        1. tccutil via subprocess (lecture seule, pas de popup)
-        2. AVFoundation via PyObjC si disponible
-        3. Test d'accès direct (déclenche la popup système si NOT_DETERMINED)
+        Demande la permission de manière native.
+        Affiche la boîte de dialogue système de Windows pour la caméra ou le microphone.
+        Retourne True si permission accordée, False sinon.
         """
-        device_name   = "Caméra" if device == DevicePermission.CAMERA else "Microphone"
-        pref_pane_url = (
-            "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera"
-            if device == DevicePermission.CAMERA
-            else "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"
-        )
-
-        # ── Méthode 1 : PyObjC / AVFoundation ─────────────────────────────────
-        avf_result = self._check_macos_avfoundation(device)
-        if avf_result is not None:
-            return avf_result
-
-        # ── Méthode 2 : Lire la base TCC via sqlite3 (nécessite Full Disk Access) ─
-        tcc_result = self._check_macos_tcc_db(device)
-        if tcc_result is not None:
-            return tcc_result
-
-        # ── Méthode 3 : Test d'accès direct ───────────────────────────────────
-        ok, err = self._test_device_access(device)
-        if ok:
-            return PermissionResult(
-                device=device, state=PermissionState.GRANTED,
-                os_name="macOS",
-                message=f"✓ {device_name} accessible",
-                detail="Test d'accès direct réussi"
-            )
-        else:
-            # Sur macOS, si l'accès échoue, c'est très probablement TCC DENIED
-            return PermissionResult(
-                device=device, state=PermissionState.DENIED,
-                os_name="macOS",
-                message=f"✗ {device_name} non autorisée par macOS",
-                detail=f"Test d'accès : {err}",
-                can_request=True,
-                fix_steps=[
-                    f"Ouvrez : Préférences Système → Confidentialité → {device_name}",
-                    "Cochez BioAccess Secure dans la liste.",
-                    "Relancez l'application après avoir accordé la permission.",
-                    "Ou cliquez sur 'Ouvrir Préférences Système' ci-dessous.",
-                ]
-            )
-
-    def _check_macos_avfoundation(
-        self, device: DevicePermission
-    ) -> Optional[PermissionResult]:
-        """Utilise PyObjC pour interroger AVFoundation directement."""
-        try:
-            import objc
-            from AVFoundation import (
-                AVCaptureDevice,
-                AVMediaTypeVideo, AVMediaTypeAudio,
-                AVAuthorizationStatusAuthorized,
-                AVAuthorizationStatusDenied,
-                AVAuthorizationStatusRestricted,
-                AVAuthorizationStatusNotDetermined,
-            )
-            media_type  = AVMediaTypeVideo if device == DevicePermission.CAMERA else AVMediaTypeAudio
-            device_name = "Caméra" if device == DevicePermission.CAMERA else "Microphone"
-            status      = AVCaptureDevice.authorizationStatusForMediaType_(media_type)
-
-            state_map = {
-                AVAuthorizationStatusAuthorized:    PermissionState.GRANTED,
-                AVAuthorizationStatusDenied:        PermissionState.DENIED,
-                AVAuthorizationStatusRestricted:    PermissionState.RESTRICTED,
-                AVAuthorizationStatusNotDetermined: PermissionState.NOT_DETERMINED,
-            }
-            state = state_map.get(status, PermissionState.UNKNOWN)
-
-            fix_steps = {
-                PermissionState.DENIED: [
-                    f"Ouvrez : Préférences Système → Confidentialité → {device_name}",
-                    "Cochez BioAccess Secure dans la liste.",
-                    "Relancez l'application.",
-                ],
-                PermissionState.RESTRICTED: [
-                    "Votre Mac est géré par une politique MDM/DEP.",
-                    "Contactez votre administrateur informatique.",
-                ],
-                PermissionState.NOT_DETERMINED: [
-                    f"macOS n'a pas encore demandé l'accès à la {device_name.lower()}.",
-                    "Cliquez sur 'Demander l'accès' pour déclencher la popup système.",
-                ],
-            }.get(state, [])
-
-            msg_map = {
-                PermissionState.GRANTED:        f"✓ {device_name} autorisée (AVFoundation)",
-                PermissionState.DENIED:         f"✗ {device_name} refusée (TCC)",
-                PermissionState.RESTRICTED:     f"⊘ {device_name} bloquée (MDM/DEP)",
-                PermissionState.NOT_DETERMINED: f"? {device_name} — permission non encore demandée",
-            }
-            return PermissionResult(
-                device=device,
-                state=state,
-                os_name="macOS",
-                message=msg_map.get(state, f"? {device_name} — état inconnu"),
-                detail=f"AVFoundation status code : {status}",
-                can_request=(state == PermissionState.NOT_DETERMINED),
-                fix_steps=fix_steps
-            )
-        except ImportError:
-            return None  # PyObjC non disponible → méthode suivante
-        except Exception as e:
-            log.debug(f"AVFoundation check failed: {e}")
-            return None
-
-    def _check_macos_tcc_db(
-        self, device: DevicePermission
-    ) -> Optional[PermissionResult]:
-        """
-        Lit la base TCC de l'utilisateur courant.
-        Nécessite que l'app ait le droit Full Disk Access, ou que
-        le terminal/Python soit dans la liste TCC.
-        """
-        service_map = {
-            DevicePermission.CAMERA:     "kTCCServiceCamera",
-            DevicePermission.MICROPHONE: "kTCCServiceMicrophone",
-        }
-        service     = service_map[device]
         device_name = "Caméra" if device == DevicePermission.CAMERA else "Microphone"
-        tcc_db      = Path.home() / "Library/Application Support/com.apple.TCC/TCC.db"
-
-        if not tcc_db.exists():
-            return None
-
-        try:
-            import sqlite3
-            bundle_id = self._get_macos_bundle_id()
-            conn      = sqlite3.connect(str(tcc_db))
-            cur       = conn.cursor()
-            cur.execute(
-                "SELECT allowed, auth_value FROM access WHERE service=? AND client=?",
-                (service, bundle_id)
-            )
-            row = cur.fetchone()
-            conn.close()
-
-            if row is None:
-                return PermissionResult(
-                    device=device, state=PermissionState.NOT_DETERMINED,
-                    os_name="macOS",
-                    message=f"? {device_name} — jamais demandée pour cette app",
-                    detail=f"TCC.db : aucune entrée pour {bundle_id} / {service}",
-                    can_request=True,
-                    fix_steps=[
-                        "Cliquez sur 'Demander l'accès' pour déclencher la popup macOS.",
-                    ]
-                )
-
-            allowed = row[0]
-            state   = PermissionState.GRANTED if allowed == 1 else PermissionState.DENIED
-            return PermissionResult(
-                device=device, state=state,
-                os_name="macOS",
-                message=f"{'✓' if state == PermissionState.GRANTED else '✗'} {device_name} — {'autorisée' if state == PermissionState.GRANTED else 'refusée'} (TCC.db)",
-                detail=f"TCC.db allowed={allowed}",
-                can_request=(state == PermissionState.DENIED),
-                fix_steps=[] if state == PermissionState.GRANTED else [
-                    f"Ouvrez : Préférences Système → Confidentialité → {device_name}",
-                    "Cochez BioAccess Secure.",
-                    "Relancez l'application.",
-                ]
-            )
-        except Exception as e:
-            log.debug(f"TCC.db read failed: {e}")
-            return None
-        return None  # fallback explicite
-
-    @staticmethod
-    def _get_macos_bundle_id() -> str:
-        """Retourne le bundle ID de l'application courante sous macOS."""
-        try:
-            import objc
-            from Foundation import NSBundle
-            bid = NSBundle.mainBundle().bundleIdentifier()
-            return bid or "com.bioaccess.desktop"
-        except Exception:
-            return "com.bioaccess.desktop"
-
-    def _request_macos_permission(self, device: DevicePermission,
-                                   callback: Optional[Callable[[bool], None]] = None):
-        """
-        Déclenche la popup système macOS pour demander la permission.
-        Nécessite PyObjC.
-        """
-        try:
-            from AVFoundation import (
-                AVCaptureDevice,
-                AVMediaTypeVideo, AVMediaTypeAudio,
-            )
-            media_type = AVMediaTypeVideo if device == DevicePermission.CAMERA else AVMediaTypeAudio
-
-            def handler(granted):
-                log.info(f"macOS permission {device.name}: {'granted' if granted else 'denied'}")
-                if callback:
-                    callback(granted)
-
-            AVCaptureDevice.requestAccessForMediaType_completionHandler_(
-                media_type, handler)
-        except ImportError:
-            # PyObjC absent → ouvrir les préférences système
-            self._open_macos_prefs(device)
-        except Exception as e:
-            log.warning(f"macOS permission request failed: {e}")
-            self._open_macos_prefs(device)
-
-    def _open_macos_prefs(self, device: DevicePermission):
-        """Ouvre Préférences Système → Confidentialité."""
-        url = (
-            "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera"
-            if device == DevicePermission.CAMERA
-            else "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"
-        )
-        try:
-            subprocess.Popen(["open", url])
-        except Exception as e:
-            log.warning(f"Impossible d'ouvrir les préférences macOS : {e}")
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # LINUX
-    # ═══════════════════════════════════════════════════════════════════════
-
-    def _check_linux(self, device: DevicePermission) -> PermissionResult:
-        """
-        Linux n'a pas de système de permissions centralisé.
-        Les accès dépendent de :
-          - Caméra  : présence /dev/video*, groupe 'video', v4l2
-          - Micro   : ALSA /dev/snd/*, groupe 'audio', PulseAudio/PipeWire
-        """
+        
+        # Accès direct au périphérique (déclenche la boîte de dialogue native de Windows)
+        log.info(f"Utilisation de l'accès direct au périphérique pour demander permission {device_name.lower()}")
         if device == DevicePermission.CAMERA:
-            return self._check_linux_camera()
-        else:
-            return self._check_linux_microphone()
-
-    def _check_linux_camera(self) -> PermissionResult:
-        """Vérifie l'accès caméra sous Linux."""
-        device_name = "Caméra"
-
-        # 1. Lister /dev/video*
-        video_devs = sorted(Path("/dev").glob("video*"))
-        if not video_devs:
-            return PermissionResult(
-                device=DevicePermission.CAMERA,
-                state=PermissionState.UNAVAILABLE,
-                os_name="Linux",
-                message="✗ Aucune caméra détectée sur ce système",
-                detail="Aucun fichier /dev/video* trouvé",
-                fix_steps=[
-                    "Vérifiez que la caméra est branchée (lsusb / v4l2-ctl --list-devices).",
-                    "Vérifiez que le module kernel est chargé : sudo modprobe uvcvideo",
-                    "Vérifiez les logs kernel : dmesg | grep -i camera",
-                ]
-            )
-
-        # 2. Vérifier les permissions sur /dev/video0
-        video0 = video_devs[0]
-        try:
-            readable = os.access(str(video0), os.R_OK | os.W_OK)
-        except Exception:
-            readable = False
-
-        # 3. Vérifier l'appartenance au groupe 'video'
-        in_video_group = self._linux_user_in_group("video")
-        current_user   = os.getenv("USER", os.getenv("LOGNAME", "inconnu"))
-
-        if readable:
-            # Test d'accès direct
-            ok, err = self._test_device_access(DevicePermission.CAMERA)
-            if ok:
-                return PermissionResult(
-                    device=DevicePermission.CAMERA,
-                    state=PermissionState.GRANTED,
-                    os_name="Linux",
-                    message=f"✓ Caméra accessible ({video0.name})",
-                    detail=f"Périphériques : {[d.name for d in video_devs]} | Groupe video : {in_video_group}"
-                )
-            else:
-                return PermissionResult(
-                    device=DevicePermission.CAMERA,
-                    state=PermissionState.DENIED,
-                    os_name="Linux",
-                    message=f"✗ Caméra détectée mais accès refusé",
-                    detail=f"Erreur : {err}",
-                    fix_steps=[
-                        f"Ajoutez votre utilisateur au groupe video :",
-                        f"  sudo usermod -aG video {current_user}",
-                        "Puis déconnectez-vous et reconnectez-vous.",
-                        "Vérifiez aussi : ls -la /dev/video0",
-                    ]
-                )
-        else:
-            # Pas lisible → problème de groupe ou de permissions udev
-            fixes = [
-                f"Ajoutez votre utilisateur au groupe video :",
-                f"  sudo usermod -aG video {current_user}",
-                "Déconnectez-vous puis reconnectez-vous (ou : newgrp video).",
-            ]
-            if not in_video_group:
-                fixes.append(f"(Groupe video actuel : {current_user} n'en fait pas partie)")
-
-            # Détecter distro pour commandes précises
-            distro_fix = self._linux_distro_fix("camera")
-            if distro_fix:
-                fixes.extend(distro_fix)
-
-            return PermissionResult(
-                device=DevicePermission.CAMERA,
-                state=PermissionState.DENIED,
-                os_name="Linux",
-                message=f"✗ Permission refusée sur {video0.name}",
-                detail=f"Lecture : {readable} | Groupe video : {in_video_group}",
-                fix_steps=fixes
-            )
-
-    def _check_linux_microphone(self) -> PermissionResult:
-        """Vérifie l'accès microphone sous Linux (ALSA / PulseAudio / PipeWire)."""
-        current_user = os.getenv("USER", os.getenv("LOGNAME", "inconnu"))
-
-        # 1. Vérifier les devices ALSA
-        snd_devs = list(Path("/dev/snd").glob("*")) if Path("/dev/snd").exists() else []
-
-        # 2. Appartenance groupe audio
-        in_audio_group = self._linux_user_in_group("audio")
-
-        # 3. Détecter le serveur audio actif
-        audio_server = self._detect_linux_audio_server()
-
-        # 4. Test d'accès direct
-        ok, err = self._test_device_access(DevicePermission.MICROPHONE)
-
-        if ok:
-            return PermissionResult(
-                device=DevicePermission.MICROPHONE,
-                state=PermissionState.GRANTED,
-                os_name="Linux",
-                message=f"✓ Microphone accessible ({audio_server})",
-                detail=f"Serveur audio : {audio_server} | Groupe audio : {in_audio_group}"
-            )
-
-        # Construction des étapes correctives selon le serveur audio
-        fixes = []
-
-        if audio_server == "PipeWire":
-            fixes = [
-                "PipeWire détecté. Vérifiez que le service est actif :",
-                "  systemctl --user status pipewire pipewire-pulse",
-                "  systemctl --user restart pipewire pipewire-pulse",
-                f"Ajoutez {current_user} au groupe audio si nécessaire :",
-                f"  sudo usermod -aG audio {current_user}",
-            ]
-        elif audio_server == "PulseAudio":
-            fixes = [
-                "PulseAudio détecté. Vérifiez qu'il est actif :",
-                "  pulseaudio --check && echo 'OK' || pulseaudio --start",
-                "  pactl list short sources   # voir les micros disponibles",
-                f"  sudo usermod -aG audio {current_user}",
-            ]
-        elif audio_server == "ALSA":
-            fixes = [
-                "ALSA uniquement. Vérifiez les permissions :",
-                "  arecord -l   # lister les micros",
-                f"  sudo usermod -aG audio {current_user}",
-                "  sudo chmod 666 /dev/snd/*",
-            ]
-        else:
-            fixes = [
-                "Aucun serveur audio ALSA/PulseAudio/PipeWire détecté.",
-                "Installez PulseAudio : sudo apt install pulseaudio",
-                "  ou PipeWire  : sudo apt install pipewire pipewire-pulse",
-                f"  sudo usermod -aG audio {current_user}",
-            ]
-            distro_fix = self._linux_distro_fix("microphone")
-            if distro_fix:
-                fixes.extend(distro_fix)
-
-        return PermissionResult(
-            device=DevicePermission.MICROPHONE,
-            state=PermissionState.DENIED,
-            os_name="Linux",
-            message=f"✗ Microphone inaccessible ({audio_server or 'audio non détecté'})",
-            detail=f"Erreur : {err} | Groupe audio : {in_audio_group} | Serveur : {audio_server}",
-            fix_steps=fixes
-        )
-
-    @staticmethod
-    def _linux_user_in_group(group_name: str) -> bool:
-        """Vérifie si l'utilisateur courant appartient à un groupe Linux."""
-        try:
-            import grp
-            gid_members = grp.getgrnam(group_name).gr_mem
-            username    = os.getenv("USER", os.getenv("LOGNAME", ""))
-            if username in gid_members:
+            try:
+                import cv2
+                # Tenter d'ouvrir la caméra - cela déclenche la boîte de dialogue native si nécessaire
+                cap = cv2.VideoCapture(0)
+                if cap.isOpened():
+                    cap.release()
+                    log.info("Permission caméra accordée (accès direct)")
+                    return True
+                else:
+                    log.info("Permission caméra refusée ou périphérique indisponible")
+                    return False
+            except Exception as e:
+                log.warning(f"Erreur lors de la demande de permission caméra : {e}")
+                return False
+        else:  # MICROPHONE
+            try:
+                import sounddevice as sd
+                # Tenter d'ouvrir un stream microphone - cela peut déclencher la boîte de dialogue native
+                stream = sd.RawInputStream(samplerate=16000, blocksize=8000, dtype='int16',
+                                         channels=1)
+                stream.start()
+                stream.stop()
+                stream.close()
+                log.info("Permission microphone accordée (accès direct)")
                 return True
-            # Vérifier aussi via les groupes réels du processus
-            import pwd
-            uid     = os.getuid()   # os.getuid n'existe que sur Unix, mais la méthode n'est appelée que sous Linux
-            pw      = pwd.getpwuid(uid)
-            gid     = grp.getgrnam(group_name).gr_gid
-            return gid in os.getgroups()
-        except (KeyError, AttributeError, Exception):
-            return False
+            except Exception as e:
+                log.warning(f"Erreur lors de la demande de permission microphone : {e}")
+                return False
 
-    @staticmethod
-    def _detect_linux_audio_server() -> str:
-        """Détecte le serveur audio actif sur Linux."""
-        # PipeWire
-        try:
-            r = subprocess.run(["pw-cli", "info", "0"],
-                               capture_output=True, timeout=2)
-            if r.returncode == 0:
-                return "PipeWire"
-        except Exception:
-            pass
-        # PulseAudio
-        try:
-            r = subprocess.run(["pactl", "info"],
-                               capture_output=True, timeout=2)
-            if r.returncode == 0:
-                return "PulseAudio"
-        except Exception:
-            pass
-        # ALSA
-        if Path("/dev/snd").exists() and list(Path("/dev/snd").glob("*")):
-            return "ALSA"
-        return "Inconnu"
-
-    @staticmethod
-    def _linux_distro_fix(device_type: str) -> list:
-        """Retourne des commandes spécifiques à la distro Linux."""
-        try:
-            distro_id = ""
-            if Path("/etc/os-release").exists():
-                for line in Path("/etc/os-release").read_text().splitlines():
-                    if line.startswith("ID="):
-                        distro_id = line.split("=")[1].strip().strip('"').lower()
-                        break
-
-            if device_type == "camera":
-                if distro_id in ("ubuntu", "debian", "linuxmint", "pop"):
-                    return [
-                        "Sur Ubuntu/Debian :",
-                        "  sudo apt install v4l-utils",
-                        "  v4l2-ctl --list-devices",
-                    ]
-                elif distro_id in ("fedora", "centos", "rhel"):
-                    return [
-                        "Sur Fedora/RHEL :",
-                        "  sudo dnf install v4l-utils",
-                        "  v4l2-ctl --list-devices",
-                    ]
-                elif distro_id in ("arch", "manjaro", "endeavouros"):
-                    return [
-                        "Sur Arch Linux :",
-                        "  sudo pacman -S v4l-utils",
-                        "  v4l2-ctl --list-devices",
-                    ]
-            elif device_type == "microphone":
-                if distro_id in ("ubuntu", "debian", "linuxmint", "pop"):
-                    return [
-                        "Sur Ubuntu/Debian :",
-                        "  sudo apt install pulseaudio pavucontrol",
-                        "  pavucontrol   # interface graphique de contrôle audio",
-                    ]
-                elif distro_id in ("arch", "manjaro"):
-                    return [
-                        "Sur Arch Linux :",
-                        "  sudo pacman -S pulseaudio pavucontrol",
-                    ]
-        except Exception:
-            pass
-        return []
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # TEST D'ACCÈS DIRECT (commun à tous les OS)
-    # ═══════════════════════════════════════════════════════════════════════
 
     @staticmethod
     def _test_device_access(device: DevicePermission) -> Tuple[bool, str]:
         """
         Teste l'accès réel au périphérique en ouvrant brièvement la caméra
         ou le microphone. Retourne (success, error_message).
+        Windows uniquement.
         """
         if device == DevicePermission.CAMERA:
             try:
@@ -818,30 +432,28 @@ class PermissionManager:
 
         else:  # MICROPHONE
             try:
-                import pyaudio
-                pa     = pyaudio.PyAudio()
-                count  = pa.get_device_count()
-                if count == 0:
-                    pa.terminate()
-                    return False, "Aucun périphérique audio détecté par PyAudio"
+                import sounddevice as sd
+                # Tester les périphériques d'entrée disponibles
+                devices = sd.query_devices()
+                if devices is None or len(devices) == 0:
+                    return False, "Aucun périphérique audio détecté par sounddevice"
+                
                 # Chercher un périphérique d'entrée valide
                 found_input = False
-                for i in range(count):
-                    info = pa.get_device_info_by_index(i)
-                    if info.get("maxInputChannels", 0) > 0:
+                for i, device_info in enumerate(devices):
+                    if device_info.get("max_input_channels", 0) > 0:
                         found_input = True
                         break
-                pa.terminate()
+                
                 if not found_input:
                     return False, "Aucun périphérique d'entrée (microphone) détecté"
-                # Essai d'ouverture
-                pa2    = pyaudio.PyAudio()
-                stream = pa2.open(
-                    format=pyaudio.paInt16, channels=1,
-                    rate=16000, input=True, frames_per_buffer=1024)
-                stream.stop_stream()
+                
+                # Essai d'ouverture du stream
+                stream = sd.RawInputStream(samplerate=16000, blocksize=8000, dtype='int16',
+                                         channels=1)
+                stream.start()
+                stream.stop()
                 stream.close()
-                pa2.terminate()
                 return True, ""
             except OSError as e:
                 err = str(e).lower()
@@ -853,40 +465,13 @@ class PermissionManager:
             except Exception as e:
                 return False, str(e)
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # OS INCONNU
-    # ═══════════════════════════════════════════════════════════════════════
-
-    def _unknown_os(self, device: DevicePermission) -> PermissionResult:
-        device_name = "Caméra" if device == DevicePermission.CAMERA else "Microphone"
-        ok, err = self._test_device_access(device)
-        return PermissionResult(
-            device=device,
-            state=PermissionState.GRANTED if ok else PermissionState.UNKNOWN,
-            os_name=self.os,
-            message=f"{'✓' if ok else '?'} {device_name} — OS non reconnu ({self.os})",
-            detail=err or "Test d'accès direct",
-            fix_steps=[] if ok else [
-                "Vérifiez manuellement les permissions de votre système.",
-                f"Erreur détectée : {err}",
-            ]
-        )
-
-    # ── Utilitaire : ouvrir les paramètres selon l'OS ─────────────────────────
+    # ── Utilitaire : ouvrir les paramètres Windows ────────────────────────────
     def open_settings(self, device: DevicePermission):
-        """Ouvre les paramètres de permissions de l'OS courant."""
-        if   self.os == "Windows": self._open_windows_settings(device)
-        elif self.os == "Darwin":  self._open_macos_prefs(device)
-        elif self.os == "Linux":
-            # Linux : ouvrir le gestionnaire de son (pavucontrol) ou les paramètres GNOME
-            for cmd in [["gnome-control-center", "privacy"],
-                        ["systemsettings5"],
-                        ["pavucontrol"]]:
-                try:
-                    subprocess.Popen(cmd)
-                    return
-                except FileNotFoundError:
-                    continue
+        """Ouvre les paramètres de permissions Windows."""
+        if self.os == "Windows": 
+            self._open_windows_settings(device)
+        else:
+            log.warning(f"Configuration de permissions non supportée sur {self.os}")
 
     # ── Rapport global ────────────────────────────────────────────────────────
     def full_report(self) -> dict:
@@ -1699,6 +1284,8 @@ class BioAccessApp(tk.Tk):
         self._stop_event        = threading.Event()
         self._current_phrase    = ""
         self._integrity_guard   = IntegrityGuard()
+        self._permissions_ok    = False  # Permissions requises pour l'auth biométrique
+        self._permissions_checked = False
 
         self.title(f"BioAccess Secure v{Config.VERSION}")
         self.configure(bg=C_BG)
@@ -1714,8 +1301,8 @@ class BioAccessApp(tk.Tk):
 
         # Intégrité + surveillance admin lancées après affichage
         self.after(400, self._run_integrity_check)
-        # Vérification permissions périphériques biométriques
-        self.after(800, self._run_permissions_check)
+        # PRIORITAIRE : Vérification permissions périphériques biométriques AVANT l'auth
+        self.after(300, self._run_permissions_check_mandatory)
         self._poll_admin()
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -1773,60 +1360,383 @@ class BioAccessApp(tk.Tk):
         """
         Vérifie l'intégrité en arrière-plan.
         • Si OK → silencieux
-        • Si compromis → bandeau d'alerte UI + alerte admin envoyée automatiquement
+        • Si compromis → carte de notification dans le coin inférieur droit
+          qui se déplace légèrement vers le milieu
         """
         def check():
             status, message = self._integrity_guard.verify()
 
-            def show_banner(s: IntegrityStatus, m: str):
+            def show_notification(s: IntegrityStatus, m: str):
                 if s == IntegrityStatus.OK:
                     return  # Aucune action visible
 
                 color     = s.ui_color
                 label     = s.ui_label
                 fg_color  = "white" if color not in (C_WARNING,) else C_BG
-                # Texte court pour le bandeau
+                # Texte court pour la notification
                 short_msg = m.split("\n")[0][:90]
 
-                banner = tk.Frame(self, bg=color, height=36)
-                banner.place(relx=0, rely=0, relwidth=1)
-                banner.lift()
+                # Créer la carte de notification
+                card = tk.Frame(self, bg=color, highlightthickness=2, 
+                               highlightbackground=_mix(color, 0.7), relief="raised")
+                card.configure(padx=12, pady=10)
 
-                tk.Label(banner,
-                         text=f"  {label}  —  {short_msg}",
+                # Contenu de la carte
+                content_frame = tk.Frame(card, bg=color)
+                content_frame.pack(fill="both", expand=True)
+
+                # Texte label + message
+                text_frame = tk.Frame(content_frame, bg=color)
+                text_frame.pack(side="left", fill="both", expand=True)
+                
+                tk.Label(text_frame,
+                         text=f"{label}  —  {short_msg}",
                          bg=color, fg=fg_color,
-                         font=("Courier", 8, "bold"),
-                         anchor="w").pack(side="left", padx=10, fill="y")
+                         font=("Courier", 9, "bold"),
+                         anchor="w", justify="left", wraplength=280).pack(fill="x")
 
-                # Bouton "Détails" — affiche le message complet
+                # Boutons (verticalement à droite)
+                buttons_frame = tk.Frame(content_frame, bg=color)
+                buttons_frame.pack(side="right", padx=(8, 0))
+
+                # Bouton "Détails"
                 def show_detail():
                     messagebox.showwarning("Intégrité BioAccess", m, parent=self)
 
-                tk.Button(banner, text="Détails", bg=color, fg=fg_color,
-                          font=("Courier", 8), bd=0, cursor="hand2",
-                          activebackground=_mix(color, 0.8),
-                          command=show_detail).pack(side="left", padx=4)
+                tk.Button(buttons_frame, text="📋 Détails", bg=_mix(color, 0.9), 
+                         fg=fg_color, font=("Courier", 8), bd=0, cursor="hand2",
+                         padx=6, pady=2,
+                         activebackground=_mix(color, 0.7),
+                         command=show_detail).pack(pady=(0, 4))
 
-                # Bouton fermer (sauf TAMPERED — permanent)
+                # Bouton fermer (sauf TAMPERED)
                 if s != IntegrityStatus.TAMPERED:
-                    close_btn = tk.Button(
-                        banner, text="✕", bg=color, fg=fg_color,
-                        font=("Courier", 10, "bold"), bd=0, cursor="hand2",
-                        activebackground=_mix(color, 0.8),
-                        command=banner.destroy)
-                    close_btn.pack(side="right", padx=10)
-                    # Auto-dismiss après 10 s
-                    self.after(10000,
-                               lambda: banner.destroy()
-                               if banner.winfo_exists() else None)
+                    tk.Button(buttons_frame, text="✕", bg=_mix(color, 0.9), 
+                             fg=fg_color, font=("Courier", 10, "bold"), bd=0, 
+                             cursor="hand2", padx=6, pady=2,
+                             activebackground=_mix(color, 0.7),
+                             command=card.destroy).pack()
 
-            self.after(0, lambda: show_banner(status, message))
+                # Placer la carte dans le coin supérieur droit à 27% de hauteur
+                # Position initiale : hors écran à droite
+                card.place(relx=1.0, rely=0.27, anchor="ne", x=16, y=0)
+                card.update_idletasks()
+                
+                # Animation : glisser depuis la droite vers le coin supérieur droit avec ease-out
+                card_width = card.winfo_width()
+                card_height = card.winfo_height()
+                screen_width = self.winfo_screenwidth()
+                screen_height = self.winfo_screenheight()
+                
+                # Position initiale : hors écran à droite
+                # Position finale : coin supérieur droit avec padding
+                x_start = 16 + card_width  # Commence à droite (hors écran)
+                x_end = -16                 # Position finale avec padding de 16px
+                
+                duration = 600  # ms
+                start_time = time.time()
+                
+                def animate():
+                    elapsed = (time.time() - start_time) * 1000
+                    if elapsed >= duration:
+                        # Position finale
+                        card.place(relx=1.0, rely=0.27, anchor="ne", x=x_end, y=0)
+                        return
+                    
+                    # Ease-out cubic
+                    progress = elapsed / duration
+                    eased = 1 - (1 - progress) ** 3
+                    
+                    x = x_start + (x_end - x_start) * eased
+                    
+                    card.place(relx=1.0, rely=0.27, anchor="ne", x=int(x), y=0)
+                    self.after(16, animate)
+                
+                animate()
+
+                # Auto-dismiss après 12 s (sauf TAMPERED)
+                if s != IntegrityStatus.TAMPERED:
+                    def auto_dismiss():
+                        if card.winfo_exists():
+                            card.destroy()
+                    self.after(12000, auto_dismiss)
+
+            self.after(0, lambda: show_notification(status, message))
 
         threading.Thread(target=check, daemon=True).start()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PERMISSIONS BIOMÉTRIQUES — vérification au démarrage
+    # PERMISSIONS BIOMÉTRIQUES — vérification OBLIGATOIRE au démarrage
     # ══════════════════════════════════════════════════════════════════════════
+    def _run_permissions_check_mandatory(self):
+        """
+        Vérifie caméra + microphone AVANT de permettre l'authentification.
+        BLOQUE l'interface jusqu'à ce que les permissions soient accordées.
+        Affiche le statut COMPLET (accordées + refusées).
+        """
+        if not PERM_MGR_OK:
+            self._permissions_ok = True
+            self._permissions_checked = True
+            return
+        
+        def check():
+            mgr        = PermissionManager()
+            cam_result = mgr.check_and_request(DevicePermission.CAMERA)
+            mic_result = mgr.check_and_request(DevicePermission.MICROPHONE)
+            
+            # Vérifier si AU MOINS une permission est accordée
+            # (on peut utiliser face OU voix)
+            if cam_result.granted or mic_result.granted:
+                self._permissions_ok = True
+            else:
+                self._permissions_ok = False
+            
+            self._permissions_checked = True
+            
+            # Afficher TOUJOURS le dialogue avec le statut COMPLET des permissions
+            all_results = [
+                ("Caméra", cam_result),
+                ("Microphone", mic_result)
+            ]
+            
+            self.after(0, lambda: self._show_permission_dialog_mandatory(all_results, mgr))
+        
+        threading.Thread(target=check, daemon=True).start()
+
+    def _show_permission_dialog_mandatory(self, problems: list, mgr):
+        """
+        Dialogue BLOQUANT pour les permissions.
+        Affiche l'état COMPLET des DEUX permissions (caméra + microphone).
+        - Permissions ACCORDÉES : affichage vert avec checkmark
+        - Permissions REFUSÉES : affichage rouge avec étapes correctives
+        Permet de demander l'accès via Windows Paramètres nativement.
+        """
+        os_name = platform.system()
+        os_lbl  = {"Windows": "Windows", "Darwin": "macOS", "Linux": "Linux"}.get(os_name, os_name)
+
+        dlg = tk.Toplevel(self)
+        dlg.title("🔒 Permissions biométriques OBLIGATOIRES")
+        dlg.configure(bg=C_BG)
+        dlg.resizable(False, False)
+        dlg.attributes("-topmost", True)
+        dlg.protocol("WM_DELETE_WINDOW", lambda: None)  # Désactiver le X
+        dlg.update_idletasks()
+        sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
+        dlg.geometry(f"750x850+{(sw-750)//2}+{(sh-850)//2}")
+
+        # En-tête : couleur adaptée selon statut global
+        # Si AU MOINS une permission est accordée → EN-TÊTE MIXTE/POSITIF
+        has_granted = any(result.granted for _, result in problems)
+        header_bg = C_SUCCESS if has_granted and all(result.granted for _, result in problems) else C_ERROR
+        header_text = "✓  PERMISSIONS BIOMÉTRIQUES  —  Status Complet" if has_granted else "🔒  PERMISSIONS REQUISES"
+        
+        hdr = tk.Frame(dlg, bg=header_bg, height=60)
+        hdr.pack(fill="x"); hdr.pack_propagate(False)
+        tk.Label(hdr,
+                 text=f"  {header_text}  —  {os_lbl}",
+                 bg=header_bg, fg="white" if header_bg == C_ERROR else C_BG,
+                 font=("Courier", 12, "bold")).pack(side="left", padx=12, fill="y")
+
+        body = tk.Frame(dlg, bg=C_BG)
+        body.pack(fill="both", expand=True, padx=20, pady=12)
+        
+        # Texte descriptif adapté au contexte
+        if all(result.granted for _, result in problems):
+            desc_text = "✓ Toutes les permissions biométriques sont ACCORDÉES !\nVous pouvez procéder à l'authentification."
+            desc_color = C_SUCCESS
+        elif any(result.granted for _, result in problems):
+            desc_text = "⚠ Certaines permissions sont accordées, d'autres manquent.\nVeuillez corriger les permissions refusées."
+            desc_color = C_WARNING
+        else:
+            desc_text = "L'authentification biométrique requiert l'accès aux périphériques suivants."
+            desc_color = C_TEXT
+        
+        tk.Label(body,
+                 text=desc_text,
+                 bg=C_BG, fg=desc_color, font=("Courier", 9),
+                 wraplength=700, justify="left").pack(anchor="w", pady=(0, 16))
+
+        # Container pour les deux permissions (caméra + microphone)
+        perm_frame = tk.Frame(body, bg=C_BG)
+        perm_frame.pack(fill="both", expand=True, pady=(0, 12))
+
+        # Afficher TOUTES les deux permissions (de problems)
+        for device_name, result in problems:
+            # Couleur et icône selon l'état
+            if result.granted:
+                card_bg = C_SURFACE
+                card_border = C_SUCCESS
+                status_color = C_SUCCESS
+                status_icon = "✓"
+                status_text = "ACCORDÉE"
+            elif result.state == PermissionState.DENIED:
+                card_bg = C_PANEL
+                card_border = C_ERROR
+                status_color = C_ERROR
+                status_icon = "✗"
+                status_text = "REFUSÉE"
+            elif result.state == PermissionState.NOT_DETERMINED:
+                card_bg = C_PANEL
+                card_border = C_WARNING
+                status_color = C_WARNING
+                status_icon = "?"
+                status_text = "NON DÉTERMINÉE"
+            else:
+                card_bg = C_PANEL
+                card_border = C_MUTED
+                status_color = C_MUTED
+                status_icon = "⊘"
+                status_text = result.state.name if hasattr(result.state, "name") else "INCONNUE"
+
+            card = tk.Frame(perm_frame, bg=card_bg,
+                            highlightthickness=2, highlightbackground=card_border)
+            card.pack(fill="x", pady=8)
+            
+            # En-tête avec statut
+            title_bar = tk.Frame(card, bg=card_border, height=40)
+            title_bar.pack(fill="x"); title_bar.pack_propagate(False)
+            
+            icon = "📷" if "Caméra" in device_name else "🎤"
+            tk.Label(title_bar,
+                     text=f"  {icon}  {device_name}  —  {status_icon} {status_text}",
+                     bg=card_border, fg="white",
+                     font=("Courier", 10, "bold")).pack(side="left", padx=10, fill="y")
+
+            # Contenu
+            content = tk.Frame(card, bg=card_bg)
+            content.pack(fill="both", expand=True, padx=12, pady=10)
+
+            # Message principal
+            if result.message:
+                tk.Label(content, text=f"  {result.message}",
+                         bg=card_bg, fg=status_color,
+                         font=("Courier", 9), anchor="w").pack(fill="x", pady=(0, 6))
+
+            # Détails techniques
+            if result.detail:
+                tk.Label(content, text=f"  💡 {result.detail}",
+                         bg=card_bg, fg=C_MUTED,
+                         font=("Courier", 8), anchor="w").pack(fill="x", pady=(0, 6))
+
+            # Étapes correctives (si permission refusée/non-déterminée)
+            if not result.granted and result.fix_steps:
+                sf = tk.Frame(content, bg=C_BG)
+                sf.pack(fill="x", padx=(0, 0), pady=(6, 0))
+                tk.Label(sf, text="📝  COMMENT CORRIGER :",
+                         bg=C_BG, fg=C_ACCENT, font=("Courier", 8, "bold")
+                         ).pack(fill="x", anchor="w", pady=(0, 4))
+                for i, step in enumerate(result.fix_steps[:5]):
+                    prefix = f"  {i+1}." if not step.startswith(" ") else "    "
+                    tk.Label(sf, text=f"{prefix} {step.strip()}",
+                             bg=C_BG, fg=C_MUTED,
+                             font=("Courier", 8), anchor="w",
+                             justify="left", wraplength=680).pack(fill="x", anchor="w", pady=2)
+
+            # Bouton pour ouvrir paramètres (si actionable ET non accordée)
+            if not result.granted and (getattr(result, "actionable", False) or getattr(result, "can_request", False)) and PERM_MGR_OK:
+                dev_enum = DevicePermission.CAMERA if "Caméra" in device_name else DevicePermission.MICROPHONE
+                btn_frame = tk.Frame(content, bg=card_bg)
+                btn_frame.pack(fill="x", pady=(8, 0))
+                tk.Button(btn_frame,
+                          text=f"  🔧  Ouvrir Paramètres {os_lbl}  →",
+                          bg=C_ACCENT2, fg="white",
+                          font=("Courier", 9, "bold"),
+                          bd=0, cursor="hand2", pady=6, padx=10,
+                          activebackground=C_ACCENT,
+                          command=lambda d=dev_enum: self._open_permission_settings(d, os_name)
+                          ).pack(fill="x")
+
+        # Boutons d'action en bas
+        bf = tk.Frame(dlg, bg=C_BG)
+        bf.pack(fill="x", padx=20, pady=(0,14))
+        
+        # Logique : si AU MOINS une permission accordée → bouton "Continuer"
+        has_at_least_one = any(result.granted for _, result in problems)
+        
+        if has_at_least_one:
+            # Bouton "Continuer" en vert (principal)
+            tk.Button(bf, text="✓  CONTINUER L'AUTHENTIFICATION",
+                      bg=C_SUCCESS, fg="white",
+                      font=("Courier", 10, "bold"),
+                      bd=0, cursor="hand2", pady=10, padx=10,
+                      activebackground=C_SUCCESS,
+                      command=dlg.destroy
+                      ).pack(fill="x", pady=(0, 8))
+        
+        # Bouton "Revérifier" actif en permanence
+        tk.Button(bf, text="🔄  REVÉRIFIER LES PERMISSIONS",
+                  bg=C_ACCENT2, fg="white",
+                  font=("Courier", 10, "bold"),
+                  bd=0, cursor="hand2", pady=10, padx=10,
+                  activebackground=C_ACCENT,
+                  command=lambda: [dlg.destroy(),
+                                   self.after(800, self._run_permissions_check_mandatory)]
+                  ).pack(fill="x", pady=(0, 8))
+        
+        tk.Button(bf, text="❌  QUITTER L'APPLICATION",
+                  bg=C_ERROR, fg="white",
+                  font=("Courier", 10, "bold"), bd=0, cursor="hand2", pady=10, padx=10,
+                  activebackground=C_ERROR,
+                  command=self.destroy
+                  ).pack(fill="x")
+
+    def _open_permission_settings(self, device: DevicePermission, os_name: str):
+        """Ouvre les paramètres de permission natifs de l'OS."""
+        try:
+            if os_name == "Windows":
+                # Windows 10+ : Paramètres de Confidentialité (direct)
+                import subprocess
+                if device == DevicePermission.CAMERA:
+                    subprocess.Popen(["explorer", "ms-settings:privacy-webcam"])
+                    messagebox.showinfo(
+                        "Paramètres ouverture",
+                        "✓ Les Paramètres de Confidentialité Windows s'ouvrent.\n\n"
+                        "📷 CAMÉRA :\n"
+                        "Vérifiez que l'accès est ACTIVÉ pour les applications de bureau."
+                    )
+                else:
+                    subprocess.Popen(["explorer", "ms-settings:privacy-microphone"])
+                    messagebox.showinfo(
+                        "Paramètres ouverture",
+                        "✓ Les Paramètres de Confidentialité Windows s'ouvrent.\n\n"
+                        "🎤 MICROPHONE :\n"
+                        "Vérifiez que l'accès est ACTIVÉ pour les applications de bureau."
+                    )
+            elif os_name == "Darwin":
+                # macOS : Préférences Système
+                import subprocess
+                pref_url = (
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera"
+                    if device == DevicePermission.CAMERA
+                    else "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"
+                )
+                subprocess.Popen(["open", pref_url])
+                messagebox.showinfo(
+                    "Paramètres ouverture",
+                    "✓ Les Préférences Système macOS s'ouvrent.\n\n"
+                    "Vérifiez que BioAccess Secure est coché dans la liste."
+                )
+            elif os_name == "Linux":
+                # Linux : dépend du DE (GNOME, KDE, etc.)
+                messagebox.showinfo(
+                    "Configuration Linux",
+                    "Sous Linux, configurez l'accès aux périphériques via :\n\n"
+                    "📷 CAMÉRA : groupe 'video'\n"
+                    "   sudo usermod -aG video $USER\n\n"
+                    "🎤 MICROPHONE : groupe 'audio'\n"
+                    "   sudo usermod -aG audio $USER\n\n"
+                    "Puis relancez votre session."
+                )
+        except Exception as e:
+            messagebox.showerror(
+                "Erreur",
+                f"Impossible d'ouvrir les paramètres : {e}\n\n"
+                "Ouvrez manuellement :\n"
+                "Windows : Paramètres → Confidentialité\n"
+                "macOS : Préférences Système → Confidentialité\n"
+                "Linux : Gestionnaire de groupes"
+            )
+
     def _run_permissions_check(self):
         """Vérifie caméra + microphone selon l'OS, affiche un dialogue si problème."""
         if not PERM_MGR_OK:
@@ -2088,6 +1998,19 @@ class BioAccessApp(tk.Tk):
             self.lock_admin_msg.config(
                 text="✗ User_ID inconnu. Contactez votre administrateur.",
                 fg=C_ERROR)
+            return
+
+        # ── VÉRIFICATION PERMISSIONS BIOMÉTRIQUES AVANT D'AUTORISER L'ACCÈS ──
+        if PERM_MGR_OK and not self._permissions_ok:
+            self.lock_admin_msg.config(
+                text="✗ Permissions biométriques manquantes — impossible de continuer.",
+                fg=C_ERROR)
+            self.after(1500, lambda: messagebox.showerror(
+                "Authentification impossible",
+                "Les permissions d'accès aux périphériques biométriques (caméra/microphone)"
+                " sont obligatoires.\n\n"
+                "Configurez-les dans les paramètres du système et réessayez."
+            ))
             return
 
         # ── ACTIVATION DU VERROU au 1er User_ID soumis ──────────────────────
@@ -2613,23 +2536,37 @@ class BioAccessApp(tk.Tk):
                     [("Microphone", result)], mgr))
                 return
         try:
+            import sounddevice as sd
+            import queue as queue_module
+            
             model  = vosk.Model(mp)
             rec    = vosk.KaldiRecognizer(model, 16000)
-            pa     = pyaudio.PyAudio()
-            stream = pa.open(format=pyaudio.paInt16, channels=1,
-                             rate=16000, input=True, frames_per_buffer=8192)
-            stream.start_stream()
+            
+            # File d'attente pour l'audio avec sounddevice
+            audio_queue = queue_module.Queue()
+            
+            def audio_callback(indata, frames, time, status):
+                if status:
+                    print(status, file=sys.stderr)
+                audio_queue.put(bytes(indata))
+            
+            stream = sd.RawInputStream(samplerate=16000, blocksize=8192, dtype='int16',
+                                      channels=1, callback=audio_callback)
+            stream.start()
         except Exception as e:
             self.after(0, lambda: self._auth_fail(f"Erreur audio : {e}")); return
         transcript = ""; deadline = time.time() + 10
         while not self._stop_event.is_set() and time.time() < deadline:
-            data = stream.read(4096, exception_on_overflow=False)
-            if rec.AcceptWaveform(data):
-                transcript = json.loads(rec.Result()).get("text","").lower().strip()
-                self.after(0, lambda t=transcript:
-                           self.transcript_var.set(f'Reconnu : « {t} »'))
-                break
-        stream.stop_stream(); stream.close(); pa.terminate()
+            try:
+                data = audio_queue.get(timeout=0.1)
+                if rec.AcceptWaveform(data):
+                    transcript = json.loads(rec.Result()).get("text","").lower().strip()
+                    self.after(0, lambda t=transcript:
+                               self.transcript_var.set(f'Reconnu : « {t} »'))
+                    break
+            except queue_module.Empty:
+                continue
+        stream.stop(); stream.close()
         if self._stop_event.is_set(): return
         sim = self._sim(transcript, phrase.lower().strip())
         self.after(0, lambda t=transcript:
@@ -2717,27 +2654,41 @@ class BioAccessApp(tk.Tk):
         if not os.path.exists(mp): return False, "✗ Modèle Vosk introuvable"
         self.after(0, lambda: self.reg_status_var.set("🎙 Dites votre phrase..."))
         try:
+            import sounddevice as sd
+            import queue as queue_module
+            
             model  = vosk.Model(mp)
             rec    = vosk.KaldiRecognizer(model, 16000)
-            pa     = pyaudio.PyAudio()
-            stream = pa.open(format=pyaudio.paInt16, channels=1,
-                             rate=16000, input=True, frames_per_buffer=8192)
-            stream.start_stream()
+            
+            # File d'attente pour l'audio avec sounddevice
+            audio_queue = queue_module.Queue()
+            
+            def audio_callback(indata, frames, time, status):
+                if status:
+                    print(status, file=sys.stderr)
+                audio_queue.put(bytes(indata))
+            
+            stream = sd.RawInputStream(samplerate=16000, blocksize=8192, dtype='int16',
+                                      channels=1, callback=audio_callback)
+            stream.start()
         except Exception as e:
             return False, f"✗ Erreur audio : {e}"
         deadline = time.time() + 8
         while time.time() < deadline:
-            data = stream.read(4096, exception_on_overflow=False)
-            if rec.AcceptWaveform(data):
-                text = json.loads(rec.Result()).get("text","").strip()
-                if text:
-                    stream.stop_stream(); stream.close(); pa.terminate()
-                    u = load_users()
-                    if name not in u: u[name] = {}
-                    u[name]["voice_phrase"] = text
-                    save_users(u)
-                    return True, "✓ Voix enregistrée"
-        stream.stop_stream(); stream.close(); pa.terminate()
+            try:
+                data = audio_queue.get(timeout=0.1)
+                if rec.AcceptWaveform(data):
+                    text = json.loads(rec.Result()).get("text","").strip()
+                    if text:
+                        stream.stop(); stream.close()
+                        u = load_users()
+                        if name not in u: u[name] = {}
+                        u[name]["voice_phrase"] = text
+                        save_users(u)
+                        return True, "✓ Voix enregistrée"
+            except queue_module.Empty:
+                continue
+        stream.stop(); stream.close()
         return False, "✗ Aucune voix détectée"
 
     # ── Helpers communs ────────────────────────────────────────────────────────

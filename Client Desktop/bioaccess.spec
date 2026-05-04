@@ -55,7 +55,7 @@ hiddenimports = [
     'tkinter.messagebox',
     'requests',
     'vosk',
-    'pyaudio',
+    'sounddevice',
     'ctypes',
     'hashlib',
     'hmac',

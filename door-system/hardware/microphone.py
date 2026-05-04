@@ -3,7 +3,7 @@ Service de capture vocale par microphone
 Enregistrement WAV, encodage base64, et envoi au backend
 """
 
-import pyaudio
+import sounddevice
 import wave
 import io
 import base64
@@ -20,12 +20,12 @@ logger.setLevel(getattr(logging, LOG_LEVEL, logging.INFO))
 
 class MicrophoneService:
     """
-    Service de capture vocale avec PyAudio
+    Service de capture vocale avec sounddevice
     Enregistre WAV et encode en base64
     """
     
-    CHUNK = 1024  # Taille frame PyAudio
-    FORMAT = pyaudio.paInt16  # Format audio 16-bit
+    CHUNK = 1024  # Taille frame sounddevice
+    FORMAT = sounddevice.paInt16  # Format audio 16-bit
     
     def __init__(self, duration=VOICE_CAPTURE_DURATION, sample_rate=SAMPLE_RATE,
                  channels=AUDIO_CHANNELS, microphone_index=MICROPHONE_INDEX):
@@ -56,7 +56,7 @@ class MicrophoneService:
             dict: Liste des périphériques avec index et noms
         """
         try:
-            audio = pyaudio.PyAudio()
+            audio = sounddevice.sounddevice()
             devices = {}
             
             for i in range(audio.get_device_count()):
@@ -82,7 +82,7 @@ class MicrophoneService:
             str: Données audio base64 ou None en cas d'erreur
         """
         try:
-            self.audio_interface = pyaudio.PyAudio()
+            self.audio_interface = sounddevice.sounddevice()
             
             # Ouvrir stream audio
             stream = self.audio_interface.open(

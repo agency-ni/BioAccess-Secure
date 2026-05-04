@@ -546,7 +546,7 @@ sudo apt-get install python3 python3-pip git
 # Installer les dépendances GPIO
 sudo apt-get install python3-dev python3-rpi.gpio
 
-# Installer PyAudio et OpenCV
+# Installer sounddevice et OpenCV
 sudo apt-get install libatlas-base-dev libjasper-dev libtiff5 libjasper-dev \
                      libharfbuzz0b libwebp6 python3-pip
 
@@ -1054,8 +1054,8 @@ sudo usermod -a -G video $USER
 # Vérifier les appareils audio
 arecord -l
 
-# Installer PyAudio si nécessaire
-pip install PyAudio
+# Installer sounddevice si nécessaire
+pip install sounddevice
 ```
 
 ### Problèmes Door-Système

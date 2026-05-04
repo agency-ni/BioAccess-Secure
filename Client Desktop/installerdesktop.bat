@@ -1,378 +1,153 @@
 @echo off
 REM ======================================================================
-REM BioAccess Secure - Installation et Compilation Automatique
-REM installerdesktop.bat
-REM
-REM CORRECTIONS APPLIQUEES :
-REM [1] chcp 65001 ajoute + caracteres accentues retires des REM
-REM [2] call remplace par invocation directe (errorlevel fiable)
-REM [3] variable COMPILE_OK pour capturer le succes reel de PyInstaller
-REM [4] commandes multilignes avec ^ sans call (stable sous cmd.exe)
-REM [5] setlocal move APRES %~dp0 pour eviter les problemes avec les vars speciales
+REM BioAccess Secure - Installation PRO v3.4 (STABLE)
 REM ======================================================================
 
-REM Definir les chemins AVANT setlocal (pour %~dp0)
-set "SCRIPT_DIR=%~dp0"
-
-REM MAINTENANT on active setlocal
-setlocal enabledelayedexpansion
 chcp 65001 >nul 2>&1
-color 0B
+setlocal enabledelayedexpansion
+color 0A
 cls
 
-REM ======================================================================
-REM Definir les chemins (avec delayed expansion)
-REM ======================================================================
-set "DIST_DIR=!SCRIPT_DIR!dist"
-set "BUILD_DIR=!SCRIPT_DIR!build"
-set "LOGS_DIR=!SCRIPT_DIR!logs"
-set "MAIN_PY=!SCRIPT_DIR!maindesktop.py"
-set "SPEC_FILE=!SCRIPT_DIR!bioaccess.spec"
-set "PYTHON_CMD=python"
-set "COMPILE_OK=0"
+REM ===== CONFIGURATION =====
+set "SCRIPT_DIR=%~dp0"
+set "LOG_FILE=%SCRIPT_DIR%install.log"
+set "VENV_DIR=%SCRIPT_DIR%venv"
+set "DIST_DIR=%SCRIPT_DIR%dist"
+set "MAIN_PY=%SCRIPT_DIR%maindesktop.py"
+set "VOSK_MODEL_DIR=%SCRIPT_DIR%vosk-model-small-fr-0.22"
+set "PYTHON_EXE=%VENV_DIR%\Scripts\python.exe"
+set "PYINSTALLER_EXE=%VENV_DIR%\Scripts\pyinstaller.exe"
+set "XML_FILE=%SCRIPT_DIR%haarcascade_frontalface_default.xml"
 
-echo.
-echo ======================================================================
-echo BioAccess Secure - Installation Automatique Complete
-echo Un clic pour installer les dependances et compiler l'executable
-echo ======================================================================
-echo.
 
-REM ======================================================================
-REM Creer le dossier de logs
-REM ======================================================================
-if not exist "!LOGS_DIR!" mkdir "!LOGS_DIR!"
+echo [INFO] START %date% %time% > "%LOG_FILE%"
 
-REM Date sans caracteres speciaux pour le nom du fichier log
-for /f "tokens=2-4 delims=/ " %%a in ('date /t') do set "mydate=%%c%%a%%b"
-for /f "tokens=1-2 delims=/:" %%a in ('time /t') do set "mytime=%%a%%b"
-set "LOG_FILE=!LOGS_DIR!\install_!mydate!_!mytime!.log"
+REM ===== 1. VALIDATION PRÉALABLE =====
+if not exist "%MAIN_PY%" (
+    echo ❌ ERREUR : %MAIN_PY% est introuvable.
+    echo [ERROR] Main script missing >> "%LOG_FILE%"
+    pause
+    exit /b 1
+)
 
-echo [%date% %time%] Debut installation > "!LOG_FILE!"
-echo Log: !LOG_FILE!
-echo.
+where python >nul 2>&1 || (
+    echo ❌ ERREUR : Python n'est pas dans le PATH.
+    pause
+    exit /b 1
+)
 
-REM ======================================================================
-REM ETAPE 1/7 - VERIFICATION DE PYTHON
-REM ======================================================================
-echo [1/7] Verification de Python...
-
-"%PYTHON_CMD%" --version >nul 2>&1
-if %errorlevel% neq 0 (
-    set "PYTHON_CMD=py"
-    py --version >nul 2>&1
+REM ===== 2. EXÉCUTION DU FLUX =====
+call :progress 1 "Initialisation de l'environnement..."
+if not exist "%VENV_DIR%" (
+    python -m venv "%VENV_DIR%" >> "%LOG_FILE%" 2>&1
     if !errorlevel! neq 0 (
-        color 0C
-        echo.
-        echo ERREUR : Python n'est pas installe ou pas dans le PATH.
-        echo.
-        echo Pour continuer :
-        echo   1. Telechargez Python depuis : https://www.python.org/downloads/
-        echo   2. Lors de l'installation, COCHEZ : "Add Python to PATH"
-        echo   3. Cliquez "Install Now"
-        echo   4. Redemarrez Windows
-        echo   5. Relancez ce fichier .bat
-        echo.
-        echo [%date% %time%] ECHEC : Python introuvable >> "%LOG_FILE%"
+        echo ❌ ERREUR : Impossible de créer l'environnement virtuel.
         pause
         exit /b 1
     )
 )
 
-REM Verification version >= 3.9
-"%PYTHON_CMD%" -c "import sys; exit(0 if sys.version_info >= (3,9) else 1)" >nul 2>&1
-if %errorlevel% neq 0 (
-    for /f "usebackq tokens=2" %%V in (`"%PYTHON_CMD%" --version 2^>^&1`) do set "PY_VER=%%V"
-    color 0C
-    echo.
-    echo ERREUR : Python !PY_VER! detecte. Version 3.9 minimum requise.
-    echo Telechargez Python 3.11+ : https://www.python.org/downloads/
-    echo.
-    echo [%date% %time%] ECHEC : Python trop ancien >> "%LOG_FILE%"
+call :progress 2 "Mise à jour de PIP et outils..."
+"%PYTHON_EXE%" -m pip install --upgrade pip wheel setuptools >> "%LOG_FILE%" 2>&1
+
+call :progress 3 "Installation des dépendances (OpenCV, Vosk)..."
+:: On verrouille les versions pour éviter les ruptures futures
+"%PYTHON_EXE%" -m pip install ^
+opencv-contrib-python==4.10.0.84 ^
+numpy==1.26.4 ^
+vosk==0.3.45 ^
+requests cryptography pillow tqdm pyinstaller >> "%LOG_FILE%" 2>&1
+
+call :progress 4 "Récupération du modèle vocal (Vosk)..."
+if not exist "%VOSK_MODEL_DIR%\am" (
+    call :DownloadVosk || (echo ❌ Échec Vosk >> "%LOG_FILE%" & exit /b 1)
+)
+
+call :progress 5 "Configuration des ressources binaires..."
+
+:: Tentative 1 : Extraction dynamique (corrigée)
+for /f "delims=" %%i in ('"%PYTHON_EXE%" -c "import cv2,os; print(os.path.join(os.path.dirname(cv2.__file__), 'data'))" 2^>nul') do set "CV2_DATA_PATH=%%i"
+
+:: Tentative 2 : Si la 1 a échoué, on force le chemin relatif au VENV
+if "!CV2_DATA_PATH!"=="" (
+    set "CV2_DATA_PATH=%VENV_DIR%\Lib\site-packages\cv2\data"
+    echo [INFO] Utilisation du chemin statique : !CV2_DATA_PATH! >> "%LOG_FILE%"
+)
+
+:: Vérification physique : Si le dossier n'existe vraiment pas, on alerte
+if not exist "!CV2_DATA_PATH!" (
+    echo ❌ ERREUR : Le dossier data d'OpenCV est introuvable dans le VENV.
+    echo [ERROR] OpenCV data folder missing at !CV2_DATA_PATH! >> "%LOG_FILE%"
     pause
     exit /b 1
 )
 
-for /f "usebackq tokens=2" %%V in (`"%PYTHON_CMD%" --version 2^>^&1`) do set "PY_VER=%%V"
-echo OK  Python %PY_VER% detecte
-echo [%date% %time%] Python %PY_VER% valide >> "%LOG_FILE%"
-echo.
-
-REM ======================================================================
-REM ETAPE 2/7 - VERIFICATION DES FICHIERS SOURCES
-REM ======================================================================
-echo [2/7] Verification des fichiers sources...
-
-if not exist "!MAIN_PY!" (
-    color 0C
-    echo.
-    echo ERREUR : maindesktop.py introuvable dans :
-    echo   !SCRIPT_DIR!
-    echo.
-    echo Assurez-vous que ces fichiers sont dans le MEME dossier :
-    echo   - maindesktop.py     (application principale)
-    echo   - bioaccess.spec     (configuration PyInstaller)
-    echo.
-    echo [%date% %time%] ECHEC : maindesktop.py manquant >> "!LOG_FILE!"
-    pause
-    exit /b 1
-)
-echo OK  maindesktop.py trouve
-
-if not exist "!SPEC_FILE!" (
-    echo AVERT  bioaccess.spec absent - compilation en mode direct
-    echo [%date% %time%] AVERTISSEMENT : bioaccess.spec absent >> "!LOG_FILE!"
-) else (
-    echo OK  bioaccess.spec trouve
-)
-
-if exist "!SCRIPT_DIR!vosk-model" (
-    echo OK  Modele Vosk detecte
-) else (
-    echo INFO   Modele Vosk absent - reconnaissance vocale limitee
-)
-echo.
-
-REM ======================================================================
-REM ETAPE 3/7 - CREATION DES DOSSIERS
-REM ======================================================================
-echo [3/7] Preparation des dossiers...
-if not exist "!BUILD_DIR!" mkdir "!BUILD_DIR!"
-if not exist "!DIST_DIR!"  mkdir "!DIST_DIR!"
-echo OK  Dossiers prets
-echo.
-
-REM ======================================================================
-REM ETAPE 4/7 - MISE A JOUR DE PIP
-REM ======================================================================
-echo [4/7] Mise a jour de pip...
-"!PYTHON_CMD!" -m pip install --upgrade pip --quiet 2>>"!LOG_FILE!"
-if !errorlevel! neq 0 (
-    echo AVERT  pip n'a pas pu etre mis a jour (continuons)
-) else (
-    echo OK  pip a jour
-)
-echo.
-
-REM ======================================================================
-REM ETAPE 5/7 - INSTALLATION DES DEPENDANCES
-REM ======================================================================
-echo [5/7] Installation des dependances Python...
-echo   (3 a 8 minutes selon votre connexion - ne fermez pas cette fenetre)
-echo.
-
-"%PYTHON_CMD%" -m pip install --upgrade setuptools wheel --quiet 2>>"!LOG_FILE!"
-
-echo   Installation opencv-contrib-python ...
-"%PYTHON_CMD%" -m pip install "opencv-contrib-python>=4.8.0" --quiet 2>>"!LOG_FILE!"
-if !errorlevel! neq 0 (
-    color 0C
-    echo.
-    echo ERREUR : opencv-contrib-python n'a pas pu etre installe.
-    echo C'est une dependance critique pour la reconnaissance faciale.
-    echo.
-    echo Solutions :
-    echo   1. Installez Visual C++ Build Tools :
-    echo      https://visualstudio.microsoft.com/visual-cpp-build-tools/
-    echo   2. Redemarrez et relancez installerdesktop.bat
-    echo   3. Ou manuellement : python -m pip install opencv-contrib-python
-    echo.
-    echo [%date% %time%] ECHEC : opencv-contrib-python >> "!LOG_FILE!"
-    pause
-    exit /b 1
-)
-echo OK  opencv-contrib-python
-
-echo   Installation numpy ...
-"%PYTHON_CMD%" -m pip install "numpy>=1.24.0" --quiet 2>>"!LOG_FILE!"
-if !errorlevel! neq 0 (
-    echo AVERT  numpy echec
-    echo [%date% %time%] AVERTISSEMENT : numpy >> "!LOG_FILE!"
-) else (
-    echo OK  numpy
-)
-
-echo   Installation vosk ...
-"%PYTHON_CMD%" -m pip install "vosk>=0.3.45" --quiet 2>>"!LOG_FILE!"
-if !errorlevel! neq 0 (
-    echo AVERT  vosk echec (reconnaissance vocale indisponible)
-    echo [%date% %time%] AVERTISSEMENT : vosk >> "!LOG_FILE!"
-) else (
-    echo OK  vosk
-)
-
-echo   Installation pyaudio ...
-"%PYTHON_CMD%" -m pip install "pyaudio>=0.2.14" --quiet 2>>"!LOG_FILE!"
-if !errorlevel! neq 0 (
-    echo   Tentative via pipwin ...
-    "%PYTHON_CMD%" -m pip install pipwin --quiet 2>>"!LOG_FILE!"
-    "%PYTHON_CMD%" -m pipwin install pyaudio 2>>"!LOG_FILE!"
+call :progress 6 "Nettoyage des anciens builds..."
+if exist "%DIST_DIR%" (
+    rmdir /s /q "%DIST_DIR%" >> "%LOG_FILE%" 2>&1
     if !errorlevel! neq 0 (
-        echo AVERT  pyaudio non installe (micro indisponible)
-        echo [%date% %time%] AVERTISSEMENT : pyaudio echec >> "!LOG_FILE!"
-    ) else (
-        echo OK  pyaudio (via pipwin)
+        echo [WARN] Impossible de supprimer l'ancien build, tentative de suppression complète >> "%LOG_FILE%"
+        timeout /t 2 /nobreak >nul
+        rmdir /s /q "%DIST_DIR%" >> "%LOG_FILE%" 2>&1
+    )
+)
+
+call :progress 7 "Compilation BioAccessSecure..."
+
+"%SCRIPT_DIR%venv\Scripts\pyinstaller.exe" --noconfirm --clean --onefile --windowed --name "BioAccessSecure" --add-data "%VOSK_MODEL_DIR%;model" --add-data "%SCRIPT_DIR%haarcascade_frontalface_default.xml;." --collect-all vosk --hidden-import=cv2 "%MAIN_PY%" >> "%LOG_FILE%" 2>&1
+
+REM ===== FIN =====
+set "EXE_PATH=%DIST_DIR%\BioAccessSecure.exe"
+cls
+echo ╔════════════════════════════════════════════╗
+echo ║             INSTALLATION TERMINÉE          ║
+echo ╚════════════════════════════════════════════╝
+echo.
+if exist "%EXE_PATH%" (
+    echo ✓ Exécutable généré avec succès
+    echo.
+    echo 📁 Emplacement :
+    echo    %EXE_PATH%
+    echo.
+    echo 💾 Taille : 
+    for /f "usebackq" %%A in ('%EXE_PATH%') do (
+        set /a "SIZE=%%~zA / 1048576"
+        echo    ~!SIZE! MB
     )
 ) else (
-    echo OK  pyaudio
+    echo ❌ ERREUR : Le fichier %EXE_PATH% n'a pas été généré.
+    echo    Consultez le fichier log : %LOG_FILE%
 )
-
-echo   Installation requests ...
-"%PYTHON_CMD%" -m pip install "requests>=2.28.0" --quiet 2>>"!LOG_FILE!"
-if !errorlevel! neq 0 (
-    echo AVERT  requests echec
-    echo [%date% %time%] AVERTISSEMENT : requests >> "!LOG_FILE!"
-) else (
-    echo OK  requests
-)
-
-echo   Installation cryptography pillow ...
-"%PYTHON_CMD%" -m pip install cryptography pillow --quiet 2>>"!LOG_FILE!"
-if !errorlevel! neq 0 (
-    echo AVERT  cryptography/pillow echec
-) else (
-    echo OK  cryptography + pillow
-)
-
 echo.
-echo OK  Toutes les dependances traitees
-echo [%date% %time%] Dependances OK >> "!LOG_FILE!"
-echo.
-
-REM ======================================================================
-REM ETAPE 6/7 - INSTALLATION DE PYINSTALLER
-REM ======================================================================
-echo [6/7] Installation de PyInstaller...
-
-"%PYTHON_CMD%" -m pip install "pyinstaller>=6.0.0" --quiet 2>>"!LOG_FILE!"
-if !errorlevel! neq 0 (
-    color 0C
-    echo ERREUR : Impossible d'installer PyInstaller
-    echo [%date% %time%] ECHEC : PyInstaller >> "!LOG_FILE!"
-    pause
-    exit /b 1
-)
-
-echo OK  PyInstaller installe
-echo.
-
-REM ======================================================================
-REM ETAPE 7/7 - COMPILATION PYINSTALLER
-REM [FIX 2+3] : plus de "call", utilisation de COMPILE_OK pour capturer
-REM             le vrai code retour de PyInstaller
-REM ======================================================================
-echo [7/7] Compilation de l'executable...
-echo   (10 a 20 minutes - ne fermez pas cette fenetre)
-echo.
-
-cd /d "!SCRIPT_DIR!"
-
-if exist "!SPEC_FILE!" (
-    echo   Mode : compilation via bioaccess.spec
-    echo.
-
-    REM [FIX 2] : invocation directe sans "call" pour que errorlevel soit fiable
-    "%PYTHON_CMD%" -m PyInstaller bioaccess.spec --noconfirm --clean 2>>"!LOG_FILE!"
-
-    REM Capturer immediatement le code retour dans une variable
-    set "COMPILE_OK=!errorlevel!"
-
-) else (
-    echo   Mode : compilation directe depuis maindesktop.py
-    echo.
-
-    REM [FIX 1] : commentaire sans accent (REM recuperer -> REM obtenir)
-    REM Obtenir le chemin du classifieur Haar d'OpenCV
-    "%PYTHON_CMD%" -c "import cv2,os; print(os.path.join(os.path.dirname(cv2.__file__),'data','haarcascade_frontalface_default.xml'))" > "!LOGS_DIR!\cv2path.tmp" 2>nul
-    set /p CASCADE_SRC= < "!LOGS_DIR!\cv2path.tmp"
-    del "!LOGS_DIR!\cv2path.tmp" >nul 2>&1
-
-    REM [FIX 4] : commande multiligne sans "call" (stable sous cmd.exe)
-    REM Ecrire la commande dans un fichier temporaire puis l'executer
-    (
-        echo "%PYTHON_CMD%" -m PyInstaller "!MAIN_PY!" --name BioAccessSecure --onefile --windowed --noconfirm --clean --add-data "!CASCADE_SRC!;cv2/data" --hidden-import cv2 --hidden-import cv2.face --hidden-import vosk --hidden-import pyaudio --hidden-import requests --hidden-import numpy --hidden-import tkinter --hidden-import tkinter.ttk --hidden-import tkinter.messagebox --hidden-import ctypes --hidden-import hashlib --hidden-import hmac --hidden-import platform --hidden-import winreg --exclude-module matplotlib --exclude-module pandas --exclude-module scipy --exclude-module IPython 2>>"!LOG_FILE!"
-    ) > "!LOGS_DIR!\run_pyinstaller.bat"
-
-    "!LOGS_DIR!\run_pyinstaller.bat"
-
-    REM Capturer immediatement le code retour
-    set "COMPILE_OK=!errorlevel!"
-
-    del "!LOGS_DIR!\run_pyinstaller.bat" >nul 2>&1
-)
-
-REM [FIX 3] : verifier COMPILE_OK et non %errorlevel% (qui aurait pu etre
-REM           ecrase par les commandes del ou echo precedentes)
-if !COMPILE_OK! neq 0 (
-    color 0C
-    echo.
-    echo ERREUR : La compilation a echoue (code !COMPILE_OK!).
-    echo.
-    echo Consultez le journal d'erreurs :
-    echo   !LOG_FILE!
-    echo.
-    echo Causes frequentes :
-    echo   1. Antivirus bloquant PyInstaller
-    echo      - Desactivez temporairement l'antivirus
-    echo      - Ou ajoutez une exception pour le dossier du projet
-    echo.
-    echo   2. Manque d'espace disque (besoin de 2 Go libres minimum)
-    echo.
-    echo   3. Module manquant - verifiez :
-    echo      %PYTHON_CMD% -m pip install opencv-contrib-python vosk pyaudio
-    echo.
-    echo   4. Visual C++ Redistributable absent :
-    echo      https://aka.ms/vs/17/release/vc_redist.x64.exe
-    echo.
-    echo [%date% %time%] ECHEC : compilation PyInstaller code=!COMPILE_OK! >> "!LOG_FILE!"
-    pause
-    exit /b 1
-)
-
-echo [%date% %time%] Compilation reussie >> "!LOG_FILE!"
-
-REM Verification que l'exe existe bien
-set "EXE_PATH=!DIST_DIR!\BioAccessSecure.exe"
-if not exist "!EXE_PATH!" (
-    set "EXE_PATH=!DIST_DIR!\BioAccessSecure\BioAccessSecure.exe"
-)
-
-if exist "!EXE_PATH!" (
-    echo.
-    echo OK  Executable genere :
-    echo     !EXE_PATH!
-) else (
-    echo.
-    echo AVERT  Executable non trouve a l'emplacement attendu.
-    echo        Verifiez le dossier dist\ manuellement.
-)
-
-REM ======================================================================
-REM SUCCES
-REM ======================================================================
-color 0A
-echo.
-echo ======================================================================
-echo SUCCES ! INSTALLATION ET COMPILATION TERMINEES
-echo ======================================================================
-echo.
-echo   Executable genere :
-echo     !DIST_DIR!\BioAccessSecure.exe
-echo.
-echo   UTILISATION :
-echo     1. Double-cliquez sur dist\BioAccessSecure.exe
-echo     2. L'application se lance directement
-echo     3. Aucune installation Python necessaire sur le poste cible
-echo.
-echo   DISTRIBUTION :
-echo     Copiez uniquement BioAccessSecure.exe
-echo     (et le dossier vosk-model\ si vous utilisez la reconnaissance vocale)
-echo.
-echo   Journal d'installation :
-echo     !LOG_FILE!
-echo.
-echo ======================================================================
-echo.
-
-echo [%date% %time%] Installation terminee avec succes >> "!LOG_FILE!"
 pause
+exit /b 0
+
+REM ======================================================================
+REM FONCTIONS
+REM ======================================================================
+
+:progress
+REM Calculer le pourcentage et le nombre de blocs basé sur l'étape (1-7)
+set /a "PERCENT=(%~1 * 100) / 7"
+set /a "BAR_COUNT=(%~1 * 30) / 7"
+set "BAR="
+for /l %%A in (1,1,30) do (
+    if %%A leq !BAR_COUNT! (set "BAR=!BAR!█") else (set "BAR=!BAR! ")
+)
+cls
+echo.
+echo ╔════════════════════════════════════════════╗
+echo ║   BIOACCESS SECURE INSTALL v3.4            ║
+echo ╠════════════════════════════════════════════╣
+echo ║ [!BAR!] !PERCENT!%% ║
+echo ╚════════════════════════════════════════════╝
+echo.
+echo Statut : %~2
+echo.
+exit /b
+
+:DownloadVosk
+echo [INFO] Téléchargement du modèle... >> "%LOG_FILE%"
+for /f "delims=" %%A in ('cd') do set "PWD=%%A"
+powershell -ExecutionPolicy Bypass -NoProfile -Command "Set-Location '%SCRIPT_DIR%'; $url='https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip'; $out='model.zip'; $tmp='tmp_model'; $dst='%VOSK_MODEL_DIR%'; try { Invoke-WebRequest -Uri $url -OutFile $out -ErrorAction Stop; Expand-Archive -Path $out -DestinationPath $tmp -Force -ErrorAction Stop; if (!(Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force | Out-Null }; $dir=@(Get-ChildItem -Path $tmp -Directory -ErrorAction Stop)[0]; if ($dir) { Get-ChildItem -Path $dir.FullName -Recurse | Move-Item -Destination $dst -Force -ErrorAction Continue }; Remove-Item -Path $out -Force -ErrorAction Continue; Remove-Item -Path $tmp -Recurse -Force -ErrorAction Continue; exit 0 } catch { exit 1 }"
+exit /b %errorlevel%

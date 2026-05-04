@@ -14,11 +14,6 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Flatpickr -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
-    
     <!-- Theme Manager -->
     <script src="theme.js"></script>
     
@@ -411,51 +406,49 @@
                 </div>
             </div>
             
+            <!-- Contenu dashboard -->
             <div class="p-6">
-                <!-- SECTION 1 : Contrôles du graphique (UN SEUL calendrier) -->
-                <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
-                    <div class="flex flex-wrap items-center justify-between gap-4">
-                        <div class="flex flex-wrap items-center gap-4">
-                            <!-- Sélecteur de période principal (Flatpickr) -->
-                            <div class="relative">
-                                <label class="block text-xs font-medium text-gray-500 mb-1">Période</label>
-                                <div class="flex items-center gap-2 bg-gray-50 border rounded-lg px-3 py-2">
-                                    <i class="fas fa-calendar-alt text-indigo-500 text-sm"></i>
-                                    <input type="text" id="dateRangeInput" class="bg-transparent border-none text-sm focus:outline-none w-48" placeholder="Sélectionner une période">
-                                    <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
-                                </div>
+                <!-- Sélecteur de période style Shopify -->
+                <div class="flex flex-wrap items-center gap-4 mb-6">
+                    <div class="relative">
+                        <button id="periodSelector" class="flex items-center gap-2 bg-white border rounded-lg px-4 py-2 text-sm hover:bg-gray-50 shadow-sm">
+                            <i class="fas fa-calendar-alt text-indigo-500"></i>
+                            <span id="selectedPeriod">7 derniers jours</span>
+                            <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                        </button>
+                        
+                        <!-- Dropdown menu -->
+                        <div id="periodMenu" class="absolute mt-1 w-64 bg-white border rounded-lg shadow-lg hidden z-20">
+                            <div class="py-1 max-h-96 overflow-y-auto">
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="today">Aujourd'hui</a>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="yesterday">Hier</a>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="7days">7 derniers jours</a>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="30days">30 derniers jours</a>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="3months">3 derniers mois</a>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="6months">6 derniers mois</a>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="12months">12 derniers mois</a>
+                                <div class="border-t my-1"></div>
+                                <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100" data-period="custom">Personnalisé...</a>
                             </div>
-                            
-                            <!-- Comparaison avec période précédente -->
-                            <div class="relative">
-                                <label class="block text-xs font-medium text-gray-500 mb-1">Comparer à</label>
-                                <div class="flex items-center gap-2 bg-gray-50 border rounded-lg px-3 py-2">
-                                    <i class="fas fa-chart-line text-indigo-500 text-sm"></i>
-                                    <select id="comparePeriodSelect" class="bg-transparent border-none text-sm focus:outline-none">
-                                        <option value="previous">Période précédente</option>
-                                        <option value="last_week">Semaine dernière</option>
-                                        <option value="last_month">Mois dernier</option>
-                                        <option value="last_year">Année dernière</option>
-                                        <option value="custom">Personnalisée...</option>
-                                    </select>
-                                    <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
-                                </div>
-                            </div>
-                            
-                            <!-- Bouton rafraîchir -->
-                            <button id="refreshBtn" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm transition mt-5"><i class="fas fa-redo-alt"></i><span>Rafraîchir</span></button>
                         </div>
-                        <div class="text-right"><p class="text-xs text-gray-400" id="lastUpdateTime">Dernière mise à jour : --:--:--</p></div>
                     </div>
                     
-                    <!-- Calendrier personnalisé pour comparaison (caché par défaut) -->
-                    <div id="customCompareRange" class="hidden mt-4 p-4 bg-gray-50 rounded-lg border">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Période de comparaison personnalisée</label>
-                        <div class="flex flex-wrap items-center gap-3">
-                            <input type="text" id="customCompareStart" class="border rounded-lg px-3 py-2 text-sm w-40" placeholder="Date début">
-                            <input type="text" id="customCompareEnd" class="border rounded-lg px-3 py-2 text-sm w-40" placeholder="Date fin">
-                            <button id="applyCustomCompareBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition">Appliquer la comparaison</button>
-                        </div>
+                    <!-- Comparaison -->
+                    <div class="relative">
+                        <button id="compareSelector" class="flex items-center gap-2 bg-white border rounded-lg px-4 py-2 text-sm hover:bg-gray-50 shadow-sm">
+                            <span>Comparer à : Période précédente</span>
+                            <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Calendrier personnalisé (caché par défaut) -->
+                    <div id="customRange" class="hidden items-center gap-2">
+                        <input type="date" id="startDate" class="border rounded-lg px-3 py-2 text-sm">
+                        <span class="text-gray-400">—</span>
+                        <input type="date" id="endDate" class="border rounded-lg px-3 py-2 text-sm">
+                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
+                            Appliquer
+                        </button>
                     </div>
                 </div>
 
@@ -514,127 +507,188 @@
                     </div>
                 </div>
                 
-                <!-- SECTION 3 : GRAPHIQUE PRINCIPAL (Activité des employés) - OCCUPE TOUTE LA LARGEUR -->
-                <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
-                    <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
-                        <h3 class="font-semibold text-gray-800">Activité des employés - Comparaison</h3>
-                        <div class="flex gap-2">
-                            <button class="view-btn text-xs px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600" data-view="daily">Journalier</button>
-                            <button class="view-btn text-xs px-2 py-1 rounded-lg hover:bg-gray-100" data-view="weekly">Hebdomadaire</button>
-                            <button class="view-btn text-xs px-2 py-1 rounded-lg hover:bg-gray-100" data-view="monthly">Mensuel</button>
+                <!-- Graphiques -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <!-- Graphique activité avec échelle dynamique -->
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-semibold text-gray-800">Activité</h3>
+                            <span class="text-sm text-gray-500" id="chartPeriod">1 - 31 mars 2026</span>
                         </div>
-                    </div>
-                    <div class="relative" style="height: 400px;">
-                        <canvas id="employeeActivityChart"></canvas>
+                        <div class="relative h-80">
+                            <canvas id="activityChart" width="400" height="300"></canvas>
+                        </div>
+                        
+                        <!-- Totaux avec variation -->
+                        <div class="flex justify-between items-center mt-4 p-4 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="text-sm text-gray-500">TOTAL</p>
+                                <p class="text-2xl font-bold" id="totalValue">1,547 tentatives</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-500">Variation</p>
+                                <p class="text-lg font-medium text-green-600" id="variationValue">▲ +12%</p>
+                                <p class="text-xs text-gray-400" id="comparePeriod">vs période précédente</p>
+                            </div>
+                        </div>
                     </div>
                     
-                    <!-- Légende et infos avec flèches de tendance -->
-                    <div class="flex justify-between items-center mt-6 p-4 bg-gray-50 rounded-lg">
-                        <div class="flex gap-6">
-                            <div>
-                                <p class="text-xs text-gray-500 uppercase font-semibold">Moyenne tentatives/employé</p>
-                                <div class="flex items-center gap-2 mt-1">
-                                    <p class="text-xl font-bold" id="employeeActivityAvgAttempts">-</p>
-                                    <span id="employeeActivityAttemptsTrendIcon" class="text-sm"><i class="fas fa-arrow-up text-green-500"></i></span>
-                                    <span id="employeeActivityAttemptsTrendValue" class="text-sm font-medium text-green-600">0%</span>
-                                </div>
-                                <p class="text-xs text-gray-400 mt-1" id="employeeActivityAttemptsPeriod">sur la période</p>
+                    <!-- Camembert répartition -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="font-semibold text-gray-800 mb-4">Répartition</h3>
+                        <div class="relative h-64">
+                            <canvas id="pieChart" width="250" height="250"></canvas>
+                        </div>
+                        <div class="flex justify-center gap-4 mt-4 text-sm">
+                            <div class="flex items-center gap-1">
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <span>Succès (94%)</span>
                             </div>
-                            <div class="border-l border-gray-200"></div>
-                            <div>
-                                <p class="text-xs text-gray-500 uppercase font-semibold">Temps moyen (sec)</p>
-                                <div class="flex items-center gap-2 mt-1">
-                                    <p class="text-xl font-bold" id="employeeActivityAvgTime">-</p>
-                                    <span id="employeeActivityTimeTrendIcon" class="text-sm"><i class="fas fa-arrow-down text-red-500"></i></span>
-                                    <span id="employeeActivityTimeTrendValue" class="text-sm font-medium text-red-600">0%</span>
-                                </div>
-                                <p class="text-xs text-gray-400 mt-1" id="employeeActivityTimePeriod">sur la période</p>
+                            <div class="flex items-center gap-1">
+                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                <span>Échecs (6%)</span>
                             </div>
                         </div>
-                        <div class="text-right">
-                            <p class="text-xs text-gray-500 uppercase font-semibold">Anomalies détectées</p>
-                            <p class="text-lg font-bold text-yellow-600 mt-1" id="employeeActivityAnomalies">0</p>
-                            <p class="text-xs text-gray-400 mt-1">À investiguer</p>
-                        </div>
-                    </div>
-                    <!-- Totaux et variation avec flèche de comparaison -->
-                    <div class="flex justify-between items-center mt-4 p-4 bg-gray-50 rounded-lg">
-                        <div><p class="text-sm text-gray-500">TOTAL PÉRIODE SÉLECTIONNÉE</p><p class="text-2xl font-bold" id="totalPeriodValue">1,547 tentatives</p></div>
-                        <div class="text-right"><p class="text-sm text-gray-500">Évolution vs période comparée</p><div class="flex items-center gap-2 justify-end"><span id="comparisonTrendIcon" class="text-lg"><i class="fas fa-arrow-up text-green-500"></i></span><span id="comparisonTrendValue" class="text-xl font-bold text-green-600">+12%</span></div><p class="text-xs text-gray-400 mt-1" id="comparisonPeriodLabel">vs période précédente</p></div>
                     </div>
                 </div>
                 
-                <!-- SECTION 4 : Camembert répartition + TOP 5 ÉCHECS (côte à côte) -->
+                <!-- Alertes récentes et Top échecs -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    <!-- Camembert Succès/Échecs (corrigé) -->
-                   <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h3 class="font-semibold text-gray-800 mb-4 text-center">Taux de réussite</h3>
-                    <div class="relative h-64"><canvas id="pieChartSuccessFailure" width="250" height="250"></canvas></div>
-                    <div class="flex justify-center gap-6 mt-6 text-sm">
-                        <div class="flex items-center gap-2">
-                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <div>
-                                <p class="text-xs text-gray-500">Succès</p>
-                                <p class="font-bold text-green-600" id="successPercentPie">94%</p>
+                    <!-- Alertes récentes -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="font-semibold text-gray-800 mb-4">Alertes récentes</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
+                                <div class="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">Tentative d'usurpation</p>
+                                    <p class="text-xs text-gray-500">Jean Dupont - 3 échecs consécutifs</p>
+                                    <p class="text-xs text-gray-400 mt-1" id="alertTime1"></p>
+                                </div>
+                                <span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">Haute</span>
+                            </div>
+                            
+                            <div class="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
+                                <div class="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">Accès hors horaire</p>
+                                    <p class="text-xs text-gray-500">Claire Martin - Salle serveur</p>
+                                    <p class="text-xs text-gray-400 mt-1" id="alertTime2"></p>
+                                </div>
+                                <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full">Moyenne</span>
+                            </div>
+                            
+                            <div class="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                                <div class="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">Nouvel employé</p>
+                                    <p class="text-xs text-gray-500">Sophie Martin - Enrôlement réussi</p>
+                                    <p class="text-xs text-gray-400 mt-1" id="alertTime3"></p>
+                                </div>
+                                <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Basse</span>
+                            </div>
+                            
+                            <div class="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
+                                <div class="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">Accès non autorisé</p>
+                                    <p class="text-xs text-gray-500">Pierre Moreau - Département Compta</p>
+                                    <p class="text-xs text-gray-400 mt-1" id="alertTime4"></p>
+                                </div>
+                                <span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">Haute</span>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                            <div>
-                                <p class="text-xs text-gray-500">Échecs</p>
-                                <p class="font-bold text-red-600" id="failurePercentPie">6%</p>
-                            </div>
-                        </div>
+                        <a href="alerts.html" class="block text-center text-sm text-indigo-600 hover:text-indigo-800 mt-4">
+                            Voir toutes les alertes →
+                        </a>
                     </div>
-                </div>
-
-                <!-- Top 5 échecs -->
-                <div class="bg-white rounded-xl shadow-sm p-6">
+                    
+                    <!-- Top 5 échecs -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
                         <h3 class="font-semibold text-gray-800 mb-4">Top 5 échecs</h3>
                         <div class="space-y-4">
                             <div>
-                                <div class="flex justify-between text-sm mb-1"><span>Pierre Martin (Compta)</span><span class="font-medium">12 échecs</span></div>
-                                <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-red-500 h-2 rounded-full" style="width: 80%"></div></div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Pierre Martin (Compta)</span>
+                                    <span class="font-medium">12 échecs</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-red-500 h-2 rounded-full" style="width: 80%"></div>
+                                </div>
                             </div>
+                            
                             <div>
-                                <div class="flex justify-between text-sm mb-1"><span>Sophie Dubois (RH)</span><span class="font-medium">8 échecs</span></div>
-                                <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-red-500 h-2 rounded-full" style="width: 60%"></div></div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Sophie Dubois (RH)</span>
+                                    <span class="font-medium">8 échecs</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-red-500 h-2 rounded-full" style="width: 60%"></div>
+                                </div>
                             </div>
+                            
                             <div>
-                                <div class="flex justify-between text-sm mb-1"><span>Thomas Petit (Info)</span><span class="font-medium">5 échecs</span></div>
-                                <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-red-500 h-2 rounded-full" style="width: 40%"></div></div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Thomas Petit (Info)</span>
+                                    <span class="font-medium">5 échecs</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-red-500 h-2 rounded-full" style="width: 40%"></div>
+                                </div>
                             </div>
+                            
                             <div>
-                                <div class="flex justify-between text-sm mb-1"><span>Julie Moreau (Mkt)</span><span class="font-medium">4 échecs</span></div>
-                                <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-red-500 h-2 rounded-full" style="width: 30%"></div></div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Julie Moreau (Mkt)</span>
+                                    <span class="font-medium">4 échecs</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-red-500 h-2 rounded-full" style="width: 30%"></div>
+                                </div>
                             </div>
+                            
                             <div>
-                                <div class="flex justify-between text-sm mb-1"><span>Lucas Bernard (Dir)</span><span class="font-medium">3 échecs</span></div>
-                                <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-red-500 h-2 rounded-full" style="width: 20%"></div></div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span>Lucas Bernard (Dir)</span>
+                                    <span class="font-medium">3 échecs</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-red-500 h-2 rounded-full" style="width: 20%"></div>
+                                </div>
                             </div>
                         </div>
+                        
+                        <!-- Santé système -->
                         <div class="mt-6 pt-4 border-t">
                             <h4 class="text-sm font-medium mb-3">Santé système</h4>
                             <div class="grid grid-cols-2 gap-3">
-                                <div class="bg-gray-50 p-3 rounded-lg"><div class="flex items-center gap-2"><div class="w-2 h-2 bg-green-500 rounded-full"></div><span class="text-xs">Serveur</span></div></div>
-                                <div class="bg-gray-50 p-3 rounded-lg"><div class="flex items-center gap-2"><div class="w-2 h-2 bg-green-500 rounded-full"></div><span class="text-xs">Base données</span></div></div>
-                                <div class="bg-gray-50 p-3 rounded-lg"><div class="flex items-center gap-2"><div class="w-2 h-2 bg-green-500 rounded-full"></div><span class="text-xs">API</span></div></div>
-                                <div class="bg-gray-50 p-3 rounded-lg"><div class="flex items-center gap-2"><div class="w-2 h-2 bg-yellow-500 rounded-full"></div><span class="text-xs">Borne 1</span></div></div>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <span class="text-xs">Serveur</span>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <span class="text-xs">Base données</span>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <span class="text-xs">API</span>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                        <span class="text-xs">Borne 1</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Alertes récentes -->
-                <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
-                    <h3 class="font-semibold text-gray-800 mb-4">Alertes récentes</h3>
-                    <div class="space-y-3">
-                        <div class="flex items-start gap-3 p-3 bg-red-50 rounded-lg"><div class="w-2 h-2 bg-red-500 rounded-full mt-2"></div><div class="flex-1"><p class="text-sm font-medium">Tentative d'usurpation</p><p class="text-xs text-gray-500">Jean Dupont - 3 échecs consécutifs</p><p class="text-xs text-gray-400 mt-1" id="alertTime1"></p></div><span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">Haute</span></div>
-                        <div class="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg"><div class="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div><div class="flex-1"><p class="text-sm font-medium">Accès hors horaire</p><p class="text-xs text-gray-500">Claire Martin - Salle serveur</p><p class="text-xs text-gray-400 mt-1" id="alertTime2"></p></div><span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full">Moyenne</span></div>
-                        <div class="flex items-start gap-3 p-3 bg-green-50 rounded-lg"><div class="w-2 h-2 bg-green-500 rounded-full mt-2"></div><div class="flex-1"><p class="text-sm font-medium">Nouvel employé</p><p class="text-xs text-gray-500">Sophie Martin - Enrôlement réussi</p><p class="text-xs text-gray-400 mt-1" id="alertTime3"></p></div><span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Basse</span></div>
-                        <div class="flex items-start gap-3 p-3 bg-red-50 rounded-lg"><div class="w-2 h-2 bg-red-500 rounded-full mt-2"></div><div class="flex-1"><p class="text-sm font-medium">Accès non autorisé</p><p class="text-xs text-gray-500">Pierre Moreau - Département Compta</p><p class="text-xs text-gray-400 mt-1" id="alertTime4"></p></div><span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">Haute</span></div>
-                    </div>
-                    <a href="alerts.html" class="block text-center text-sm text-indigo-600 hover:text-indigo-800 mt-4">Voir toutes les alertes →</a>
                 </div>
                 
                 <!-- Dernières connexions admin avec secondes -->
@@ -642,8 +696,18 @@
                     <h3 class="font-semibold text-gray-800 mb-4">Historique des connexions</h3>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
-                            <thead><tr class="text-left text-gray-500 border-b"><th class="pb-2">Admin</th><th class="pb-2">Date (de - à)</th><th class="pb-2">IP</th><th class="pb-2">Durée</th><th class="pb-2">Statut</th></tr></thead>
-                            <tbody id="adminConnections"></tbody>
+                            <thead>
+                                <tr class="text-left text-gray-500 border-b">
+                                    <th class="pb-2">Admin</th>
+                                    <th class="pb-2">Date (de - à)</th>
+                                    <th class="pb-2">IP</th>
+                                    <th class="pb-2">Durée</th>
+                                    <th class="pb-2">Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminConnections">
+                                <!-- Rempli par JS -->
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -707,6 +771,7 @@
         // Générer une heure de déconnexion aléatoire (1-3h après connexion)
         function generateLogoutTime(loginDate) {
             const logoutDate = new Date(loginDate);
+            // Ajouter entre 1 et 3 heures
             const sessionHours = 1 + Math.random() * 2;
             logoutDate.setHours(logoutDate.getHours() + sessionHours);
             return logoutDate;
@@ -833,7 +898,7 @@
         
         // === MISE À JOUR EN TEMPS RÉEL DU DATETIME ===
         displayPreviousConnection();
-        setInterval(displayPreviousConnection, 1000);
+        setInterval(displayPreviousConnection, 1000); // Mettre à jour chaque seconde
         
         // Générer des données de tentatives réalistes
         function generateAttemptData(days = 7) {
@@ -862,6 +927,8 @@
         // Mettre à jour les alertes avec heures réelles
         function updateAlertTimes() {
             const now = new Date();
+            
+            // Créer les dates correctement
             const time1 = new Date(now);
             time1.setHours(9, 45, 23, 0);
             
@@ -877,6 +944,7 @@
             time4.setHours(15, 10, 30, 0);
             
             const times = [time1, time2, time3, time4];
+            
             const alertElements = ['alertTime1', 'alertTime2', 'alertTime3', 'alertTime4'];
             alertElements.forEach((id, index) => {
                 const element = document.getElementById(id);
@@ -927,341 +995,202 @@
             });
         }
         
-        // === GRAPHIQUE AVEC ÉCHELLE DYNAMIQUE (SUPPRIMÉ CAR REMPLACÉ PAR LE NOUVEAU) ===
-        // Le graphique "activityChart" a été supprimé car remplacé par le graphique "employeeActivityChart"
-        
-        // Camembert Succès/Échecs (corrigé)
- function initSuccessFailurePieChart(success = 94, failure = 6) {
-    const ctx = document.getElementById('pieChartSuccessFailure').getContext('2d');
-    
-    // Détruire le graphique existant s'il y en a un
-    if (window.successFailureChart) {
-        window.successFailureChart.destroy();
-    }
-    
-    window.successFailureChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Succès', 'Échecs'],
-            datasets: [{
-                data: [success, failure],
-                backgroundColor: ['#10b981', '#ef4444'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            cutout: '60%',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) {
-                            return `${ctx.label}: ${ctx.raw}%`;
+        // === GRAPHIQUE AVEC ÉCHELLE DYNAMIQUE ===
+        function initChart() {
+            const data = generateAttemptData(7);
+            const scale = calculateDynamicScale(data.maxValue);
+            
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            
+            // Détruire l'ancien graphique s'il existe
+            if (window.activityChart) {
+                window.activityChart.destroy();
+            }
+            
+            window.activityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Tentatives',
+                            data: data.attempts,
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Succès',
+                            data: data.successes,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: scale.max,
+                            ticks: {
+                                stepSize: scale.stepSize,
+                                callback: function(value) {
+                                    return value.toLocaleString('fr-FR');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.y.toLocaleString('fr-FR');
+                                    return label;
+                                }
+                            }
                         }
                     }
                 }
+            });
+            
+            // Mettre à jour les totaux
+            const total = data.attempts.reduce((a, b) => a + b, 0);
+            document.getElementById('totalValue').textContent = total.toLocaleString('fr-FR') + ' tentatives';
+            
+            // Mettre à jour la période
+            const now = new Date();
+            const startDate = new Date(now);
+            startDate.setDate(now.getDate() - 7);
+            document.getElementById('chartPeriod').textContent = 
+                `${startDate.toLocaleDateString('fr-FR')} - ${now.toLocaleDateString('fr-FR')}`;
+        }
+        
+        // Camembert
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Succès', 'Échecs'],
+                datasets: [{
+                    data: [94, 6],
+                    backgroundColor: ['#10b981', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                cutout: '70%',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        // === GESTION DU SÉLECTEUR DE PÉRIODE ===
+        document.getElementById('periodSelector').addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.getElementById('periodMenu').classList.toggle('hidden');
+        });
+        
+        document.querySelectorAll('[data-period]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const period = this.dataset.period;
+                const text = this.textContent;
+                document.getElementById('selectedPeriod').textContent = text;
+                document.getElementById('periodMenu').classList.add('hidden');
+                
+                if (period === 'custom') {
+                    document.getElementById('customRange').classList.remove('hidden');
+                } else {
+                    document.getElementById('customRange').classList.add('hidden');
+                    // Simuler le changement de données
+                    const days = period === 'today' ? 1 : 
+                                period === 'yesterday' ? 1 :
+                                period === '7days' ? 7 :
+                                period === '30days' ? 30 :
+                                period === '3months' ? 90 : 180;
+                    const data = generateAttemptData(days);
+                    updateChartData(data);
+                }
+            });
+        });
+        
+        // Fermer le menu en cliquant ailleurs
+        document.addEventListener('click', function() {
+            document.getElementById('periodMenu').classList.add('hidden');
+        });
+        
+        function updateChartData(data) {
+            if (window.activityChart) {
+                window.activityChart.data.labels = data.labels;
+                window.activityChart.data.datasets[0].data = data.attempts;
+                window.activityChart.data.datasets[1].data = data.successes;
+                
+                const scale = calculateDynamicScale(data.maxValue);
+                window.activityChart.options.scales.y.max = scale.max;
+                window.activityChart.options.scales.y.ticks.stepSize = scale.stepSize;
+                
+                window.activityChart.update();
+                
+                const total = data.attempts.reduce((a, b) => a + b, 0);
+                document.getElementById('totalValue').textContent = total.toLocaleString('fr-FR') + ' tentatives';
             }
         }
-    });
-    
-    const successEl = document.getElementById('successPercentPie');
-    const failureEl = document.getElementById('failurePercentPie');
-    if (successEl) successEl.innerText = success + '%';
-    if (failureEl) failureEl.innerText = failure + '%';
-}
-
-    // === INITIALISATION ===
-    // Remplacer l'appel initPieChartRepartition() par :
-     updateAlertTimes();
-     generateAdminConnections();
-     initSuccessFailurePieChart(94, 6);
+        
+        // === INITIALISATION ===
+        updateAlertTimes();
+        generateAdminConnections();
+        initChart();
         
         // === DÉCONNEXION ===
         document.getElementById('logoutBtn').addEventListener('click', function(e) {
             e.preventDefault();
+            
+            // Enregistrer l'heure de déconnexion
             const logoutTime = new Date();
             sessionStorage.setItem('logout_time', logoutTime.toISOString());
+            
+            // Nettoyer
             sessionStorage.removeItem('token');
             sessionStorage.removeItem('user');
+            
+            // Redirection
             window.location.href = 'login.html';
         });
         
         // Rafraîchir les données toutes les 30 secondes
         setInterval(() => {
+            const newData = generateAttemptData(7);
+            updateChartData(newData);
             generateAdminConnections();
         }, 30000);
-
-        // ===== GRAPHIQUE ACTIVITÉ EMPLOYÉS (Nouvelles Métriques) =====
-        
-        // Données mockées pour le graphique d'activité employés
-        function generateEmployeeActivityData(days = 7) {
-            const labels = [];
-            const attemptsPerEmployee = [];
-            const avgTimeSeconds = [];
-            const now = new Date();
-            
-            for (let i = days - 1; i >= 0; i--) {
-                const date = new Date(now);
-                date.setDate(date.getDate() - i);
-                
-                const dayName = days === 1 ? 'Aujourd\'hui' : date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
-                labels.push(dayName);
-                
-                attemptsPerEmployee.push(parseFloat((0.8 + Math.random() * 2.2).toFixed(2)));
-                avgTimeSeconds.push(parseFloat((2.5 + Math.random() * 9.5).toFixed(1)));
-            }
-            return { labels, attemptsPerEmployee, avgTimeSeconds };
-        }
-        
-        function generateComparisonData(days, offsetDays) {
-            const values = [];
-            for (let i = days - 1; i >= 0; i--) {
-                let val = 0.8 + Math.sin((i + offsetDays) * 0.7) * 0.8 + Math.random() * 0.5;
-                values.push(parseFloat(val.toFixed(2)));
-            }
-            return values;
-        }
-        
-        function calculateTrend(data) {
-            if (data.length < 2) return { percent: 0, direction: 'neutral' };
-            const first = data[0], last = data[data.length - 1];
-            if (first === 0) return { percent: 0, direction: 'neutral' };
-            const percent = ((last - first) / first) * 100;
-            return { percent: Math.abs(percent).toFixed(1), direction: percent > 0 ? 'up' : (percent < 0 ? 'down' : 'neutral') };
-        }
-        
-        function updateKPIs() {
-            const variation = calculateTrend(currentData.current);
-            document.getElementById('totalAttemptsKpi').innerText = currentData.totalCurrent.toLocaleString('fr-FR');
-            document.getElementById('successRateKpi').innerText = currentData.successRateCurrent + '%';
-            document.getElementById('totalPeriodValue').innerHTML = currentData.totalCurrent.toLocaleString('fr-FR') + ' tentatives';
-            
-            const attemptsTrendIcon = document.getElementById('attemptsTrendIcon');
-            const attemptsTrendValue = document.getElementById('attemptsTrendValue');
-            if (variation.direction === 'up') {
-                attemptsTrendIcon.innerHTML = '<i class="fas fa-arrow-up text-xs"></i>';
-                attemptsTrendValue.className = 'text-xs font-medium text-green-600';
-                attemptsTrendValue.innerText = '+' + variation.percent + '%';
-            } else if (variation.direction === 'down') {
-                attemptsTrendIcon.innerHTML = '<i class="fas fa-arrow-down text-xs"></i>';
-                attemptsTrendValue.className = 'text-xs font-medium text-red-600';
-                attemptsTrendValue.innerText = '-' + variation.percent + '%';
-            } else {
-                attemptsTrendIcon.innerHTML = '<i class="fas fa-minus text-xs"></i>';
-                attemptsTrendValue.className = 'text-xs font-medium text-gray-500';
-                attemptsTrendValue.innerText = variation.percent + '%';
-            }
-            
-            const successVariation = currentData.successRateCurrent - currentData.successRateComparison;
-            const successTrendIcon = document.getElementById('successRateTrendIcon');
-            const successTrendValue = document.getElementById('successRateTrendValue');
-            if (successVariation > 0) {
-                successTrendIcon.innerHTML = '<i class="fas fa-arrow-up text-xs"></i>';
-                successTrendValue.className = 'text-xs font-medium text-green-600';
-                successTrendValue.innerText = '+' + Math.abs(successVariation) + '%';
-            } else if (successVariation < 0) {
-                successTrendIcon.innerHTML = '<i class="fas fa-arrow-down text-xs"></i>';
-                successTrendValue.className = 'text-xs font-medium text-red-600';
-                successTrendValue.innerText = '-' + Math.abs(successVariation) + '%';
-            } else {
-                successTrendIcon.innerHTML = '<i class="fas fa-minus text-xs"></i>';
-                successTrendValue.className = 'text-xs font-medium text-gray-500';
-                successTrendValue.innerText = '0%';
-            }
-            
-            const comparisonVariation = calculateTrend(currentData.current);
-            const comparisonTrendIcon = document.getElementById('comparisonTrendIcon');
-            const comparisonTrendValue = document.getElementById('comparisonTrendValue');
-            if (comparisonVariation.direction === 'up') {
-                comparisonTrendIcon.innerHTML = '<i class="fas fa-arrow-up text-green-500"></i>';
-                comparisonTrendValue.className = 'text-xl font-bold text-green-600';
-                comparisonTrendValue.innerText = '+' + comparisonVariation.percent + '%';
-            } else if (comparisonVariation.direction === 'down') {
-                comparisonTrendIcon.innerHTML = '<i class="fas fa-arrow-down text-red-500"></i>';
-                comparisonTrendValue.className = 'text-xl font-bold text-red-600';
-                comparisonTrendValue.innerText = '-' + comparisonVariation.percent + '%';
-            } else {
-                comparisonTrendIcon.innerHTML = '<i class="fas fa-minus text-gray-500"></i>';
-                comparisonTrendValue.className = 'text-xl font-bold text-gray-500';
-                comparisonTrendValue.innerText = comparisonVariation.percent + '%';
-            }
-            
-            let comparisonLabel = '';
-            switch(comparePeriod.type) {
-                case 'previous': comparisonLabel = 'vs période précédente'; break;
-                case 'last_week': comparisonLabel = 'vs semaine dernière'; break;
-                case 'last_month': comparisonLabel = 'vs mois dernier'; break;
-                case 'last_year': comparisonLabel = 'vs année dernière'; break;
-                case 'custom': comparisonLabel = 'vs période personnalisée'; break;
-                default: comparisonLabel = 'vs période précédente';
-            }
-            document.getElementById('comparisonPeriodLabel').innerText = comparisonLabel;
-        }
-        
-        let currentChart = null;
-        let currentData = { labels: [], current: [], comparison: [], totalCurrent: 0, totalComparison: 0, successRateCurrent: 0, successRateComparison: 0 };
-        let currentPeriod = { start: null, end: null };
-        let comparePeriod = { type: 'previous', start: null, end: null };
-        let autoRefreshInterval = null;
-        
-        function initDatePickers() {
-            flatpickr("#dateRangeInput", {
-                mode: "range", locale: "fr", dateFormat: "d/m/Y",
-                defaultDate: [new Date(new Date().setDate(new Date().getDate() - 7)), new Date()],
-                onClose: function(selectedDates) { if (selectedDates.length === 2) { currentPeriod = { start: selectedDates[0], end: selectedDates[1] }; loadComparisonData(); } }
-            });
-            flatpickr("#customCompareStart", { locale: "fr", dateFormat: "d/m/Y" });
-            flatpickr("#customCompareEnd", { locale: "fr", dateFormat: "d/m/Y" });
-        }
-        
-        async function loadComparisonData() {
-            let start = currentPeriod.start, end = currentPeriod.end;
-            if (!start || !end) {
-                const today = new Date();
-                const weekAgo = new Date();
-                weekAgo.setDate(today.getDate() - 7);
-                start = weekAgo;
-                end = today;
-                currentPeriod = { start, end };
-            }
-            let compareStart, compareEnd;
-            const duration = end - start;
-            switch(comparePeriod.type) {
-                case 'previous':
-                    compareStart = new Date(start);
-                    compareStart.setDate(compareStart.getDate() - (Math.ceil(duration / (1000*60*60*24)) + 1));
-                    compareEnd = new Date(start);
-                    compareEnd.setDate(compareEnd.getDate() - 1);
-                    break;
-                case 'last_week':
-                    compareStart = new Date(start);
-                    compareStart.setDate(compareStart.getDate() - 7);
-                    compareEnd = new Date(end);
-                    compareEnd.setDate(compareEnd.getDate() - 7);
-                    break;
-                case 'last_month':
-                    compareStart = new Date(start);
-                    compareStart.setMonth(compareStart.getMonth() - 1);
-                    compareEnd = new Date(end);
-                    compareEnd.setMonth(compareEnd.getMonth() - 1);
-                    break;
-                case 'last_year':
-                    compareStart = new Date(start);
-                    compareStart.setFullYear(compareStart.getFullYear() - 1);
-                    compareEnd = new Date(end);
-                    compareEnd.setFullYear(compareEnd.getFullYear() - 1);
-                    break;
-                case 'custom':
-                    const customStart = document.getElementById('customCompareStart').value;
-                    const customEnd = document.getElementById('customCompareEnd').value;
-                    if (customStart && customEnd) {
-                        compareStart = new Date(customStart.split('/').reverse().join('-'));
-                        compareEnd = new Date(customEnd.split('/').reverse().join('-'));
-                    } else {
-                        compareStart = new Date(start);
-                        compareStart.setDate(compareStart.getDate() - 7);
-                        compareEnd = new Date(end);
-                        compareEnd.setDate(compareEnd.getDate() - 7);
-                    }
-                    break;
-                default:
-                    compareStart = new Date(start);
-                    compareStart.setDate(compareStart.getDate() - 7);
-                    compareEnd = new Date(end);
-                    compareEnd.setDate(compareEnd.getDate() - 7);
-            }
-            const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-            const mainData = generateEmployeeActivityData(days);
-            const compareAttempts = generateComparisonData(days, 7);
-            currentData.labels = mainData.labels;
-            currentData.current = mainData.attemptsPerEmployee;
-            currentData.comparison = compareAttempts;
-            currentData.totalCurrent = Math.round(mainData.attemptsPerEmployee.reduce((a,b)=>a+b,0) / days * 100);
-            currentData.totalComparison = Math.round(compareAttempts.reduce((a,b)=>a+b,0) / days * 100);
-            currentData.successRateCurrent = Math.round(85 + Math.random() * 10);
-            currentData.successRateComparison = Math.round(80 + Math.random() * 10);
-            updateMainChart(mainData, compareAttempts);
-            updateKPIs();
-        }
-        
-        function updateMainChart(mainData, compareData) {
-            if (currentChart) currentChart.destroy();
-            const ctx = document.getElementById('employeeActivityChart').getContext('2d');
-            currentChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: mainData.labels,
-                    datasets: [
-                        { label: 'Moy. tentatives / employé (période)', data: mainData.attemptsPerEmployee, borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.05)', borderWidth: 2, tension: 0.3, fill: true, pointRadius: 4, yAxisID: 'y' },
-                        { label: 'Moy. tentatives / employé (comparaison)', data: compareData, borderColor: '#9ca3af', backgroundColor: 'transparent', borderWidth: 2, borderDash: [5,5], tension: 0.3, fill: false, pointRadius: 3, yAxisID: 'y' }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Tentatives par employé' } }, x: { title: { display: true, text: 'Date' } } }, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} tent.` } } } }
-            });
-            const attemptsTrend = calculateTrend(mainData.attemptsPerEmployee);
-            const timeTrend = calculateTrend(mainData.avgTimeSeconds || [3.5,4.2,5.1,6.2,5.9,3.8,3.2]);
-            document.getElementById('employeeActivityAvgAttempts').innerHTML = (mainData.attemptsPerEmployee.reduce((a,b)=>a+b,0)/mainData.attemptsPerEmployee.length).toFixed(2) + ' tent.';
-            document.getElementById('employeeActivityAttemptsTrendIcon').innerHTML = attemptsTrend.direction === 'up' ? '<i class="fas fa-arrow-up text-green-500"></i>' : (attemptsTrend.direction === 'down' ? '<i class="fas fa-arrow-down text-red-500"></i>' : '<i class="fas fa-minus text-gray-500"></i>');
-            document.getElementById('employeeActivityAttemptsTrendValue').innerHTML = (attemptsTrend.direction === 'up' ? '+' : '') + attemptsTrend.percent + '%';
-            document.getElementById('employeeActivityAvgTime').innerHTML = '5.2 sec';
-            document.getElementById('employeeActivityTimeTrendIcon').innerHTML = '<i class="fas fa-arrow-down text-red-500"></i>';
-            document.getElementById('employeeActivityTimeTrendValue').innerHTML = '-8%';
-            document.getElementById('employeeActivityAnomalies').innerHTML = '2';
-        }
-        
-        function startAutoRefresh() {
-            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-            const includestoday = ['previous', 'last_week', 'last_month', 'last_year'].includes(comparePeriod.type) || (currentPeriod.start && new Date() <= currentPeriod.end);
-            if (includestoday) autoRefreshInterval = setInterval(() => { loadComparisonData(); generateAdminConnections(); document.getElementById('lastUpdateTime').innerHTML = `Dernière mise à jour : ${new Date().toLocaleTimeString('fr-FR')}`; }, 30000);
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date();
-            const weekAgo = new Date();
-            weekAgo.setDate(today.getDate() - 7);
-            currentPeriod = { start: weekAgo, end: today };
-            comparePeriod = { type: 'previous' };
-            initDatePickers();
-            loadComparisonData();
-            generateAdminConnections();
-            updateAlertTimes();
-            displayPreviousConnection();
-            setInterval(() => { displayPreviousConnection(); updateAlertTimes(); generateAdminConnections(); }, 60000);
-            
-            document.getElementById('greeting').innerHTML = `${getGreeting()}, ${userData.prenom} ${userData.nom}`;
-            document.getElementById('userInitials').innerHTML = (userData.prenom[0]||'A') + (userData.nom[0]||'D');
-            document.getElementById('adminName').innerHTML = `${userData.prenom} ${userData.nom}`;
-            document.getElementById('adminRole').innerHTML = userData.role === 'super_admin' ? 'Super Admin' : 'Admin';
-            document.getElementById('lastUpdateTime').innerHTML = `Dernière mise à jour : ${new Date().toLocaleTimeString('fr-FR')}`;
-            
-            document.getElementById('comparePeriodSelect').addEventListener('change', function(e) {
-                comparePeriod.type = e.target.value;
-                document.getElementById('customCompareRange').classList.toggle('hidden', e.target.value !== 'custom');
-                if(e.target.value !== 'custom') loadComparisonData();
-                startAutoRefresh();
-            });
-            document.getElementById('applyCustomCompareBtn').addEventListener('click', () => { comparePeriod.type = 'custom'; loadComparisonData(); document.getElementById('customCompareRange').classList.add('hidden'); startAutoRefresh(); });
-            document.getElementById('refreshBtn').addEventListener('click', () => { loadComparisonData(); generateAdminConnections(); document.getElementById('lastUpdateTime').innerHTML = `Dernière mise à jour : ${new Date().toLocaleTimeString('fr-FR')}`; });
-            
-            document.querySelectorAll('.view-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('bg-indigo-50', 'text-indigo-600'));
-                    this.classList.add('bg-indigo-50', 'text-indigo-600');
-                    loadComparisonData();
-                });
-            });
-            
-            const themeBtn = document.getElementById('themeToggleBtn');
-            if(themeBtn && window.themeManager){
-                themeBtn.addEventListener('click', () => { window.themeManager.toggle(); const isDark = window.themeManager.isDarkMode(); themeBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; });
-                const isDark = window.themeManager.isDarkMode();
-                themeBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-            }
-            document.getElementById('logoutLink')?.addEventListener('click', (e) => { e.preventDefault(); sessionStorage.clear(); window.location.href = 'login.html'; });
-            startAutoRefresh();
-        });
     </script>
     
     <!-- Theme Toggle Event Listener -->
@@ -1272,14 +1201,20 @@
                 themeToggleBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     window.themeManager.toggle();
+                    
+                    // Update icon based on current theme
                     const isDark = window.themeManager.isDarkMode();
                     themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
                     themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
                 });
+                
+                // Set initial icon
                 const isDark = window.themeManager.isDarkMode();
                 themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
                 themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
             }
+
+            // Logout
             const logoutLink = document.querySelector('a[href="login.html"]');
             if (logoutLink) {
                 logoutLink.addEventListener('click', function(e) {
