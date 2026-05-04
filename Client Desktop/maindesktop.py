@@ -48,8 +48,8 @@ def resource_path(relative_path):
     if hasattr(sys, '_MEIPASS'):
         # Mode compilé : PyInstaller stocke les fichiers ici
         return os.path.join(sys._MEIPASS, relative_path)
-    # Mode développement : on utilise le répertoire courant
-    return os.path.join(os.path.abspath("."), relative_path)
+    # Mode développement : on utilise le répertoire du script
+    return str(SCRIPT_DIR / relative_path)
 
 # Charge ton détecteur comme ça :
 FACE_XML = resource_path("haarcascade_frontalface_default.xml")
@@ -1360,54 +1360,113 @@ class BioAccessApp(tk.Tk):
         """
         Vérifie l'intégrité en arrière-plan.
         • Si OK → silencieux
-        • Si compromis → bandeau d'alerte UI + alerte admin envoyée automatiquement
+        • Si compromis → carte de notification dans le coin inférieur droit
+          qui se déplace légèrement vers le milieu
         """
         def check():
             status, message = self._integrity_guard.verify()
 
-            def show_banner(s: IntegrityStatus, m: str):
+            def show_notification(s: IntegrityStatus, m: str):
                 if s == IntegrityStatus.OK:
                     return  # Aucune action visible
 
                 color     = s.ui_color
                 label     = s.ui_label
                 fg_color  = "white" if color not in (C_WARNING,) else C_BG
-                # Texte court pour le bandeau
+                # Texte court pour la notification
                 short_msg = m.split("\n")[0][:90]
 
-                banner = tk.Frame(self, bg=color, height=36)
-                banner.place(relx=0, rely=0, relwidth=1)
-                banner.lift()
+                # Créer la carte de notification
+                card = tk.Frame(self, bg=color, highlightthickness=2, 
+                               highlightbackground=_mix(color, 0.7), relief="raised")
+                card.configure(padx=12, pady=10)
 
-                tk.Label(banner,
-                         text=f"  {label}  —  {short_msg}",
+                # Contenu de la carte
+                content_frame = tk.Frame(card, bg=color)
+                content_frame.pack(fill="both", expand=True)
+
+                # Texte label + message
+                text_frame = tk.Frame(content_frame, bg=color)
+                text_frame.pack(side="left", fill="both", expand=True)
+                
+                tk.Label(text_frame,
+                         text=f"{label}  —  {short_msg}",
                          bg=color, fg=fg_color,
-                         font=("Courier", 8, "bold"),
-                         anchor="w").pack(side="left", padx=10, fill="y")
+                         font=("Courier", 9, "bold"),
+                         anchor="w", justify="left", wraplength=280).pack(fill="x")
 
-                # Bouton "Détails" — affiche le message complet
+                # Boutons (verticalement à droite)
+                buttons_frame = tk.Frame(content_frame, bg=color)
+                buttons_frame.pack(side="right", padx=(8, 0))
+
+                # Bouton "Détails"
                 def show_detail():
                     messagebox.showwarning("Intégrité BioAccess", m, parent=self)
 
-                tk.Button(banner, text="Détails", bg=color, fg=fg_color,
-                          font=("Courier", 8), bd=0, cursor="hand2",
-                          activebackground=_mix(color, 0.8),
-                          command=show_detail).pack(side="left", padx=4)
+                tk.Button(buttons_frame, text="📋 Détails", bg=_mix(color, 0.9), 
+                         fg=fg_color, font=("Courier", 8), bd=0, cursor="hand2",
+                         padx=6, pady=2,
+                         activebackground=_mix(color, 0.7),
+                         command=show_detail).pack(pady=(0, 4))
 
-                # Bouton fermer (sauf TAMPERED — permanent)
+                # Bouton fermer (sauf TAMPERED)
                 if s != IntegrityStatus.TAMPERED:
-                    close_btn = tk.Button(
-                        banner, text="✕", bg=color, fg=fg_color,
-                        font=("Courier", 10, "bold"), bd=0, cursor="hand2",
-                        activebackground=_mix(color, 0.8),
-                        command=banner.destroy)
-                    close_btn.pack(side="right", padx=10)
-                    # Auto-dismiss après 10 s
-                    self.after(10000,
-                               lambda: banner.destroy()
-                               if banner.winfo_exists() else None)
+                    tk.Button(buttons_frame, text="✕", bg=_mix(color, 0.9), 
+                             fg=fg_color, font=("Courier", 10, "bold"), bd=0, 
+                             cursor="hand2", padx=6, pady=2,
+                             activebackground=_mix(color, 0.7),
+                             command=card.destroy).pack()
 
-            self.after(0, lambda: show_banner(status, message))
+                # Placer la carte dans le coin inférieur droit
+                # Position initiale : coin inférieur droit
+                card.place(relx=1.0, rely=1.0, anchor="se", x=-16, y=-16)
+                card.update_idletasks()
+                
+                # Animation : glisser vers le milieu droit avec ease-out
+                card_width = card.winfo_width()
+                card_height = card.winfo_height()
+                screen_width = self.winfo_screenwidth()
+                screen_height = self.winfo_screenheight()
+                
+                # Position finale : milieu de la partie droite
+                # x final : 80% vers la droite
+                # y final : centre vertical
+                x_start = -16
+                y_start = -16
+                x_end = -(card_width + 16)  # Reste à droite mais plus proche du centre
+                y_end = -card_height // 2   # Centre vertical par rapport au bas
+                
+                duration = 600  # ms
+                start_time = time.time()
+                
+                def animate():
+                    elapsed = (time.time() - start_time) * 1000
+                    if elapsed >= duration:
+                        # Position finale
+                        card.place(relx=1.0, rely=1.0, anchor="se", 
+                                  x=x_end, y=y_end)
+                        return
+                    
+                    # Ease-out cubic
+                    progress = elapsed / duration
+                    eased = 1 - (1 - progress) ** 3
+                    
+                    x = x_start + (x_end - x_start) * eased
+                    y = y_start + (y_end - y_start) * eased
+                    
+                    card.place(relx=1.0, rely=1.0, anchor="se", x=int(x), y=int(y))
+                    self.after(16, animate)
+                
+                animate()
+
+                # Auto-dismiss après 12 s (sauf TAMPERED)
+                if s != IntegrityStatus.TAMPERED:
+                    def auto_dismiss():
+                        if card.winfo_exists():
+                            card.destroy()
+                    self.after(12000, auto_dismiss)
+
+            self.after(0, lambda: show_notification(status, message))
 
         threading.Thread(target=check, daemon=True).start()
 
@@ -1595,6 +1654,19 @@ class BioAccessApp(tk.Tk):
         # Boutons d'action en bas
         bf = tk.Frame(dlg, bg=C_BG)
         bf.pack(fill="x", padx=20, pady=(0,14))
+        
+        # Logique : si AU MOINS une permission accordée → bouton "Continuer"
+        has_at_least_one = any(result.granted for _, result in problems)
+        
+        if has_at_least_one:
+            # Bouton "Continuer" en vert (principal)
+            tk.Button(bf, text="✓  CONTINUER L'AUTHENTIFICATION",
+                      bg=C_SUCCESS, fg="white",
+                      font=("Courier", 10, "bold"),
+                      bd=0, cursor="hand2", pady=10, padx=10,
+                      activebackground=C_SUCCESS,
+                      command=dlg.destroy
+                      ).pack(fill="x", pady=(0, 8))
         
         # Bouton "Revérifier" actif en permanence
         tk.Button(bf, text="🔄  REVÉRIFIER LES PERMISSIONS",
