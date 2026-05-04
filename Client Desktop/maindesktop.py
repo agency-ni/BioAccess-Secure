@@ -1417,24 +1417,21 @@ class BioAccessApp(tk.Tk):
                              activebackground=_mix(color, 0.7),
                              command=card.destroy).pack()
 
-                # Placer la carte dans le coin inférieur droit
-                # Position initiale : coin inférieur droit
-                card.place(relx=1.0, rely=1.0, anchor="se", x=-16, y=-16)
+                # Placer la carte dans le coin supérieur droit à 27% de hauteur
+                # Position initiale : hors écran à droite
+                card.place(relx=1.0, rely=0.27, anchor="ne", x=16, y=0)
                 card.update_idletasks()
                 
-                # Animation : glisser vers le milieu droit avec ease-out
+                # Animation : glisser depuis la droite vers le coin supérieur droit avec ease-out
                 card_width = card.winfo_width()
                 card_height = card.winfo_height()
                 screen_width = self.winfo_screenwidth()
                 screen_height = self.winfo_screenheight()
                 
-                # Position finale : milieu de la partie droite
-                # x final : 80% vers la droite
-                # y final : centre vertical
-                x_start = -16
-                y_start = -16
-                x_end = -(card_width + 16)  # Reste à droite mais plus proche du centre
-                y_end = -card_height // 2   # Centre vertical par rapport au bas
+                # Position initiale : hors écran à droite
+                # Position finale : coin supérieur droit avec padding
+                x_start = 16 + card_width  # Commence à droite (hors écran)
+                x_end = -16                 # Position finale avec padding de 16px
                 
                 duration = 600  # ms
                 start_time = time.time()
@@ -1443,8 +1440,7 @@ class BioAccessApp(tk.Tk):
                     elapsed = (time.time() - start_time) * 1000
                     if elapsed >= duration:
                         # Position finale
-                        card.place(relx=1.0, rely=1.0, anchor="se", 
-                                  x=x_end, y=y_end)
+                        card.place(relx=1.0, rely=0.27, anchor="ne", x=x_end, y=0)
                         return
                     
                     # Ease-out cubic
@@ -1452,9 +1448,8 @@ class BioAccessApp(tk.Tk):
                     eased = 1 - (1 - progress) ** 3
                     
                     x = x_start + (x_end - x_start) * eased
-                    y = y_start + (y_end - y_start) * eased
                     
-                    card.place(relx=1.0, rely=1.0, anchor="se", x=int(x), y=int(y))
+                    card.place(relx=1.0, rely=0.27, anchor="ne", x=int(x), y=0)
                     self.after(16, animate)
                 
                 animate()

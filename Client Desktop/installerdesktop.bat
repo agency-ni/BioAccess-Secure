@@ -97,11 +97,28 @@ call :progress 7 "Compilation BioAccessSecure..."
 "%SCRIPT_DIR%venv\Scripts\pyinstaller.exe" --noconfirm --clean --onefile --windowed --name "BioAccessSecure" --add-data "%VOSK_MODEL_DIR%;model" --add-data "%SCRIPT_DIR%haarcascade_frontalface_default.xml;." --collect-all vosk --hidden-import=cv2 "%MAIN_PY%" >> "%LOG_FILE%" 2>&1
 
 REM ===== FIN =====
+set "EXE_PATH=%DIST_DIR%\BioAccessSecure.exe"
 cls
 echo ╔════════════════════════════════════════════╗
 echo ║             INSTALLATION TERMINÉE          ║
 echo ╚════════════════════════════════════════════╝
-echo Localisation : %DIST_DIR%\BioAccessSecure\
+echo.
+if exist "%EXE_PATH%" (
+    echo ✓ Exécutable généré avec succès
+    echo.
+    echo 📁 Emplacement :
+    echo    %EXE_PATH%
+    echo.
+    echo 💾 Taille : 
+    for /f "usebackq" %%A in ('%EXE_PATH%') do (
+        set /a "SIZE=%%~zA / 1048576"
+        echo    ~!SIZE! MB
+    )
+) else (
+    echo ❌ ERREUR : Le fichier %EXE_PATH% n'a pas été généré.
+    echo    Consultez le fichier log : %LOG_FILE%
+)
+echo.
 pause
 exit /b 0
 
@@ -110,9 +127,12 @@ REM FONCTIONS
 REM ======================================================================
 
 :progress
+REM Calculer le pourcentage et le nombre de blocs basé sur l'étape (1-7)
+set /a "PERCENT=(%~1 * 100) / 7"
+set /a "BAR_COUNT=(%~1 * 30) / 7"
 set "BAR="
 for /l %%A in (1,1,30) do (
-    if %%A lss !BAR_COUNT! (set "BAR=!BAR!█") else (set "BAR=!BAR! ")
+    if %%A leq !BAR_COUNT! (set "BAR=!BAR!█") else (set "BAR=!BAR! ")
 )
 cls
 echo.
