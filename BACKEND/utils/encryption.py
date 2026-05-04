@@ -1,28 +1,28 @@
 """
-Utilitaires de chiffrement supplémentaires
+Utilitaires de chiffrement
 """
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import base64
 import os
 
-class EncryptionUtils:
-    """Utilitaires de chiffrement"""
+class EncryptionManager:
+    """Gestionnaire de chiffrement unifié"""
     
     @staticmethod
     def generate_key():
-        """Génère une clé de chiffrement aléatoire"""
+        """Génère une clé de chiffrement"""
         return Fernet.generate_key()
     
     @staticmethod
-    def derive_key(password, salt=None):
+    def derive_key(password: str, salt: bytes = None):
         """Dérive une clé à partir d'un mot de passe"""
         if salt is None:
             salt = os.urandom(16)
         
-        kdf = PBKDF2(
+        kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
@@ -32,32 +32,13 @@ class EncryptionUtils:
         return key, salt
     
     @staticmethod
-    def encrypt_file(file_path, key):
-        """Chiffre un fichier"""
-        fernet = Fernet(key)
-        
-        with open(file_path, 'rb') as f:
-            data = f.read()
-        
-        encrypted = fernet.encrypt(data)
-        
-        with open(file_path + '.enc', 'wb') as f:
-            f.write(encrypted)
-        
-        return file_path + '.enc'
+    def encrypt(data: bytes, key: bytes) -> bytes:
+        """Chiffre des données"""
+        f = Fernet(key)
+        return f.encrypt(data)
     
     @staticmethod
-    def decrypt_file(file_path, key):
-        """Déchiffre un fichier"""
-        fernet = Fernet(key)
-        
-        with open(file_path, 'rb') as f:
-            encrypted = f.read()
-        
-        decrypted = fernet.decrypt(encrypted)
-        
-        output_path = file_path.replace('.enc', '')
-        with open(output_path, 'wb') as f:
-            f.write(decrypted)
-        
-        return output_path
+    def decrypt(data: bytes, key: bytes) -> bytes:
+        """Déchiffre des données"""
+        f = Fernet(key)
+        return f.decrypt(data)

@@ -600,7 +600,7 @@ class BiometricAuthenticationService:
             # Erreurs critiques
             critical_errors = AuthenticationAttempt.query.filter(
                 AuthenticationAttempt.timestamp.between(start_of_day, end_of_day),
-                AuthenticationAttempt.reason.in(['NO_FACE_DETECTED', 'SYSTEM_ERROR'])
+                AuthenticationAttempt.reason.in_(['NO_FACE_DETECTED', 'SYSTEM_ERROR'])
             ).count()
             
             return {

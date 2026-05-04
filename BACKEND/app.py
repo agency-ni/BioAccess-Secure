@@ -73,6 +73,13 @@ def create_app(config_name=None):
     # Base de données
     init_db(app)
     
+    # ============================================
+    # LOGGING (AVANT autres services)
+    # ============================================
+    logger, audit_logger = setup_logger(app)
+    app.logger = logger
+    app.audit_logger = audit_logger
+    
     # Cache Redis
     init_cache(app)
     
@@ -89,18 +96,12 @@ def create_app(config_name=None):
     # Monitoring Sentry (Error Tracking & Alerting)
     SentryConfig.init_sentry(app)
     
-    # Documentation API OpenAPI/Swagger
-    swagger = Flasgger(
-        app,
-        spec=OPENAPI_SPEC,
-        title='BioAccess Secure API',
-        version='2.0.0',
-        uiversion=3,
-        swagger_ui_path='/api/docs',
-        swagger_ui_bundle_js='//cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui-bundle.js',
-        swagger_ui_standalone_preset_js='//cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui-standalone-preset.js',
-        swagger_css='//cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui.css',
-    )
+    # Documentation API OpenAPI/Swagger (Flasgger simplifié pour le dev)
+    try:
+        swagger = Flasgger(app)
+        logger.info("✅ Swagger/API Documentation initialisée")
+    except Exception as e:
+        logger.warning(f"⚠️  Erreur Swagger: {e}")
     
     # ============================================
     # MIDDLEWARES PERSONNALISÉS
@@ -114,14 +115,6 @@ def create_app(config_name=None):
     
     # Sentry monitoring (Error tracking & alerting)
     setup_sentry_middleware(app, app.config)
-    
-    # ============================================
-    # LOGGING
-    # ============================================
-    
-    logger, audit_logger = setup_logger(app)
-    app.logger = logger
-    app.audit_logger = audit_logger
     
     # ============================================
     # GESTIONNAIRES D'ERREURS

@@ -71,7 +71,7 @@ class User(UserMixin, db.Model):
     templates = db.relationship('TemplateBiometrique', backref='utilisateur', lazy='dynamic', cascade='all, delete-orphan')
     phrases = db.relationship('PhraseAleatoire', backref='utilisateur', lazy='dynamic', cascade='all, delete-orphan')
     logs = db.relationship('LogAcces', backref='utilisateur', lazy='dynamic', cascade='all, delete-orphan')
-    alertes = db.relationship('Alerte', backref='utilisateur', lazy='dynamic', cascade='all, delete-orphan')
+    # Note: Alertes relation is defined in Alerte model with foreign_keys to avoid ambiguity
     sessions = db.relationship('UserSession', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     
     # ========== MÉTHODE STATIQUE - GÉNÉRATION EMPLOYEE_ID ==========

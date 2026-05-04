@@ -7,6 +7,7 @@ from flask import current_app
 import json
 import logging
 from typing import Any, Optional
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,13 @@ redis_client = None
 def init_cache(app):
     """Initialise la connexion Redis"""
     global redis_client
+    
+    # En développement, Redis est optionnel
+    if app.config['FLASK_ENV'] != 'production' and os.environ.get('REDIS_ENABLED', 'False').lower() != 'true':
+        logger.info("⚠️  Cache Redis désactivé (mode développement local)")
+        redis_client = None
+        return
+    
     try:
         redis_client = redis.from_url(
             app.config['REDIS_URL'],
@@ -33,6 +41,7 @@ def init_cache(app):
         logger.error(f"❌ Erreur connexion Redis: {e}")
         if app.config['FLASK_ENV'] == 'production':
             raise
+        logger.warning("⚠️  Redis non disponible - utilisation du cache en mémoire")
         redis_client = None
 
 def get_cache():

@@ -34,7 +34,7 @@ limiter = Limiter(
     default_limits=["100 per hour"],
     # En développement: memory, en prod: redis
     storage_uri="memory://",
-    strategy="fixed-window-elastic-expiry",
+    strategy="moving-window",
     on_breach=lambda limit, request, response, endpoint: logger.warning(
         f"Rate limit breached: {limit.key} for {request.remote_addr}"
     )
