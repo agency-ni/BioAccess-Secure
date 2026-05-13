@@ -4,9 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BioAccess Secure - Alertes</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%234f46e5'/%3E%3Cpath d='M30 40 L45 70 L60 40' stroke='white' stroke-width='8' fill='none' stroke-linecap='round' /%3E%3Ccircle cx='35' cy='35' r='6' fill='white'/%3E%3Ccircle cx='65' cy='35' r='6' fill='white'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="theme.js"></script>
+    <script src="api.js"></script>
+    <script src="superadmin.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Poppins', sans-serif; }
@@ -232,6 +236,18 @@
         </div>
 
         <div class="sidebar-footer flex-shrink-0">
+            <!-- Toggle Super Admin -->
+            <div class="flex items-center justify-between mb-3 pb-2" style="border-bottom:1px solid rgba(0,0,0,0.07);">
+                <div class="flex items-center gap-2">
+                    <i id="saIcon" class="fas fa-shield-alt text-xs" style="color:#9ca3af;transition:color .3s;"></i>
+                    <span id="saLabel" class="text-xs font-medium" style="color:#6b7280;transition:color .3s;">Mode Protégé</span>
+                </div>
+                <button id="superAdminToggle" title="Activer le mode Super Admin"
+                    class="relative w-10 h-5 rounded-full focus:outline-none flex-shrink-0"
+                    style="background-color:#d1d5db;transition:background-color .3s ease;cursor:pointer;">
+                    <span class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow-sm block" style="transition:transform .3s ease;"></span>
+                </button>
+            </div>
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
                     <span class="text-indigo-600 font-bold text-sm" id="userInitials">AD</span>
@@ -359,10 +375,10 @@
         <div id="modalContent"></div>
         <div class="flex gap-3 mt-6">
             <button class="flex-1 bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 close-modal" title="Annuler">Annuler</button>
-            <button id="authorizeBtn" class="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-semibold" title="Permettre l'accès malgré l'alerte">
+            <button id="authorizeBtn" data-sa="write" class="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-semibold" title="Permettre l'accès malgré l'alerte">
                 <i class="fas fa-unlock"></i> Permettre
             </button>
-            <button id="blockBtn" class="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-semibold" title="Refuser l'accès">
+            <button id="blockBtn" data-sa="write" class="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-semibold" title="Refuser l'accès">
                 <i class="fas fa-lock"></i> Refuser
             </button>
         </div>
@@ -392,11 +408,11 @@
         </div>
 
         <div class="px-6 pb-6 flex gap-3">
-            <button id="integrityBlockBtn"
+            <button id="integrityBlockBtn" data-sa="write"
                     class="flex-1 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 font-semibold text-sm">
                 <i class="fas fa-lock mr-2"></i>Bloquer l'accès
             </button>
-            <button id="integrityAllowBtn"
+            <button id="integrityAllowBtn" data-sa="write"
                     class="flex-1 bg-amber-500 text-white px-4 py-3 rounded-lg hover:bg-amber-600 font-semibold text-sm">
                 <i class="fas fa-unlock-alt mr-2"></i>Autoriser quand même
             </button>
@@ -413,68 +429,14 @@
 <!-- ══════════════════════════════════════════════════════════════════════ -->
 <script>
 
+// Auth guard
+if (!sessionStorage.getItem('token')) { window.location.href = 'login.html'; }
+
 // ═════════════════════════════════════════════════════════════════════════
 // DONNÉES
 // ═════════════════════════════════════════════════════════════════════════
 
-let alerts = [
-    {
-        id: 1,
-        titre: "Tentative d'usurpation - Jean Dupont",
-        description: "3 échecs consécutifs sur poste PC-102 en 5 minutes",
-        date: "10/03/2026 09:45",
-        status: "Non traitée",
-        priorite: "Haute",
-        couleur: "#dc2626",
-        allow_access: false,
-        resource: "poste-102",
-        gravite: "haute",
-        traitee: false,
-        type: "other"
-    },
-    {
-        id: 2,
-        titre: "Accès non autorisé - Claire Martin",
-        description: "Tentative accès salle serveur (département RH)",
-        date: "10/03/2026 08:15",
-        status: "Non traitée",
-        priorite: "Haute",
-        couleur: "#dc2626",
-        allow_access: false,
-        resource: "salle-serveur",
-        gravite: "haute",
-        traitee: false,
-        type: "other"
-    },
-    {
-        id: 3,
-        titre: "Accès hors horaire - Thomas Petit",
-        description: "Accès salle serveur à 22h30 (horaire autorisé: 8h-20h)",
-        date: "09/03/2026 22:30",
-        status: "En cours",
-        priorite: "Moyenne",
-        couleur: "#f59e0b",
-        allow_access: false,
-        resource: "salle-serveur",
-        gravite: "moyenne",
-        traitee: false,
-        type: "other"
-    },
-    {
-        id: 4,
-        titre: "Nouvel employé enrôlé",
-        description: "Sophie Martin - Département Comptabilité",
-        date: "08/03/2026 14:20",
-        status: "Traitée",
-        priorite: "Basse",
-        couleur: "#16a34a",
-        allow_access: true,
-        resource: "general",
-        gravite: "basse",
-        traitee: true,
-        type: "other"
-    }
-];
+let alerts = [];
 
 let currentAlertId = null;
 let currentIntegrityAlertId = null;
@@ -516,18 +478,14 @@ function transformAlertFromAPI(apiAlert) {
 
 async function loadAlerts() {
     try {
-        const token    = localStorage.getItem('token');
-        const response = await fetch('/api/v1/alerts?per_page=100', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        if (!response.ok) return false;
-        const data = await response.json();
-        if (data.data && Array.isArray(data.data)) {
-            alerts = data.data.map(transformAlertFromAPI);
+        const res = await API.alerts.getAll({ per_page: 100 });
+        const raw = Array.isArray(res) ? res : (res.data || []);
+        if (raw.length >= 0) {
+            alerts = raw.map(transformAlertFromAPI);
             return true;
         }
     } catch (err) {
-        console.warn('Erreur chargement alertes:', err);
+        console.warn('Erreur chargement alertes:', err.message);
     }
     return false;
 }
@@ -606,10 +564,10 @@ function renderAlerts(statusFilter = "", typeFilter = "") {
         const actionBtn = alert.status === 'Traitée'
             ? `<span class="text-green-600 text-sm"><i class="fas fa-check"></i> Traité</span>`
             : (isIntegrity
-                ? `<button class="integrity-treat-btn bg-red-700 text-white px-3 py-1 rounded text-sm hover:bg-red-800 font-semibold" data-id="${alert.id}">
+                ? `<button class="integrity-treat-btn bg-red-700 text-white px-3 py-1 rounded text-sm hover:bg-red-800 font-semibold" data-sa="write" data-id="${alert.id}">
                        <i class="fas fa-shield-virus mr-1"></i>Gérer l'intégrité
                    </button>`
-                : `<button class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700 treat-btn" data-id="${alert.id}">Traiter</button>`
+                : `<button class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700 treat-btn" data-sa="write" data-id="${alert.id}">Traiter</button>`
               );
 
         // Badge accès
@@ -647,7 +605,7 @@ function renderAlerts(statusFilter = "", typeFilter = "") {
                     </div>
                     <div class="flex gap-2 mt-3 flex-wrap">
                         ${actionBtn}
-                        <button class="access-toggle-btn ${accessClass} px-3 py-1 rounded text-sm hover:opacity-80 transition" data-id="${alert.id}">
+                        <button class="access-toggle-btn ${accessClass} px-3 py-1 rounded text-sm hover:opacity-80 transition" data-sa="write" data-id="${alert.id}">
                             ${accessText}
                         </button>
                     </div>
@@ -662,8 +620,8 @@ function renderAlerts(statusFilter = "", typeFilter = "") {
     // Bouton "Traiter" (alertes classiques)
     document.querySelectorAll('.treat-btn').forEach(btn => {
         btn.addEventListener('click', function () {
-            const id    = parseInt(this.dataset.id);
-            const alert = alerts.find(a => a.id === id);
+            const id    = this.dataset.id;
+            const alert = alerts.find(a => String(a.id) === String(id));
             if (alert && alert.status !== 'Traitée') {
                 currentAlertId = id;
                 showAccessModal(alert);
@@ -674,8 +632,8 @@ function renderAlerts(statusFilter = "", typeFilter = "") {
     // Bouton "Gérer l'intégrité" (alertes integrity_violation)
     document.querySelectorAll('.integrity-treat-btn').forEach(btn => {
         btn.addEventListener('click', function () {
-            const id    = parseInt(this.dataset.id);
-            const alert = alerts.find(a => a.id === id);
+            const id    = this.dataset.id;
+            const alert = alerts.find(a => String(a.id) === String(id));
             if (alert) {
                 currentIntegrityAlertId = id;
                 showIntegrityModal(alert);
@@ -686,8 +644,8 @@ function renderAlerts(statusFilter = "", typeFilter = "") {
     // Bouton toggle accès
     document.querySelectorAll('.access-toggle-btn').forEach(btn => {
         btn.addEventListener('click', function () {
-            const id    = parseInt(this.dataset.id);
-            const alert = alerts.find(a => a.id === id);
+            const id    = this.dataset.id;
+            const alert = alerts.find(a => String(a.id) === String(id));
             if (alert) {
                 alert.status  = 'Traitée';
                 alert.traitee = true;
@@ -817,15 +775,8 @@ function closeIntegrityModal() {
 // ═════════════════════════════════════════════════════════════════════════
 
 function saveAlertStatus(alertId, data) {
-    const token = localStorage.getItem('token');
-    fetch('/api/v1/alerts/' + alertId, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-        },
-        body: JSON.stringify(data)
-    }).catch(() => console.log('Local mode - changes not persisted'));
+    if (!SuperAdmin.require()) return;
+    API.alerts.resolve(alertId).catch(err => console.warn('resolve alert error:', err.message));
 }
 
 
@@ -850,7 +801,7 @@ document.querySelectorAll('.close-modal').forEach(btn =>
 // Modal accès — Autoriser
 document.getElementById('authorizeBtn').addEventListener('click', function () {
     if (!currentAlertId) return;
-    const alert = alerts.find(a => a.id === currentAlertId);
+    const alert = alerts.find(a => String(a.id) === String(currentAlertId));
     if (alert) {
         alert.allow_access = true;
         alert.status  = 'Traitée';
@@ -866,7 +817,7 @@ document.getElementById('authorizeBtn').addEventListener('click', function () {
 // Modal accès — Bloquer
 document.getElementById('blockBtn').addEventListener('click', function () {
     if (!currentAlertId) return;
-    const alert = alerts.find(a => a.id === currentAlertId);
+    const alert = alerts.find(a => String(a.id) === String(currentAlertId));
     if (alert) {
         alert.allow_access = false;
         alert.status  = 'Traitée';
@@ -886,7 +837,7 @@ document.getElementById('closeIntegrityModalBtn').addEventListener('click', clos
 // Modal intégrité — Bloquer (NOUVEAU)
 document.getElementById('integrityBlockBtn').addEventListener('click', function () {
     if (!currentIntegrityAlertId) return;
-    const alert = alerts.find(a => a.id === currentIntegrityAlertId);
+    const alert = alerts.find(a => String(a.id) === String(currentIntegrityAlertId));
     if (alert) {
         alert.allow_access = false;
         alert.status  = 'Traitée';
@@ -902,7 +853,7 @@ document.getElementById('integrityBlockBtn').addEventListener('click', function 
 // Modal intégrité — Autoriser (NOUVEAU)
 document.getElementById('integrityAllowBtn').addEventListener('click', function () {
     if (!currentIntegrityAlertId) return;
-    const alert = alerts.find(a => a.id === currentIntegrityAlertId);
+    const alert = alerts.find(a => String(a.id) === String(currentIntegrityAlertId));
     if (alert) {
         alert.allow_access = true;
         alert.status  = 'Traitée';
@@ -930,7 +881,7 @@ document.getElementById('accessModal').addEventListener('click', function (e) {
 
 async function init() {
     const loaded = await loadAlerts();
-    if (!loaded) console.log('Mode local — données de démonstration affichées');
+    if (!loaded) console.warn('Impossible de charger les alertes depuis le backend.');
 
     updateKPIs();
     updateAlertCounts();
@@ -956,8 +907,8 @@ async function init() {
     if (logoutLink) {
         logoutLink.addEventListener('click', function (e) {
             e.preventDefault();
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
             window.location.href = 'login.html';
         });
     }

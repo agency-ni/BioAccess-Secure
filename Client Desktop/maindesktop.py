@@ -38,6 +38,11 @@ from typing import Optional, Tuple
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+try:
+    from enroll_handler import VoiceEnrollmentDialog
+except Exception:
+    VoiceEnrollmentDialog = None
+
 # ── Chemins ───────────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).parent.absolute()
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -2653,6 +2658,40 @@ class BioAccessApp(tk.Tk):
         mp = resource_path("vosk-model")
         if not os.path.exists(mp): return False, "✗ Modèle Vosk introuvable"
         self.after(0, lambda: self.reg_status_var.set("🎙 Dites votre phrase..."))
+
+        if VoiceEnrollmentDialog is not None:
+            model_dir = resource_path("vosk-model-small-fr-0.22")
+            if not os.path.exists(model_dir):
+                model_dir = resource_path("vosk-model")
+            if os.path.exists(model_dir):
+                result_container = {}
+                done_event = threading.Event()
+
+                def open_voice_dialog():
+                    try:
+                        dialog = VoiceEnrollmentDialog(self, model_dir)
+                        result_container['result'] = dialog.show()
+                    except Exception as e:
+                        result_container['result'] = {
+                            'success': False,
+                            'message': f'Erreur enregistrement vocal : {e}',
+                            'transcript': ''
+                        }
+                    finally:
+                        done_event.set()
+
+                self.after(0, open_voice_dialog)
+                done_event.wait(timeout=30)
+                result = result_container.get('result', {})
+                if result.get('success'):
+                    u = load_users()
+                    if name not in u:
+                        u[name] = {}
+                    u[name]["voice_phrase"] = result.get('transcript', '').strip()
+                    save_users(u)
+                    return True, "✓ Voix enregistrée"
+                return False, f"✗ {result.get('message', 'Échec enregistrement vocal')}"
+
         try:
             import sounddevice as sd
             import queue as queue_module
@@ -2746,6 +2785,15 @@ class BioAccessApp(tk.Tk):
 
 # ══════════════════════════════════════════════════════════════════════════════
 def main():
+    # Démarrer le listener d'enrôlement en arrière-plan
+    _enrollment_listener = None
+    try:
+        from enrollment_listener import EnrollmentListener
+        _enrollment_listener = EnrollmentListener()
+        _enrollment_listener.start()
+    except Exception as _e:
+        print(f"[AVERT] EnrollmentListener non démarré : {_e}", file=sys.stderr)
+
     try:
         app = BioAccessApp()
         app.mainloop()
@@ -2755,6 +2803,9 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
+    finally:
+        if _enrollment_listener:
+            _enrollment_listener.stop()
 
 
 if __name__ == "__main__":

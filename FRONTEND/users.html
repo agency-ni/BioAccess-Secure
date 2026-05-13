@@ -4,12 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BioAccess Secure - Utilisateurs</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%234f46e5'/%3E%3Cpath d='M30 40 L45 70 L60 40' stroke='white' stroke-width='8' fill='none' stroke-linecap='round' /%3E%3Ccircle cx='35' cy='35' r='6' fill='white'/%3E%3Ccircle cx='65' cy='35' r='6' fill='white'/%3E%3C/svg%3E">
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Theme Manager -->
     <script src="theme.js"></script>
+    <script src="api.js"></script>
+    <script src="superadmin.js"></script>
+    <!-- face-api.js — détection faciale + landmarks -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <!-- jsPDF pour PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- SheetJS pour Excel -->
@@ -300,6 +306,18 @@
             
             <!-- Footer sidebar - fixe en bas -->
             <div class="sidebar-footer flex-shrink-0">
+                <!-- Toggle Super Admin -->
+                <div class="flex items-center justify-between mb-3 pb-2" style="border-bottom:1px solid rgba(0,0,0,0.07);">
+                    <div class="flex items-center gap-2">
+                        <i id="saIcon" class="fas fa-shield-alt text-xs" style="color:#9ca3af;transition:color .3s;"></i>
+                        <span id="saLabel" class="text-xs font-medium" style="color:#6b7280;transition:color .3s;">Mode Protégé</span>
+                    </div>
+                    <button id="superAdminToggle" title="Activer le mode Super Admin"
+                        class="relative w-10 h-5 rounded-full focus:outline-none flex-shrink-0"
+                        style="background-color:#d1d5db;transition:background-color .3s ease;cursor:pointer;">
+                        <span class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow-sm block" style="transition:transform .3s ease;"></span>
+                    </button>
+                </div>
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
                         <span class="text-indigo-600 font-bold text-sm" id="userInitials">AD</span>
@@ -329,7 +347,7 @@
                     <button id="themeToggleBtn" class="text-gray-400 text-xl cursor-pointer hover:text-indigo-600 transition" title="Mode sombre">
                         <i class="fas fa-moon"></i>
                     </button>
-                    <button id="addUserBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                    <button id="addUserBtn" data-sa="write" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
                         <i class="fas fa-plus"></i>
                         Nouvel utilisateur
                     </button>
@@ -439,7 +457,7 @@
 
     <!-- MODAL UTILISATEUR -->
     <div id="userModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-        <div style="background: white; border-radius: 12px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 25px rgba(0,0,0,0.15);">
+        <div style="background: white; border-radius: 12px; width: 90%; max-width: 560px; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 25px rgba(0,0,0,0.15);">
             <div style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
                 <h2 id="modalTitle" style="font-size: 18px; font-weight: 600; margin: 0;">Modal Title</h2>
             </div>
@@ -492,18 +510,53 @@
     </style>
     
     <script>
-        // ========== DONNÉES D'UTILISATEURS ==========
-        let allUsers = [
-            { id: 1, nom: 'Jean Dupont', email: 'jean.dupont@bioaccess.com', department: 'Informatique', role: 'Admin', lastLogin: '10/03/2026 09:34', status: 'Actif', auth: 'Facial' },
-            { id: 2, nom: 'Claire Martin', email: 'claire.martin@bioaccess.com', department: 'RH', role: 'Employé', lastLogin: '10/03/2026 08:15', status: 'Actif', auth: 'Facial' },
-            { id: 3, nom: 'Thomas Petit', email: 'thomas.petit@bioaccess.com', department: 'Informatique', role: 'Admin', lastLogin: '09/03/2026 14:20', status: 'Actif', auth: 'Vocal' },
-            { id: 4, nom: 'Lucas Bernard', email: 'lucas.bernard@bioaccess.com', department: 'Direction', role: 'Employé', lastLogin: '08/03/2026 11:30', status: 'Inactif', auth: 'Facial' },
-            { id: 5, nom: 'Sophie Lefevre', email: 'sophie.lefevre@bioaccess.com', department: 'Comptabilité', role: 'Employé', lastLogin: '10/03/2026 16:45', status: 'Actif', auth: 'Facial' },
-        ];
+        // Auth guard
+        if (!sessionStorage.getItem('token')) { window.location.href = 'login.html'; }
 
-        let filteredUsers = allUsers;
+        // ========== DONNÉES D'UTILISATEURS ==========
+        let allUsers = [];
+        let filteredUsers = [];
         let currentPage = 1;
         let pageSize = 15;
+
+        // Mapper les champs API vers le format utilisé par la page
+        function mapApiUser(u) {
+            // last_login_at est le champ renvoyé par l'API (User.getInfos())
+            const lastLoginRaw = u.last_login_at || u.last_login || null;
+            // biometric_enrolled n'est pas dans getInfos() — on détecte via templates_count si disponible
+            const enrolled = u.biometric_enrolled != null
+                ? u.biometric_enrolled
+                : (u.templates_count > 0 || u.face_enrolled || u.voice_enrolled || false);
+            return {
+                id: u.id,
+                nom: (u.prenom || '') + ' ' + (u.nom || ''),
+                email: u.email || '',
+                department: u.departement || u.department || '',
+                role: u.role === 'super_admin' ? 'Super Admin' : (u.role === 'admin' ? 'Admin' : 'Employé'),
+                lastLogin: lastLoginRaw ? new Date(lastLoginRaw).toLocaleString('fr-FR') : '—',
+                status: u.is_active ? 'Actif' : 'Inactif',
+                auth: enrolled ? 'Enrôlé' : 'Non enrôlé',
+                employee_id: u.employee_id || null,
+                _raw: u
+            };
+        }
+
+        // Charger les utilisateurs depuis l'API
+        async function loadUsers() {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-400">Chargement…</td></tr>';
+            try {
+                const res = await API.users.getAll({ per_page: 200 });
+                const rawUsers = Array.isArray(res) ? res : (res.data || []);
+                allUsers = rawUsers.map(mapApiUser);
+                filteredUsers = allUsers;
+                currentPage = 1;
+                renderTable();
+            } catch (e) {
+                console.error('Erreur chargement utilisateurs:', e.message);
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-red-500">Erreur : ${e.message}</td></tr>`;
+            }
+        }
 
         // ========== FONCTION POUR OBTENIR INITIALES ==========
         function getInitials(name) {
@@ -554,10 +607,10 @@
                             <button class="view-btn text-indigo-600 hover:text-indigo-800" data-id="${user.id}" title="Voir détails">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <button class="edit-btn text-blue-600 hover:text-blue-800" data-id="${user.id}" title="Éditer et enrôler">
+                            <button class="edit-btn text-blue-600 hover:text-blue-800" data-sa="write" data-id="${user.id}" title="Éditer et enrôler">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="delete-btn text-red-600 hover:text-red-800" data-id="${user.id}" title="Supprimer">
+                            <button class="delete-btn text-red-600 hover:text-red-800" data-sa="write" data-id="${user.id}" title="Supprimer">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -648,26 +701,613 @@
             }
         });
 
-        // ========== AJOUT UTILISATEUR ==========
+        // ========== AJOUT UTILISATEUR — WIZARD MULTI-ÉTAPES ==========
+        const FACE_API_MODELS = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights/';
+        let _faceApiLoaded = false;
+        let _newUserStep = 1;
+        let _newUserData = { prenom: '', nom: '', email: '', dept: '', role: 'employe' }; // sauvegarde étape 1
+        let _newUserFaceB64 = null;       // base64 de la photo capturée/uploadée
+        let _newUserVoiceB64 = null;      // base64 de l'audio
+        let _newUserVoiceFile = null;
+        let _newUserLiveStream = null;
+        let _faceDetectionLoop = null;
+        let _livenessState = 'idle';      // idle | detecting | looking | blink_detected | captured
+        let _earHistory = [];
+        let _voiceRecorder = null;
+        let _voiceChunks = [];
+        let _voicePhraseId = null;
+        let _voicePhraseText = '';
+        let _voiceRecognition = null;
+
         document.getElementById('addUserBtn').addEventListener('click', () => {
-            const newUser = {
-                id: Math.max(...allUsers.map(u => u.id)) + 1,
-                nom: 'Nouvel Utilisateur',
-                email: `user${allUsers.length + 1}@bioaccess.com`,
-                department: 'Informatique',
-                role: 'Employé',
-                lastLogin: new Date().toLocaleDateString('fr-FR') + ' ' + new Date().toLocaleTimeString('fr-FR'),
-                status: 'Actif',
-                auth: 'Facial'
-            };
-            allUsers.push(newUser);
-            applyFilters();
-            alert('Nouvel utilisateur ajouté (ID: #' + String(newUser.id).padStart(3, '0') + ')');
+            if (!SuperAdmin.require()) return;
+            _newUserStep = 1;
+            _newUserFaceFile = null;
+            _newUserVoiceFile = null;
+            _openNewUserWizard();
         });
+
+        function _openNewUserWizard() {
+            _wCleanup();
+            const modal = document.getElementById('userModal');
+            document.getElementById('modalTitle').textContent = 'Nouvel utilisateur';
+            document.getElementById('modalContent').innerHTML = _buildWizardHTML(_newUserStep);
+            document.getElementById('modalActions').innerHTML = _buildWizardActions(_newUserStep);
+            modal.style.display = 'flex';
+            if (_newUserStep === 2) setTimeout(_wInitFaceStep, 100);
+            if (_newUserStep === 3) setTimeout(_wInitVoiceStep, 100);
+        }
+
+        function _wCleanup() {
+            if (_faceDetectionLoop) { cancelAnimationFrame(_faceDetectionLoop); _faceDetectionLoop = null; }
+            if (_newUserLiveStream) { _newUserLiveStream.getTracks().forEach(t => t.stop()); _newUserLiveStream = null; }
+            if (_voiceRecorder && _voiceRecorder.state !== 'inactive') _voiceRecorder.stop();
+            if (_voiceRecognition) { try { _voiceRecognition.stop(); } catch(_) {} _voiceRecognition = null; }
+            _livenessState = 'idle';
+            _earHistory = [];
+            _voiceChunks = [];
+        }
+
+        function _buildStepBar(current) {
+            const steps = [
+                { icon: 'fa-user', label: 'Infos' },
+                { icon: 'fa-camera', label: 'Visage' },
+                { icon: 'fa-microphone', label: 'Voix' }
+            ];
+            return `<div class="flex items-center justify-center mb-6">
+                ${steps.map((s, i) => {
+                    const n = i + 1;
+                    const done = n < current, active = n === current;
+                    const cc = done ? 'bg-green-500' : active ? 'bg-indigo-600' : 'bg-gray-200';
+                    const ct = done ? 'text-green-600 font-semibold' : active ? 'text-indigo-700 font-semibold' : 'text-gray-400';
+                    const ic = done || active ? 'text-white' : 'text-gray-400';
+                    return `<div class="flex flex-col items-center">
+                        <div class="w-10 h-10 rounded-full ${cc} flex items-center justify-center shadow-sm">
+                            <i class="fas ${done ? 'fa-check' : s.icon} ${ic} text-sm"></i>
+                        </div>
+                        <span class="text-xs mt-1 ${ct}">${s.label}</span>
+                    </div>${n < 3 ? `<div class="w-14 h-0.5 mb-5 mx-1 ${n < current ? 'bg-green-400' : 'bg-gray-200'}"></div>` : ''}`;
+                }).join('')}
+            </div>`;
+        }
+
+        function _buildWizardHTML(step) {
+            const bar = _buildStepBar(step);
+            if (step === 1) return bar + `
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Prénom <span class="text-red-500">*</span></label>
+                            <input id="wPrenom" type="text" value="${_newUserData.prenom}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" placeholder="Jean"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Nom <span class="text-red-500">*</span></label>
+                            <input id="wNom" type="text" value="${_newUserData.nom}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" placeholder="Dupont"></div>
+                    </div>
+                    <div><label class="block text-xs font-semibold text-gray-500 mb-1">Email <span class="text-red-500">*</span></label>
+                        <input id="wEmail" type="email" value="${_newUserData.email}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" placeholder="jean.dupont@domaine.com"></div>
+                    <div><label class="block text-xs font-semibold text-gray-500 mb-1">Département <span class="text-red-500">*</span></label>
+                        <input id="wDept" type="text" value="${_newUserData.dept}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" placeholder="Informatique"></div>
+                    <div><label class="block text-xs font-semibold text-gray-500 mb-1">Rôle</label>
+                        <select id="wRole" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="employe" ${_newUserData.role === 'employe' ? 'selected' : ''}>Employé</option>
+                            <option value="admin" ${_newUserData.role === 'admin' ? 'selected' : ''}>Admin</option>
+                        </select></div>
+                    <div id="wStep1Error" class="hidden text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2"></div>
+                </div>`;
+
+            if (step === 2) return bar + `
+                <p class="text-center text-xs text-gray-400 mb-3">Optionnel — peut être fait plus tard depuis le profil</p>
+                <div class="flex gap-2 mb-4">
+                    <button id="wFaceTabUpload" onclick="_wFaceTab('upload')" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium transition">
+                        <i class="fas fa-upload mr-1"></i> Importer photo
+                    </button>
+                    <button id="wFaceTabLive" onclick="_wFaceTab('live')" class="flex-1 py-2 border-2 border-gray-300 text-gray-600 rounded-lg text-sm font-medium transition hover:bg-gray-50">
+                        <i class="fas fa-video mr-1"></i> Caméra live
+                    </button>
+                </div>
+                <!-- Zone Upload -->
+                <div id="wFaceUploadZone">
+                    <label class="block border-2 border-dashed border-gray-300 rounded-xl p-5 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition text-center">
+                        <i class="fas fa-cloud-upload-alt text-2xl text-gray-300 mb-1 block"></i>
+                        <span class="text-sm text-gray-500">Cliquez pour choisir une photo (JPG/PNG)</span>
+                        <input id="wFaceInput" type="file" accept="image/*" class="hidden">
+                    </label>
+                    <div id="wFaceUploadPreview" class="hidden mt-3 flex flex-col items-center gap-2">
+                        <img id="wFaceUploadImg" class="w-24 h-24 rounded-full object-cover border-4 border-indigo-200" src="">
+                        <span id="wFaceUploadName" class="text-xs text-green-600 font-semibold"></span>
+                    </div>
+                </div>
+                <!-- Zone Live (caméra + détection) -->
+                <div id="wFaceLiveZone" class="hidden">
+                    <div id="wFaceStatus" class="text-center mb-2 text-sm font-medium text-indigo-600">
+                        <i class="fas fa-spinner fa-spin mr-1"></i> Chargement des modèles de détection...
+                    </div>
+                    <div class="relative mx-auto" style="width:280px;height:210px;">
+                        <video id="wFaceVideo" class="rounded-xl border-2 border-indigo-200 object-cover" style="width:280px;height:210px;" autoplay playsinline muted></video>
+                        <canvas id="wFaceOverlay" class="absolute top-0 left-0 rounded-xl" style="width:280px;height:210px;pointer-events:none;"></canvas>
+                    </div>
+                    <div id="wLivenessBar" class="mt-3 flex items-center justify-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-gray-300" id="wLv1"></div>
+                        <span class="text-xs text-gray-400" id="wLvText">Positionnez votre visage dans le cadre</span>
+                        <div class="w-3 h-3 rounded-full bg-gray-300" id="wLv2"></div>
+                    </div>
+                    <div id="wFaceCapturedZone" class="hidden mt-3 flex flex-col items-center gap-1">
+                        <img id="wFaceCapturedImg" class="w-20 h-20 rounded-full object-cover border-4 border-green-400" src="">
+                        <span class="text-xs text-green-600 font-semibold"><i class="fas fa-check-circle mr-1"></i>Visage capturé</span>
+                    </div>
+                </div>`;
+
+            if (step === 3) return bar + `
+                <p class="text-center text-xs text-gray-400 mb-3">Optionnel — peut être fait plus tard depuis le profil</p>
+                <div class="flex gap-2 mb-4">
+                    <button id="wVoiceTabImport" onclick="_wVoiceTab('import')" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium transition">
+                        <i class="fas fa-file-audio mr-1"></i> Importer audio
+                    </button>
+                    <button id="wVoiceTabLive" onclick="_wVoiceTab('live')" class="flex-1 py-2 border-2 border-gray-300 text-gray-600 rounded-lg text-sm font-medium transition hover:bg-gray-50">
+                        <i class="fas fa-microphone mr-1"></i> Enregistrement live
+                    </button>
+                </div>
+                <!-- Import -->
+                <div id="wVoiceImportZone">
+                    <label class="block border-2 border-dashed border-gray-300 rounded-xl p-5 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition text-center">
+                        <i class="fas fa-microphone-alt text-2xl text-gray-300 mb-1 block"></i>
+                        <span class="text-sm text-gray-500">Importer un fichier audio (WAV / MP3)</span>
+                        <input id="wVoiceInput" type="file" accept="audio/*" class="hidden">
+                    </label>
+                    <div id="wVoiceImportPreview" class="hidden mt-3 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                        <i class="fas fa-volume-up text-green-600"></i>
+                        <span id="wVoiceImportName" class="text-sm text-green-700 font-medium truncate"></span>
+                    </div>
+                </div>
+                <!-- Live recording -->
+                <div id="wVoiceLiveZone" class="hidden">
+                    <div id="wVoicePhraseBox" class="bg-indigo-50 border-2 border-indigo-200 rounded-xl p-4 text-center mb-3">
+                        <p class="text-xs text-indigo-400 mb-1 font-medium">LISEZ CETTE PHRASE À VOIX HAUTE :</p>
+                        <p id="wVoicePhrase" class="phrase-display text-base font-bold leading-snug">
+                            <i class="fas fa-spinner fa-spin text-indigo-400"></i>
+                        </p>
+                        <button onclick="_wFetchPhrase()" class="mt-2 text-xs text-indigo-500 underline hover:text-indigo-700">
+                            <i class="fas fa-sync-alt mr-1"></i>Autre phrase
+                        </button>
+                    </div>
+                    <div id="wVoiceTranscriptBox" class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-3 min-h-[36px] text-sm text-gray-500 italic">
+                        <span id="wVoiceTranscript">Le texte reconnu apparaîtra ici...</span>
+                    </div>
+                    <div class="flex items-center justify-center gap-3">
+                        <button id="wVoiceRecordBtn" onclick="_wToggleRecording()" class="flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full font-medium text-sm shadow transition">
+                            <span id="wRecordIcon" class="w-3 h-3 rounded-full bg-white inline-block"></span>
+                            <span id="wRecordLabel">Enregistrer</span>
+                        </button>
+                        <div id="wVoiceMatchBadge" class="hidden px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">0% correspondance</div>
+                    </div>
+                    <div id="wVoiceRecordedPreview" class="hidden mt-3 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                        <span class="text-sm text-green-700 font-medium">Audio enregistré — prêt pour enrôlement</span>
+                    </div>
+                </div>`;
+        }
+
+        function _buildWizardActions(step) {
+            const cancel = `<button onclick="closeModal()" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">Annuler</button>`;
+            const prev   = `<button onclick="_wPrev()" class="px-4 py-2 text-gray-600 border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium"><i class="fas fa-arrow-left mr-1"></i> Retour</button>`;
+            const next   = `<button onclick="_wNext()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium">Suivant <i class="fas fa-arrow-right ml-1"></i></button>`;
+            const skip   = `<button onclick="_wSkip()" class="px-3 py-2 text-gray-400 hover:text-gray-600 text-sm underline">Passer</button>`;
+            const create = `<button onclick="createUser()" id="wCreateBtn" class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium shadow"><i class="fas fa-user-plus mr-1"></i> Créer l'utilisateur</button>`;
+            if (step === 1) return `<div class="flex justify-between w-full">${cancel}${next}</div>`;
+            if (step === 2) return `<div class="flex justify-between w-full"><div class="flex gap-2">${cancel}${prev}</div><div class="flex gap-2">${skip}${next}</div></div>`;
+            if (step === 3) return `<div class="flex justify-between w-full"><div class="flex gap-2">${cancel}${prev}</div><div class="flex gap-2">${skip}${create}</div></div>`;
+        }
+
+        // ─── Face step logic ────────────────────────────────────────
+        function _wFaceTab(mode) {
+            const isLive = mode === 'live';
+            document.getElementById('wFaceUploadZone').classList.toggle('hidden', isLive);
+            document.getElementById('wFaceLiveZone').classList.toggle('hidden', !isLive);
+            document.getElementById('wFaceTabUpload').className = `flex-1 py-2 rounded-lg text-sm font-medium transition ${!isLive ? 'bg-indigo-600 text-white' : 'border-2 border-gray-300 text-gray-600 hover:bg-gray-50'}`;
+            document.getElementById('wFaceTabLive').className   = `flex-1 py-2 rounded-lg text-sm font-medium transition ${isLive ? 'bg-indigo-600 text-white' : 'border-2 border-gray-300 text-gray-600 hover:bg-gray-50'}`;
+            if (!isLive) { _wCleanupFace(); return; }
+            _wStartLiveCamera();
+        }
+
+        function _wCleanupFace() {
+            if (_faceDetectionLoop) { cancelAnimationFrame(_faceDetectionLoop); _faceDetectionLoop = null; }
+            if (_newUserLiveStream) { _newUserLiveStream.getTracks().forEach(t => t.stop()); _newUserLiveStream = null; }
+            _livenessState = 'idle'; _earHistory = [];
+        }
+
+        async function _wInitFaceStep() {
+            document.getElementById('wFaceInput').addEventListener('change', function() {
+                const file = this.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const src = e.target.result;
+                    _newUserFaceB64 = src.split(',')[1];
+                    document.getElementById('wFaceUploadImg').src = src;
+                    document.getElementById('wFaceUploadName').textContent = '✓ ' + file.name;
+                    document.getElementById('wFaceUploadPreview').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function _wStartLiveCamera() {
+            const statusEl = document.getElementById('wFaceStatus');
+            const video    = document.getElementById('wFaceVideo');
+            try {
+                _newUserLiveStream = await navigator.mediaDevices.getUserMedia({ video: { width: 280, height: 210, facingMode: 'user' } });
+                video.srcObject = _newUserLiveStream;
+                await video.play();
+            } catch (e) {
+                let msg = 'Caméra inaccessible — utilisez l\'import';
+                if (e.name === 'NotAllowedError') msg = 'Permission caméra refusée — cliquez sur l\'icône 🔒 dans la barre d\'adresse et autorisez la caméra';
+                else if (e.name === 'NotFoundError') msg = 'Aucune caméra détectée — utilisez l\'import de fichier';
+                else if (e.name === 'NotReadableError') msg = 'Caméra utilisée par une autre application — fermez-la et réessayez';
+                statusEl.innerHTML = `<span class="text-red-500"><i class="fas fa-exclamation-triangle mr-1"></i>${msg}</span>`;
+                return;
+            }
+
+            // Load face-api models
+            if (!_faceApiLoaded) {
+                statusEl.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Chargement des modèles IA...';
+                try {
+                    await Promise.all([
+                        faceapi.nets.tinyFaceDetector.loadFromUri(FACE_API_MODELS),
+                        faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_API_MODELS)
+                    ]);
+                    _faceApiLoaded = true;
+                    statusEl.innerHTML = '<span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>IA prête — détection faciale active</span>';
+                } catch (e) {
+                    statusEl.innerHTML = '<span class="text-amber-500"><i class="fas fa-exclamation-circle mr-1"></i>Modèles IA indisponibles — détection basique active</span>';
+                }
+            } else {
+                statusEl.innerHTML = '<span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>IA prête — détection faciale active</span>';
+            }
+
+            _livenessState = 'detecting';
+            _wDetectionLoop(video);
+        }
+
+        function _wDetectionLoop(video) {
+            const overlay = document.getElementById('wFaceOverlay');
+            if (!overlay) return;
+            const ctx = overlay.getContext('2d');
+            overlay.width = 280; overlay.height = 210;
+
+            async function tick() {
+                if (!document.getElementById('wFaceOverlay')) return; // modal closed
+                ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+                if (_faceApiLoaded && _livenessState !== 'captured') {
+                    try {
+                        const det = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.4 }))
+                            .withFaceLandmarks(true);
+
+                        if (det) {
+                            _wDrawDetection(ctx, det);
+                            _wUpdateLiveness(det.landmarks, video);
+                        } else {
+                            _wSetLivenessUI('detecting', 'Positionnez votre visage dans le cadre');
+                        }
+                    } catch (_) {}
+                } else if (!_faceApiLoaded && _livenessState !== 'captured') {
+                    // Fallback: just draw a guide oval
+                    ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
+                    ctx.beginPath(); ctx.ellipse(140, 105, 70, 90, 0, 0, 2 * Math.PI); ctx.stroke();
+                    ctx.setLineDash([]);
+                    _wSetLivenessUI('detecting', 'Positionnez votre visage — cliquez Capturer');
+                    // Show manual capture button
+                    const bar = document.getElementById('wLivenessBar');
+                    if (bar && !document.getElementById('wManualCapBtn')) {
+                        const b = document.createElement('button');
+                        b.id = 'wManualCapBtn'; b.textContent = '📸 Capturer';
+                        b.className = 'mt-2 px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-lg';
+                        b.onclick = () => _wCaptureFrame(video);
+                        bar.insertAdjacentElement('afterend', b);
+                    }
+                }
+
+                if (_livenessState !== 'captured') {
+                    _faceDetectionLoop = requestAnimationFrame(tick);
+                }
+            }
+            _faceDetectionLoop = requestAnimationFrame(tick);
+        }
+
+        function _wDrawDetection(ctx, det) {
+            const box = det.detection.box;
+            const pad = 8;
+            // Box
+            ctx.strokeStyle = _livenessState === 'blink_detected' ? '#22c55e' : '#6366f1';
+            ctx.lineWidth = 2; ctx.setLineDash([]);
+            ctx.strokeRect(box.x - pad, box.y - pad, box.width + pad*2, box.height + pad*2);
+            // Landmarks — eyes, nose, mouth corners only (lighter)
+            const pts = det.landmarks.positions;
+            ctx.fillStyle = _livenessState === 'blink_detected' ? '#22c55e' : '#818cf8';
+            [36,37,38,39,40,41, 42,43,44,45,46,47, 30, 48,54].forEach(i => {
+                const p = pts[i];
+                ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, 2*Math.PI); ctx.fill();
+            });
+        }
+
+        function _wEAR(pts, indices) {
+            const [p1,p2,p3,p4,p5,p6] = indices.map(i => pts[i]);
+            const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+            return (dist(p2,p6) + dist(p3,p5)) / (2 * dist(p1,p4));
+        }
+
+        function _wUpdateLiveness(landmarks, video) {
+            const pts = landmarks.positions;
+            const earL = _wEAR(pts, [36,37,38,39,40,41]);
+            const earR = _wEAR(pts, [42,43,44,45,46,47]);
+            const ear  = (earL + earR) / 2;
+            _earHistory.push(ear);
+            if (_earHistory.length > 30) _earHistory.shift();
+
+            if (_livenessState === 'detecting') {
+                _wSetLivenessUI('looking', '<i class="fas fa-eye mr-1 text-indigo-500"></i> Visage détecté — <strong>clignez des yeux</strong>');
+                _livenessState = 'looking';
+            }
+            if (_livenessState === 'looking') {
+                if (ear < 0.22) {
+                    _livenessState = 'blink_detected';
+                    _wSetLivenessUI('blink_detected', '<i class="fas fa-check-circle mr-1 text-green-500"></i> <strong>Vivant confirmé !</strong> Capture en cours...');
+                    setTimeout(() => _wCaptureFrame(video), 400);
+                }
+            }
+        }
+
+        function _wSetLivenessUI(state, html) {
+            const el = document.getElementById('wLvText');
+            const d1 = document.getElementById('wLv1'), d2 = document.getElementById('wLv2');
+            if (!el) return;
+            el.innerHTML = html;
+            const colors = { detecting: 'bg-gray-300', looking: 'bg-indigo-400', blink_detected: 'bg-green-500', captured: 'bg-green-500' };
+            const c = colors[state] || 'bg-gray-300';
+            if (d1) d1.className = `w-3 h-3 rounded-full ${c}`;
+            if (d2) d2.className = `w-3 h-3 rounded-full ${c}`;
+        }
+
+        function _wCaptureFrame(video) {
+            if (_livenessState === 'captured') return;
+            _livenessState = 'captured';
+            if (_faceDetectionLoop) { cancelAnimationFrame(_faceDetectionLoop); _faceDetectionLoop = null; }
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 280; canvas.height = video.videoHeight || 210;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            _newUserFaceB64 = dataUrl.split(',')[1];
+            // Show captured preview
+            const zone = document.getElementById('wFaceCapturedZone');
+            const img  = document.getElementById('wFaceCapturedImg');
+            if (zone && img) { img.src = dataUrl; zone.classList.remove('hidden'); }
+            _wSetLivenessUI('captured', '<i class="fas fa-check-circle mr-1 text-green-500"></i> <strong>Photo capturée avec succès</strong>');
+            // Stop camera
+            if (_newUserLiveStream) { _newUserLiveStream.getTracks().forEach(t => t.stop()); }
+        }
+
+        // ─── Voice step logic ────────────────────────────────────────
+        async function _wInitVoiceStep() {
+            document.getElementById('wVoiceInput').addEventListener('change', function() {
+                const file = this.files[0]; if (!file) return;
+                _newUserVoiceFile = file;
+                const reader = new FileReader();
+                reader.onload = e => {
+                    _newUserVoiceB64 = e.target.result.split(',')[1];
+                    document.getElementById('wVoiceImportName').textContent = file.name;
+                    document.getElementById('wVoiceImportPreview').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function _wVoiceTab(mode) {
+            const isLive = mode === 'live';
+            document.getElementById('wVoiceImportZone').classList.toggle('hidden', isLive);
+            document.getElementById('wVoiceLiveZone').classList.toggle('hidden', !isLive);
+            document.getElementById('wVoiceTabImport').className = `flex-1 py-2 rounded-lg text-sm font-medium transition ${!isLive ? 'bg-indigo-600 text-white' : 'border-2 border-gray-300 text-gray-600 hover:bg-gray-50'}`;
+            document.getElementById('wVoiceTabLive').className   = `flex-1 py-2 rounded-lg text-sm font-medium transition ${isLive ? 'bg-indigo-600 text-white' : 'border-2 border-gray-300 text-gray-600 hover:bg-gray-50'}`;
+            if (isLive) _wFetchPhrase();
+        }
+
+        async function _wFetchPhrase() {
+            const el = document.getElementById('wVoicePhrase');
+            if (!el) return;
+            el.innerHTML = '<i class="fas fa-spinner fa-spin text-indigo-400"></i>';
+            try {
+                const data = await API.enrollment.voiceChallenge();
+                _voicePhraseText = data.phrase || data.texte || '';
+                _voicePhraseId   = data.phrase_id || data.id || null;
+                el.textContent = _voicePhraseText;
+            } catch (e) {
+                // Fallback phrases if backend unavailable
+                const fallbacks = ['Bonjour, je suis une personne autorisée.','Ma voix est un code de sécurité.','La sécurité biométrique est essentielle.'];
+                _voicePhraseText = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+                el.textContent = _voicePhraseText;
+            }
+            document.getElementById('wVoiceTranscript').textContent = 'Le texte reconnu apparaîtra ici...';
+            document.getElementById('wVoiceMatchBadge').classList.add('hidden');
+        }
+
+        function _wToggleRecording() {
+            if (_voiceRecorder && _voiceRecorder.state === 'recording') {
+                _wStopRecording();
+            } else {
+                _wStartRecording();
+            }
+        }
+
+        async function _wStartRecording() {
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (e) {
+                alert('Microphone inaccessible : ' + e.message);
+                return;
+            }
+            _voiceChunks = [];
+            _voiceRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg' });
+            _voiceRecorder.ondataavailable = e => { if (e.data.size > 0) _voiceChunks.push(e.data); };
+            _voiceRecorder.onstop = () => {
+                stream.getTracks().forEach(t => t.stop());
+                const blob = new Blob(_voiceChunks, { type: _voiceRecorder.mimeType || 'audio/webm' });
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    _newUserVoiceB64 = ev.target.result.split(',')[1];
+                    document.getElementById('wVoiceRecordedPreview').classList.remove('hidden');
+                };
+                reader.readAsDataURL(blob);
+            };
+            _voiceRecorder.start(200);
+
+            // Update UI
+            const btn = document.getElementById('wVoiceRecordBtn');
+            btn.className = 'flex items-center gap-2 px-5 py-2.5 bg-gray-700 text-white rounded-full font-medium text-sm shadow transition';
+            document.getElementById('wRecordLabel').textContent = 'Arrêter';
+            document.getElementById('wRecordIcon').className = 'w-3 h-3 rounded-sm bg-white inline-block animate-pulse';
+
+            // SpeechRecognition for phrase verification
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SR) {
+                _voiceRecognition = new SR();
+                _voiceRecognition.lang = 'fr-FR';
+                _voiceRecognition.continuous = true;
+                _voiceRecognition.interimResults = true;
+                _voiceRecognition.onresult = e => {
+                    let transcript = '';
+                    for (let i = e.resultIndex; i < e.results.length; i++) {
+                        transcript += e.results[i][0].transcript;
+                    }
+                    document.getElementById('wVoiceTranscript').textContent = transcript;
+                    _wUpdatePhraseMatch(transcript);
+                };
+                _voiceRecognition.onerror = () => {};
+                try { _voiceRecognition.start(); } catch(_) {}
+            }
+        }
+
+        function _wStopRecording() {
+            if (_voiceRecorder && _voiceRecorder.state === 'recording') _voiceRecorder.stop();
+            if (_voiceRecognition) { try { _voiceRecognition.stop(); } catch(_) {} _voiceRecognition = null; }
+            const btn = document.getElementById('wVoiceRecordBtn');
+            if (btn) {
+                btn.className = 'flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full font-medium text-sm shadow transition';
+                document.getElementById('wRecordLabel').textContent = 'Enregistrer';
+                document.getElementById('wRecordIcon').className = 'w-3 h-3 rounded-full bg-white inline-block';
+            }
+        }
+
+        function _wUpdatePhraseMatch(transcript) {
+            if (!_voicePhraseText || !transcript) return;
+            const normalize = s => s.toLowerCase().replace(/[^a-zàâçéèêëîïôûùüÿæœ\s]/g, '').split(/\s+/).filter(Boolean);
+            const phraseWords = normalize(_voicePhraseText);
+            const spokenWords = normalize(transcript);
+            const matched = phraseWords.filter(w => spokenWords.includes(w)).length;
+            const pct = Math.round((matched / phraseWords.length) * 100);
+            const badge = document.getElementById('wVoiceMatchBadge');
+            badge.classList.remove('hidden');
+            badge.textContent = `${pct}% correspondance`;
+            badge.className = `px-3 py-1 rounded-full text-xs font-semibold ${pct >= 70 ? 'bg-green-100 text-green-700' : pct >= 40 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`;
+        }
+
+        // ─── Navigation ──────────────────────────────────────────────
+        function _wNext() {
+            if (_newUserStep === 1) {
+                // Sauvegarder les données de l'étape 1
+                _newUserData.prenom = document.getElementById('wPrenom')?.value.trim() || '';
+                _newUserData.nom = document.getElementById('wNom')?.value.trim() || '';
+                _newUserData.email = document.getElementById('wEmail')?.value.trim() || '';
+                _newUserData.dept = document.getElementById('wDept')?.value.trim() || '';
+                _newUserData.role = document.getElementById('wRole')?.value || 'employe';
+                
+                const errDiv = document.getElementById('wStep1Error');
+                if (!_newUserData.prenom || !_newUserData.nom || !_newUserData.email || !_newUserData.dept) {
+                    errDiv.textContent = 'Tous les champs marqués * sont obligatoires.';
+                    errDiv.classList.remove('hidden'); return;
+                }
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(_newUserData.email)) {
+                    errDiv.textContent = 'Format email invalide.';
+                    errDiv.classList.remove('hidden'); return;
+                }
+            }
+            _wCleanup();
+            _newUserStep++;
+            _openNewUserWizard();
+        }
+
+        function _wPrev() {
+            _wCleanup();
+            _newUserStep--;
+            _openNewUserWizard();
+        }
+
+        function _wSkip() {
+            if (_newUserStep === 2) _newUserFaceB64 = null;
+            if (_newUserStep === 3) { _newUserVoiceB64 = null; _newUserVoiceFile = null; }
+            _wCleanup();
+            if (_newUserStep < 3) { _newUserStep++; _openNewUserWizard(); }
+            else createUser();
+        }
+
+        // ─── Create user + enroll ─────────────────────────────────────
+        async function createUser() {
+            if (!SuperAdmin.require()) return;
+            // Utiliser les données sauvegardées de l'étape 1
+            const prenom = _newUserData.prenom;
+            const nom = _newUserData.nom;
+            const email = _newUserData.email;
+            const dept = _newUserData.dept;
+            const role = _newUserData.role;
+            
+            if (!prenom || !nom || !email || !dept) { 
+                alert('Informations manquantes — revenez à l\'étape 1.'); 
+                _newUserStep = 1; 
+                _openNewUserWizard(); 
+                return; 
+            }
+
+            const btn = document.getElementById('wCreateBtn');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Création...'; }
+
+            try {
+                // 1. Créer l'utilisateur
+                const res    = await API.users.create({ prenom, nom, email, departement: dept, role });
+                const userId = res?.data?.id || res?.data?.user_id || res?.data?.[0]?.id || res?.id || res?.user_id;
+
+                // 2. Enrôlement facial (si image disponible)
+                if (userId && _newUserFaceB64) {
+                    try {
+                        const earMin = _earHistory.length ? Math.min(..._earHistory) : null;
+                        await API.enrollment.faceEnroll(
+                            userId, _newUserFaceB64,
+                            _livenessState === 'captured',
+                            earMin
+                        );
+                    } catch (e) { console.warn('Enrôlement facial (non bloquant):', e.message); }
+                }
+
+                // 3. Enrôlement vocal (si audio disponible)
+                if (userId && _newUserVoiceB64) {
+                    try {
+                        await API.enrollment.voiceEnroll(userId, _newUserVoiceB64);
+                    } catch (e) { console.warn('Enrôlement vocal (non bloquant):', e.message); }
+                }
+
+                _wCleanup();
+                closeModal();
+                await loadUsers();
+                const t = document.createElement('div');
+                t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#10b981;color:white;padding:12px 20px;border-radius:10px;z-index:9999;font-size:14px;font-weight:500;box-shadow:0 4px 15px rgba(0,0,0,0.15)';
+                const hasEnroll = (_newUserFaceB64 || _newUserVoiceB64) ? ' + enrôlement' : '';
+                t.innerHTML = `<i class="fas fa-check-circle mr-2"></i>Utilisateur créé${hasEnroll} avec succès`;
+                document.body.appendChild(t);
+                setTimeout(() => t.remove(), 4000);
+            } catch (e) {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-user-plus mr-1"></i> Créer l\'utilisateur'; }
+                alert('Erreur : ' + e.message);
+            }
+        }
 
         // ========== FONCTION POUR AFFICHER LES DÉTAILS ==========
         function openViewModal(userId) {
-            const user = allUsers.find(u => u.id === parseInt(userId));
+            const user = allUsers.find(u => String(u.id) === String(userId));
             if (!user) return;
 
             const modal = document.getElementById('userModal');
@@ -730,12 +1370,13 @@
                 const originalHTML = button.innerHTML;
                 button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-                const response = await fetch(`/api/v1/users/${userId}/send-employee-id`, {
+                const response = await fetch(`${API.baseURL}/users/${userId}/send-employee-id`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+                    },
+                    credentials: 'include'
                 });
 
                 const data = await response.json();
@@ -758,7 +1399,7 @@
 
         // ========== FONCTION POUR ÉDITER ==========
         function openEditModal(userId) {
-            const user = allUsers.find(u => u.id === parseInt(userId));
+            const user = allUsers.find(u => String(u.id) === String(userId));
             if (!user) return;
 
             const modal = document.getElementById('userModal');
@@ -1006,11 +1647,11 @@
                 // Envoyer au backend
                 statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Enrôlement en cours...</span>';
                 
-                const response = await fetch(`${window.API_URL || 'http://localhost:5000/api'}/v1/admin/enroll/face`, {
+                const response = await fetch(`${API.baseURL}/admin/biometric/enroll/face`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Admin-Token': 'ADMIN_TOKEN_HERE'
+                        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
                     },
                     body: JSON.stringify({
                         user_id: user.id,
@@ -1042,11 +1683,11 @@
                     
                     statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Enrôlement en cours...</span>';
                     
-                    const response = await fetch(`${window.API_URL || 'http://localhost:5000/api'}/v1/admin/enroll/face`, {
+                    const response = await fetch(`${API.baseURL}/admin/biometric/enroll/face`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-Admin-Token': 'ADMIN_TOKEN_HERE'
+                            'Authorization': `Bearer ${sessionStorage.getItem('token')}`
                         },
                         body: JSON.stringify({
                             user_id: user.id,
@@ -1099,11 +1740,11 @@
                     
                     statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Enrôlement en cours...</span>';
                     
-                    const response = await fetch(`${window.API_URL || 'http://localhost:5000/api'}/v1/admin/enroll/voice`, {
+                    const response = await fetch(`${API.baseURL}/admin/biometric/enroll/voice`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-Admin-Token': 'ADMIN_TOKEN_HERE'
+                            'Authorization': `Bearer ${sessionStorage.getItem('token')}`
                         },
                         body: JSON.stringify({
                             user_id: user.id,
@@ -1137,11 +1778,11 @@
                     
                     statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Enrôlement en cours...</span>';
                     
-                    const response = await fetch(`${window.API_URL || 'http://localhost:5000/api'}/v1/admin/enroll/voice`, {
+                    const response = await fetch(`${API.baseURL}/admin/biometric/enroll/voice`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-Admin-Token': 'ADMIN_TOKEN_HERE'
+                            'Authorization': `Bearer ${sessionStorage.getItem('token')}`
                         },
                         body: JSON.stringify({
                             user_id: user.id,
@@ -1165,19 +1806,21 @@
         }
 
         // ========== FONCTION POUR ENREGISTRER LES MODIFICATIONS ==========
-        function saveUserEdit(userId) {
-            const user = allUsers.find(u => u.id === parseInt(userId));
-            if (!user) return;
-
-            user.nom = document.getElementById('editNom').value;
-            user.email = document.getElementById('editEmail').value;
-            user.department = document.getElementById('editDept').value;
-            user.role = document.getElementById('editRole').value;
-            user.status = document.getElementById('editStatus').value;
-
-            closeModal();
-            applyFilters();
-            alert('Utilisateur #' + String(userId).padStart(3, '0') + ' mis à jour');
+        async function saveUserEdit(userId) {
+            if (!SuperAdmin.require()) return;
+            const nom = document.getElementById('editNom').value.trim();
+            const email = document.getElementById('editEmail').value.trim();
+            const dept = document.getElementById('editDept').value.trim();
+            const role = document.getElementById('editRole').value.toLowerCase() === 'admin' ? 'admin' : 'employe';
+            const isActive = document.getElementById('editStatus').value === 'Actif';
+            try {
+                await API.users.update(userId, { nom, email, departement: dept, role, is_active: isActive });
+                closeModal();
+                await loadUsers();
+                alert('Utilisateur mis à jour');
+            } catch (e) {
+                alert('Erreur : ' + e.message);
+            }
         }
 
         // ========== FONCTION POUR FERMER LE MODAL ==========
@@ -1196,7 +1839,7 @@
 
 
         // ========== ACTIONS TABLEAU ==========
-        document.addEventListener('click', (e) => {
+        document.addEventListener('click', async (e) => {
             const viewBtn = e.target.closest('.view-btn');
             const editBtn = e.target.closest('.edit-btn');
             const deleteBtn = e.target.closest('.delete-btn');
@@ -1214,23 +1857,28 @@
             }
 
             if (deleteBtn) {
+                if (!SuperAdmin.require()) return;
                 const id = deleteBtn.getAttribute('data-id');
                 if (confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur?')) {
-                    allUsers = allUsers.filter(u => u.id !== parseInt(id));
-                    applyFilters();
-                    alert('Utilisateur #' + String(id).padStart(3, '0') + ' supprimé');
+                    try {
+                        await API.users.delete(id);
+                        await loadUsers();
+                        alert('Utilisateur supprimé');
+                    } catch (err) {
+                        alert('Erreur : ' + err.message);
+                    }
                 }
                 e.preventDefault();
             }
         });
 
         // ========== INITIALISATION ==========
-        renderTable();
+        loadUsers();
 
         document.getElementById('logoutBtn').addEventListener('click', function(e) {
             e.preventDefault();
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
             window.location.href = 'login.html';
         });
     </script>
@@ -1396,8 +2044,8 @@
             if (logoutLink) {
                 logoutLink.addEventListener('click', function(e) {
                     e.preventDefault();
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
+                    sessionStorage.removeItem('token');
+                    sessionStorage.removeItem('user');
                     window.location.href = 'login.html';
                 });
             }

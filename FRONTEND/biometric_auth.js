@@ -19,9 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function checkAuthStatus() {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (token) {
-        // Already authenticated - redirect to dashboard
         window.location.href = '/dashboard.html';
     }
 }
@@ -227,7 +226,7 @@ function stopLiveAuthView() {
 
 async function authenticateWithFace(imageBase64, mode = 'live') {
     try {
-        const isAdmin = localStorage.getItem('isAdmin') === 'true';
+        const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
         
         // Determine auth type based on client
         const authType = isDesktopClient() ? 'desktop' : (isAdmin ? 'admin' : 'web');
@@ -253,12 +252,12 @@ async function authenticateWithFace(imageBase64, mode = 'live') {
         }
         
         if (authData.success !== false && (authData.token || authData.access_token)) {
-            // Store auth data
+            // Store auth data (sessionStorage = same storage as api.js)
             const token = authData.access_token || authData.token;
-            localStorage.setItem('token', token);
-            localStorage.setItem('user_id', authData.user_id);
-            localStorage.setItem('user_email', authData.user_email);
-            localStorage.setItem('user_name', authData.user_name);
+            sessionStorage.setItem('token', token);
+            sessionStorage.setItem('user_id', authData.user_id);
+            sessionStorage.setItem('user_email', authData.user_email);
+            sessionStorage.setItem('user_name', authData.user_name);
 
             // Show success
             showSuccess();
@@ -380,9 +379,9 @@ async function verifyCode() {
 
         if (responseData.success !== false || response.status === 200) {
             const token = responseData.access_token || responseData.token;
-            localStorage.setItem('token', token);
-            localStorage.setItem('user_id', responseData.user_id);
-            localStorage.setItem('user_email', responseData.user_email);
+            sessionStorage.setItem('token', token);
+            sessionStorage.setItem('user_id', responseData.user_id);
+            sessionStorage.setItem('user_email', responseData.user_email);
 
             logAuthAttempt('email_verification', email, 'success');
             showSuccess();

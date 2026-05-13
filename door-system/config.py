@@ -13,7 +13,7 @@ load_dotenv()
 # CONFIGURATION BACKEND
 # ============================================================
 
-BACKEND_URL = os.getenv('BACKEND_URL', 'http://192.168.1.100:5000')
+BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:5000')
 ADMIN_TOKEN = os.getenv('ADMIN_TOKEN', 'CHANGE_ME')
 USER_ID = os.getenv('USER_ID', 'uuid-de-l-utilisateur')
 

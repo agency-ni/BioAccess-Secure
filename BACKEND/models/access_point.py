@@ -23,17 +23,14 @@ class PosteTravail(db.Model):
     systeme = db.Column(db.String(50), default='Windows')
     statut = db.Column(db.Enum('actif', 'inactif', 'verrouille', name='statut_poste'), default='actif')
     
-    # Clé étrangère
-    employe_id = db.Column(db.String(36), db.ForeignKey('employes.id'), unique=True, nullable=True)
-    
+    # FK vers users.id (l'employé est un User, pas une table séparée)
+    employe_id = db.Column(db.String(36), db.ForeignKey('users.id'), unique=True, nullable=True)
+
     # Métadonnées
     localisation = db.Column(db.String(100))
     mac_address = db.Column(db.String(17), unique=True)
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
     os_version = db.Column(db.String(50))
-    
-    # Relations
-    logs = db.relationship('LogAcces', backref='poste', lazy='dynamic')
     
     # Méthodes (conformes au diagramme)
     def verrouiller(self):
@@ -79,9 +76,6 @@ class Porte(db.Model):
     departements_autorises = db.Column(db.JSON, default=list)  # ['informatique', 'direction']
     horaires_autorises = db.Column(db.JSON, nullable=True)  # {'debut': '08:00', 'fin': '20:00'}
     timeout_ouverture = db.Column(db.Integer, default=5)  # secondes
-    
-    # Relations
-    logs = db.relationship('LogAcces', backref='porte', lazy='dynamic')
     phrase_id = db.Column(db.String(36), db.ForeignKey('phrases_aleatoires.id'), nullable=True)
     
     # Méthodes (conformes au diagramme)
@@ -142,8 +136,8 @@ class Configuration(db.Model):
     valeur = db.Column(db.Text, nullable=False)
     description = db.Column(db.String(255), nullable=True)
     
-    # Clé étrangère
-    admin_id = db.Column(db.String(36), db.ForeignKey('admins.id'), nullable=False)
+    # FK vers users.id (admin = User avec role admin/super_admin), nullable pour flexibilité
+    admin_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
     
     # Métadonnées
     date_modification = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -75,13 +75,16 @@ def setup_logger(app):
     
     return app_logger, audit_logger
 
-def log_audit(action, user_id, ip, details=None):
-    """Log une action d'audit"""
+def log_audit(action=None, user_id=None, ip=None, details=None, **kwargs):
+    """Log une action d'audit. Accepts both positional and keyword call styles."""
     audit_logger = logging.getLogger('audit')
+    merged_details = details or {}
+    if kwargs:
+        merged_details = {**merged_details, **kwargs}
     audit_logger.info(json.dumps({
         'action': action,
-        'user_id': user_id,
+        'user_id': str(user_id) if user_id else None,
         'ip': ip,
-        'details': details,
+        'details': merged_details,
         'timestamp': datetime.utcnow().isoformat()
-    }))
+    }, default=str))

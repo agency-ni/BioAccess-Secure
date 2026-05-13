@@ -6,6 +6,14 @@ Protège contre XSS, clickjacking, MIME sniffing, etc.
 from flask import request, jsonify
 import time
 
+"""
+WSGI Middleware pour ajouter des en-têtes de sécurité
+"""
+
+import logging
+
+logger = logging.getLogger(__name__)
+
 class SecurityHeadersMiddleware:
     """
     WSGI Middleware pour ajouter des en-têtes de sécurité
@@ -16,33 +24,36 @@ class SecurityHeadersMiddleware:
         self.config = config
     
     def __call__(self, environ, start_response):
+        try:
+            def custom_start_response(status, headers, exc_info=None):
+                try:
+                    # Headers de sécurité complets (ancienne version)
+                    security_headers = [
+                        ('X-Content-Type-Options', 'nosniff'),
+                        ('X-Frame-Options', 'DENY'),
+                        ('X-XSS-Protection', '1; mode=block'),
+                        ('Referrer-Policy', 'strict-origin-when-cross-origin'),
+                        ('Permissions-Policy', 'geolocation=(), microphone=(self), camera=(self)'),
+                        ('Cross-Origin-Resource-Policy', 'cross-origin'),
+                    ]
+                    
+                    # HSTS si session sécurisée
+                    if self.config.get('SESSION_COOKIE_SECURE', False):
+                        security_headers.append(('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload'))
+                    
+                    if isinstance(headers, list):
+                        headers.extend(security_headers)
+                except Exception as header_err:
+                    logger.warning(f"Erreur ajout headers sécurité: {header_err}")
+                
+                return start_response(status, headers, exc_info)
+            
+            return self.app(environ, custom_start_response)
         
-        def custom_start_response(status, headers, exc_info=None):
-            # Ajouter les headers de sécurité
-            security_headers = [
-                ('X-Content-Type-Options', 'nosniff'),
-                ('X-Frame-Options', 'DENY'),
-                ('X-XSS-Protection', '1; mode=block'),
-                ('Referrer-Policy', 'strict-origin-when-cross-origin'),
-                ('Permissions-Policy', 'geolocation=(), microphone=(), camera=()'),
-                ('Cross-Origin-Embedder-Policy', 'require-corp'),
-                ('Cross-Origin-Opener-Policy', 'same-origin'),
-                ('Cross-Origin-Resource-Policy', 'same-origin'),
-            ]
-            
-            # CSP (Content Security Policy)
-            csp = self.config.get('CSP', {})
-            csp_str = '; '.join([f"{key} {' '.join(value)}" for key, value in csp.items()])
-            security_headers.append(('Content-Security-Policy', csp_str))
-            
-            # HSTS (HTTP Strict Transport Security) en production
-            if self.config.get('SESSION_COOKIE_SECURE', False):
-                security_headers.append(('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload'))
-            
-            headers.extend(security_headers)
-            return start_response(status, headers, exc_info)
-        
-        return self.app(environ, custom_start_response)
+        except Exception as e:
+            # En cas d'erreur critique, on Continue sans les headers
+            logger.error(f"SecurityHeadersMiddleware crash: {e}")
+            return self.app(environ, start_response)
 
 
 class RateLimitMiddleware:

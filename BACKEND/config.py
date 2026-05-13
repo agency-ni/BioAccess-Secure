@@ -4,10 +4,13 @@ Gestion des environnements (dev, test, prod)
 """
 
 import os
+from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
-load_dotenv()
+# Charger le fichier .env du dossier BACKEND pour s'assurer que la configuration
+# est correcte quel que soit le répertoire de lancement courant.
+load_dotenv(dotenv_path=Path(__file__).parent / '.env')
 
 class Config:
     """Configuration de base"""
@@ -48,10 +51,14 @@ class Config:
     # Redis
     REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
     REDIS_MAX_CONNECTIONS = int(os.environ.get('REDIS_MAX_CONNECTIONS', 50))
+    REDIS_ENABLED = os.environ.get('REDIS_ENABLED', 'False').lower() in ('1', 'true', 'yes', 'on')
     
+    # Door-system shared secret (doit correspondre à ADMIN_TOKEN du door-system)
+    ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', '')
+
     # JWT
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', SECRET_KEY)
-    JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get('JWT_ACCESS_TOKEN_EXPIRES', 900))
+    JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get('JWT_ACCESS_TOKEN_EXPIRES', 86400))
     JWT_REFRESH_TOKEN_EXPIRES = int(os.environ.get('JWT_REFRESH_TOKEN_EXPIRES', 2592000))
     JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS512')
     
@@ -74,8 +81,11 @@ class Config:
     RATE_LIMIT_LOGIN = os.environ.get('RATE_LIMIT_LOGIN', '5 per 15 minutes')
     RATE_LIMIT_API = os.environ.get('RATE_LIMIT_API', '1000 per minute')
     RATE_LIMIT_BIOMETRIC = os.environ.get('RATE_LIMIT_BIOMETRIC', '10 per minute')
-    RATE_LIMIT_STORAGE_URL = REDIS_URL
-    
+    RATE_LIMIT_STORAGE_URL = os.environ.get(
+        'RATE_LIMIT_STORAGE_URL',
+        'memory://' if REDIS_ENABLED is False else REDIS_URL
+    )
+
     # Logging
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
     LOG_FILE = os.environ.get('LOG_FILE', 'logs/bioaccess.log')
@@ -120,14 +130,18 @@ class Config:
 class DevelopmentConfig(Config):
     """Configuration développement"""
     DEBUG = True
+    REDIS_ENABLED = False
+    REDIS_URL = None
     SESSION_COOKIE_SECURE = False
     REMEMBER_COOKIE_SECURE = False
+    # CSRF non nécessaire pour une API JWT Bearer (les navigateurs ne peuvent pas
+    # injecter Authorization automatiquement cross-origin — CSRF n'est pas un vecteur)
+    WTF_CSRF_ENABLED = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_size': 5,
         'max_overflow': 10,
         'pool_pre_ping': True
     }
-
 
 class TestingConfig(Config):
     """Configuration tests"""
@@ -144,10 +158,17 @@ class ProductionConfig(Config):
     DEBUG = False
     TESTING = False
     
+    # Désactiver Redis (stockage mémoire uniquement)
+    REDIS_ENABLED = False
+    REDIS_URL = None
+    RATE_LIMIT_STORAGE_URL = os.environ.get('RATE_LIMIT_STORAGE_URL', 'memory://')
+    
     # Sécurité renforcée
     SESSION_COOKIE_SECURE = True
     REMEMBER_COOKIE_SECURE = True
     SESSION_COOKIE_SAMESITE = 'Strict'
+    # Récupérer la valeur depuis .env
+    PERMANENT_SESSION_LIFETIME = int(os.environ.get('PERMANENT_SESSION_LIFETIME', 28800))
     
     # Rate limiting plus strict
     RATE_LIMIT_LOGIN = '3 per 15 minutes'
@@ -163,3 +184,4 @@ config_by_name = {
     'production': ProductionConfig,
     'default': DevelopmentConfig
 }
+    

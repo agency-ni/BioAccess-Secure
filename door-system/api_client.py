@@ -67,7 +67,8 @@ class BioAccessAPIClient:
         self.session.headers.update({
             'Content-Type': 'application/json',
             'User-Agent': 'BioLock-Door-System/1.0',
-            'X-Admin-Token': self.admin_token
+            'X-Admin-Token': self.admin_token,
+            'Authorization': f'Bearer {self.admin_token}'
         })
     
     def _make_request(self, method: str, endpoint: str, data: Dict = None,

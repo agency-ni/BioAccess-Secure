@@ -18,54 +18,45 @@ class SentryMiddleware:
     
     def before_request(self):
         """Avant chaque requête"""
-        
-        # Ajouter le contexte utilisateur s'il existe
-        if 'user_id' in g and hasattr(g, 'user_id'):
-            sentry_sdk.set_user({
-                'id': str(g.user_id),
-                'username': getattr(g, 'username', None),
+        try:
+            if 'user_id' in g and hasattr(g, 'user_id'):
+                sentry_sdk.set_user({
+                    'id': str(g.user_id),
+                    'username': getattr(g, 'username', None),
+                })
+            sentry_sdk.set_tag('method', request.method)
+            sentry_sdk.set_tag('endpoint', request.endpoint or 'unknown')
+            sentry_sdk.set_tag('path', request.path)
+            sentry_sdk.set_context('request', {
+                'method': request.method,
+                'url': request.url,
+                'remote_addr': get_client_ip(request),
+                'user_agent': request.headers.get('User-Agent', 'unknown'),
+                'content_type': request.content_type,
             })
-        
-        # Ajouter tags pour filtrage
-        sentry_sdk.set_tag('method', request.method)
-        sentry_sdk.set_tag('endpoint', request.endpoint or 'unknown')
-        sentry_sdk.set_tag('path', request.path)
-        
-        # Ajouter contexte de requête
-        sentry_sdk.set_context('request', {
-            'method': request.method,
-            'url': request.url,
-            'remote_addr': get_client_ip(request),
-            'user_agent': request.headers.get('User-Agent', 'unknown'),
-            'content_type': request.content_type,
-        })
-        
-        # Ajouter le environnement
-        sentry_sdk.set_tag('environment', self.config.get('ENV', 'unknown'))
-        sentry_sdk.set_tag('version', self.config.get('API_VERSION', 'unknown'))
-    
+            sentry_sdk.set_tag('environment', self.config.get('ENV', 'unknown'))
+            sentry_sdk.set_tag('version', self.config.get('API_VERSION', 'unknown'))
+        except Exception:
+            pass
+
     def after_request(self, response):
         """Après chaque requête"""
-        
-        # Log les erreurs applicatif
-        if response.status_code >= 400:
-            sentry_sdk.set_tag('status_code', response.status_code)
-            
-            # Ajouter une breadcrumb pour les erreurs
-            sentry_sdk.add_breadcrumb(
-                message=f"{request.method} {request.path} -> {response.status_code}",
-                category='http',
-                level='warning' if response.status_code >= 500 else 'info',
-                data={
-                    'status_code': response.status_code,
-                    'method': request.method,
-                    'path': request.path,
-                }
-            )
-        
-        # Effacer le contexte utilisateur après la requête
-        sentry_sdk.set_user(None)
-        
+        try:
+            if response.status_code >= 400:
+                sentry_sdk.set_tag('status_code', response.status_code)
+                sentry_sdk.add_breadcrumb(
+                    message=f"{request.method} {request.path} -> {response.status_code}",
+                    category='http',
+                    level='warning' if response.status_code >= 500 else 'info',
+                    data={
+                        'status_code': response.status_code,
+                        'method': request.method,
+                        'path': request.path,
+                    }
+                )
+            sentry_sdk.set_user(None)
+        except Exception:
+            pass
         return response
     
     @staticmethod

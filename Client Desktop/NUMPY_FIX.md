@@ -1,53 +1,35 @@
 # Solution aux erreurs NumPy/OpenCV
 
-## Probleme identifie
+## Statut: RÉSOLU
 
-L'erreur suivante s'affiche lors du lancement :
+Le problème d'incompatibilité NumPy/OpenCV a été résolu avec les versions récentes:
+- **NumPy 2.4.3** (compatible avec Python 3.14)
+- **OpenCV 4.13.0** (fonctionne avec NumPy 2.x)
+
+## Ancien problème (obsolète)
+
+L'erreur suivante s'affichait avec les anciennes versions :
 ```
 AttributeError: _ARRAY_API not found
 ```
 
-Cela est du à une incompatibilité entre :
-- **NumPy 2.3.5** (version trop recente)
-- **OpenCV** compile pour NumPy 1.x
+Cela était dû à une incompatibilité entre :
+- **NumPy 2.3.5** (version trop récente à l'époque)
+- **OpenCV** compilé pour NumPy 1.x
 
-## Solution
+## Solution actuelle
 
-Executez le script de correction :
+Les versions récentes sont automatiquement compatibles. Si vous rencontrez des problèmes d'installation, assurez-vous d'utiliser Python 3.11+.
 
-```bash
-double-cliquez sur fix_numpy.bat
-```
+## Vérification
 
-Ou manuellement en PowerShell :
+Vérifiez que cela fonctionne :
 
 ```powershell
-python -m pip uninstall numpy -y
-python -m pip install numpy==1.26.4
+python -c "import cv2; import numpy; print('NumPy:', numpy.__version__); print('OpenCV:', cv2.__version__)"
 ```
 
-## Verification
-
-Verifie que cela fonctionne :
-
-```powershell
-python -c "import cv2; import numpy; print('OK!')"
-```
-
-Si vous voyez "OK!" sans erreur, c'est bon !
-
-## Pourquoi ca arrive
-
-OpenCV (particulierement `cv2.face` pour LBPH) est compile avec NumPy 1.x.
-Quand NumPy 2.x est installe, les modules compilees pour 1.x ne sont pas compatibles.
-
-## Autres solutions
-
-Si le probleme persiste :
-
-1. **Reinstaller opencv-contrib-python** :
-```powershell
-python -m pip uninstall opencv-contrib-python -y
+Si vous voyez les versions sans erreur, c'est bon !
 python -m pip install opencv-contrib-python
 ```
 

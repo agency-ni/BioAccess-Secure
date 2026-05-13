@@ -9,10 +9,12 @@ POST   /api/v1/auth/reset-password
 GET    /api/v1/auth/me
 """
 
-from flask import Blueprint, request, g, current_app
+from flask import Blueprint, request, g, current_app, jsonify
 from datetime import datetime, timedelta
 import uuid
 import logging
+
+logger = logging.getLogger(__name__)
 
 from core.database import db
 from core.security import SecurityManager
@@ -103,7 +105,7 @@ def login():
         'refresh_token': refresh_token,
         'token_type': 'bearer',
         'expires_in': 3600,
-        'user': user.to_dict()
+        'user': user.getInfos()
     }
 
 @auth_bp.route('/refresh', methods=['POST'])
@@ -218,7 +220,7 @@ def forgot_password():
             user.role,
             timedelta(hours=1)
         )
-        print(f"Reset token pour {user.email}: {reset_token}")  # En dev seulement
+        logger.debug(f"Reset token généré pour {user.email}")  # token non logué volontairement
     
     return {'message': 'Si l\'email existe, un lien de réinitialisation a été envoyé'}
 
@@ -254,7 +256,82 @@ def reset_password():
 @token_required
 def get_current_user():
     """Récupérer les informations de l'utilisateur connecté"""
-    return g.user.to_dict()
+    return jsonify(g.user.getInfos())
+
+
+@auth_bp.route('/me', methods=['PUT'])
+@token_required
+def update_current_user():
+    """Mettre à jour les informations du profil (nom, prenom, telephone)."""
+    data = request.get_json(silent=True) or {}
+    user = g.user
+    allowed = {'nom', 'prenom', 'telephone'}
+    changed = False
+    for field in allowed:
+        val = data.get(field)
+        if val is not None:
+            setattr(user, field, str(val).strip())
+            changed = True
+    if not changed:
+        return jsonify({'success': False, 'error': 'Aucun champ modifiable fourni'}), 400
+    try:
+        user.date_modification = datetime.utcnow()
+        db.session.commit()
+        log_audit('profile_update', user.id, request.remote_addr, {'fields': list(allowed & set(data.keys()))})
+        return jsonify({'success': True, 'message': 'Profil mis à jour', 'user': user.getInfos()})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"PUT /me: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@auth_bp.route('/twofa/toggle', methods=['POST'])
+@token_required
+def toggle_twofa():
+    """Active ou désactive la double authentification pour l'utilisateur connecté."""
+    user = g.user
+    try:
+        user.twofa_enabled = not user.twofa_enabled
+        db.session.commit()
+        state = 'activée' if user.twofa_enabled else 'désactivée'
+        log_audit('twofa_toggle', user.id, request.remote_addr, {'enabled': user.twofa_enabled})
+        return jsonify({
+            'success': True,
+            'twofa_enabled': user.twofa_enabled,
+            'message': f"Double authentification {state}",
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"twofa toggle: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@auth_bp.route('/my-actions', methods=['GET'])
+@token_required
+def my_actions():
+    """Retourne les 10 dernières actions de l'utilisateur connecté."""
+    try:
+        limit = min(int(request.args.get('limit', 10)), 50)
+        from models.log import LogAcces
+        logs = (
+            LogAcces.query
+            .filter(LogAcces.utilisateur_id == g.user_id)
+            .order_by(LogAcces.date_heure.desc())
+            .limit(limit)
+            .all()
+        )
+        actions = [{
+            'date':        log.date_heure.isoformat() if log.date_heure else None,
+            'action':      log.type_acces or '—',
+            'statut':      log.statut or '—',
+            'ip':          log.adresse_ip or '—',
+            'resource':    log.resource or '',
+            'details':     log.details or {},
+        } for log in logs]
+        return jsonify({'success': True, 'actions': actions, 'count': len(actions)})
+    except Exception as e:
+        logger.error(f"my-actions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
 # BIOMETRIC AUTHENTICATION ENDPOINTS
@@ -276,30 +353,35 @@ def biometric_authenticate():
         service = BiometricAuthenticationService()
         
         result = service.authenticate_by_face(image_base64, auth_type, is_admin)
-        
-        if result['success']:
-            user = User.query.get(result['user_id'])
+
+        # authenticate_by_face retourne un dataclass AuthenticationResult
+        success = result.success if hasattr(result, 'success') else result.get('success', False)
+
+        if success:
+            user_id = result.user_id if hasattr(result, 'user_id') else result.get('user_id')
+            user = User.query.get(user_id)
             access_token = SecurityManager.generate_jwt_token(
                 user.id,
                 user.role,
                 timedelta(hours=24)
             )
-            
+
             log_audit('biometric_auth_success', user.id, request.remote_addr, {'auth_type': auth_type})
-            
+
             return {
                 'success': True,
-                'token': access_token,
+                'access_token': access_token,
                 'user_id': user.id,
                 'user_email': user.email,
-                'user_name': user.first_name + ' ' + user.last_name,
+                'user_name': user.full_name,
                 'message': 'Authentification réussie'
             }, 200
         else:
-            log_audit('biometric_auth_failed', None, request.remote_addr, {'reason': result.get('reason')})
+            reason = (result.error if hasattr(result, 'error') else result.get('reason', ''))
+            log_audit('biometric_auth_failed', None, request.remote_addr, {'reason': reason})
             return {
                 'success': False,
-                'message': result.get('message', 'Authentification échouée')
+                'message': reason or 'Authentification échouée'
             }, 401
             
     except Exception as e:
@@ -414,10 +496,10 @@ def verify_code():
             'token': access_token,
             'user_id': user.id,
             'user_email': user.email,
-            'user_name': user.first_name + ' ' + user.last_name,
+            'user_name': user.full_name,
             'message': 'Authentification réussie'
         }, 200
-        
+
     except AuthenticationError:
         raise
     except Exception as e:
@@ -484,25 +566,8 @@ def google_auth():
         user = User.query.filter_by(email=email.lower()).first()
         
         if not user:
-            # Créer un nouvel utilisateur depuis Google
-            try:
-                user = User(
-                    email=email.lower(),
-                    first_name=first_name,
-                    last_name=last_name,
-                    password_hash=SecurityManager.hash_password(google_id),
-                    is_active=True,
-                    role='user',
-                    created_by='google_oauth'
-                )
-                db.session.add(user)
-                db.session.flush()
-                logging.info(f"Nouvel utilisateur créé via Google: {email}")
-                log_audit('user_created_google', user.id, request.remote_addr, {'email': email})
-            except Exception as e:
-                db.session.rollback()
-                logging.error(f"Erreur création utilisateur: {str(e)}")
-                return {'success': False, 'error': f'Erreur création utilisateur: {str(e)}'}, 500
+            logging.warning(f"Tentative Google OAuth avec email inconnu: {email}")
+            return {'success': False, 'error': 'Compte non trouvé. Contactez votre administrateur.'}, 403
         
         if not user.is_active:
             return {'success': False, 'error': 'Compte désactivé'}, 403
@@ -553,8 +618,8 @@ def google_auth():
             'user': {
                 'id': user.id,
                 'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
+                'first_name': user.prenom,
+                'last_name': user.nom,
                 'role': user.role
             },
             'message': 'Authentification Google réussie'
@@ -563,3 +628,87 @@ def google_auth():
     except Exception as e:
         logging.error(f"Erreur Google auth non gérée: {str(e)}")
         return {'success': False, 'error': f'Erreur serveur: {str(e)}'}, 500
+
+
+# ============================================================
+# VOICE CHALLENGE — phrase aléatoire pour enrôlement vocal
+# ============================================================
+
+_FALLBACK_PHRASES = [
+    "Ma voix est mon passeport, vérifiez moi s'il vous plaît",
+    "L'accès biométrique garantit ma sécurité au quotidien",
+    "Je confirme mon identité par reconnaissance vocale",
+    "La sécurité de mes données est ma priorité absolue",
+    "Mon empreinte vocale est unique et personnelle",
+    "BioAccess Secure protège l'accès à nos installations",
+    "Je valide mon entrée par authentification biométrique",
+    "La reconnaissance vocale est une technologie fiable",
+    "Mon identité est protégée par des systèmes avancés",
+    "J'autorise l'accès grâce à ma voix authentique",
+    "Le système vérifie mon identité en temps réel",
+    "L'authentification forte garantit la sécurité des accès",
+    "Je suis un utilisateur autorisé de ce système sécurisé",
+    "Ma voix unique permet de m'identifier avec précision",
+    "BioAccess vérifie mon identité de manière sécurisée",
+    "L'accès sécurisé passe par la reconnaissance biométrique",
+    "Je confirme que je suis bien le titulaire de ce compte",
+    "Mon profil vocal est enregistré dans le système sécurisé",
+    "La vérification vocale assure l'intégrité des accès",
+    "Je m'identifie formellement auprès du système de contrôle",
+]
+
+@auth_bp.route('/voice/challenge', methods=['GET'])
+def voice_challenge():
+    """Retourne une phrase aléatoire pour l'enrôlement ou l'auth vocale (public)"""
+    try:
+        from models.biometric import PhraseAleatoire
+        import random
+
+        phrase_obj = PhraseAleatoire.getRandom()
+        if phrase_obj:
+            return jsonify({
+                'success': True,
+                'phrase_id': phrase_obj.id,
+                'phrase': phrase_obj.texte,
+                'instruction': 'Lisez cette phrase à voix haute et clairement'
+            }), 200
+
+        # Table vide — seed de 20 phrases puis retourner une
+        for texte in _FALLBACK_PHRASES:
+            existing = PhraseAleatoire.query.filter_by(texte=texte, user_id=None).first()
+            if not existing:
+                p = PhraseAleatoire(texte=texte, langue='fr')
+                db.session.add(p)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        phrase_obj = PhraseAleatoire.getRandom()
+        if phrase_obj:
+            return jsonify({
+                'success': True,
+                'phrase_id': phrase_obj.id,
+                'phrase': phrase_obj.texte,
+                'instruction': 'Lisez cette phrase à voix haute et clairement'
+            }), 200
+
+        # Ultime fallback sans DB
+        text = random.choice(_FALLBACK_PHRASES)
+        return jsonify({
+            'success': True,
+            'phrase_id': 'fallback',
+            'phrase': text,
+            'instruction': 'Lisez cette phrase à voix haute et clairement'
+        }), 200
+
+    except Exception as e:
+        logging.error(f"Voice challenge error: {str(e)}")
+        import random
+        text = random.choice(_FALLBACK_PHRASES)
+        return jsonify({
+            'success': True,
+            'phrase_id': 'fallback',
+            'phrase': text,
+            'instruction': 'Lisez cette phrase à voix haute et clairement'
+        }), 200

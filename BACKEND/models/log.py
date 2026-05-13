@@ -29,7 +29,8 @@ class LogAcces(db.Model):
     
     # Clé étrangère
     utilisateur_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
-    
+    # 'utilisateur' backref is declared by User.logs relationship in models/user.py
+
     # Données supplémentaires
     details = db.Column(db.JSON, nullable=True)
     user_agent = db.Column(db.String(256))
@@ -90,6 +91,12 @@ class LogAcces(db.Model):
         return True, len(logs)
     
     def to_dict(self):
+        user_name = None
+        try:
+            if self.utilisateur:
+                user_name = self.utilisateur.full_name
+        except Exception:
+            pass
         return {
             'id': self.id,
             'date_heure': self.date_heure.isoformat(),
@@ -98,6 +105,7 @@ class LogAcces(db.Model):
             'raison_echec': self.raison_echec,
             'adresse_ip': self.adresse_ip,
             'utilisateur_id': self.utilisateur_id,
+            'user_name': user_name,
             'resource': self.resource,
             'hash': self.hash_actuel[:8] + '...' if self.hash_actuel else None,
             'verified': self.verify_integrity()

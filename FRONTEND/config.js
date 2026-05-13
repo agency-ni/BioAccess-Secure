@@ -10,7 +10,7 @@ window.CONFIG = {
     // ========================================
     // API Configuration
     // ========================================
-    API_URL: 'http://localhost:5000/api',
+    API_URL: 'http://localhost:5000/api/v1',
     
     // ========================================
     // Google OAuth Configuration

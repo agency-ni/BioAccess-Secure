@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BioAccess Secure - Rapports</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%234f46e5'/%3E%3Cpath d='M30 40 L45 70 L60 40' stroke='white' stroke-width='8' fill='none' stroke-linecap='round' /%3E%3Ccircle cx='35' cy='35' r='6' fill='white'/%3E%3Ccircle cx='65' cy='35' r='6' fill='white'/%3E%3C/svg%3E">
     
     <!-- Tailwind via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,7 +15,9 @@
     
     <!-- Theme Manager -->
     <script src="theme.js"></script>
-    
+    <script src="api.js"></script>
+    <script src="superadmin.js"></script>
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
@@ -265,6 +269,18 @@
             
             <!-- Footer sidebar -->
             <div class="p-4 border-t">
+                <!-- Toggle Super Admin -->
+                <div class="flex items-center justify-between mb-3 pb-2" style="border-bottom:1px solid rgba(0,0,0,0.07);">
+                    <div class="flex items-center gap-2">
+                        <i id="saIcon" class="fas fa-shield-alt text-xs" style="color:#9ca3af;transition:color .3s;"></i>
+                        <span id="saLabel" class="text-xs font-medium" style="color:#6b7280;transition:color .3s;">Mode Protégé</span>
+                    </div>
+                    <button id="superAdminToggle" title="Activer le mode Super Admin"
+                        class="relative w-10 h-5 rounded-full focus:outline-none flex-shrink-0"
+                        style="background-color:#d1d5db;transition:background-color .3s ease;cursor:pointer;">
+                        <span class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow-sm block" style="transition:transform .3s ease;"></span>
+                    </button>
+                </div>
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
                         <span class="text-indigo-600 font-bold text-sm">AD</span>
@@ -465,23 +481,23 @@
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                         <div class="bg-gray-50 rounded-lg p-4">
                             <p class="text-xs text-gray-500">Total tentatives</p>
-                            <p class="text-2xl font-bold text-gray-800">1,547</p>
-                            <p class="text-xs text-green-600 mt-1">+12% vs période préc.</p>
+                            <p id="rptAttempts" class="text-2xl font-bold text-gray-800">—</p>
+                            <p id="rptAttemptsVar" class="text-xs text-gray-400 mt-1">chargement…</p>
                         </div>
                         <div class="bg-gray-50 rounded-lg p-4">
                             <p class="text-xs text-gray-500">Taux de succès</p>
-                            <p class="text-2xl font-bold text-gray-800">94.2%</p>
-                            <p class="text-xs text-green-600 mt-1">Objectif 95%</p>
+                            <p id="rptSuccessRate" class="text-2xl font-bold text-gray-800">—</p>
+                            <p id="rptSuccessTarget" class="text-xs text-gray-400 mt-1">chargement…</p>
                         </div>
                         <div class="bg-gray-50 rounded-lg p-4">
-                            <p class="text-xs text-gray-500">Échecs</p>
-                            <p class="text-2xl font-bold text-gray-800">90</p>
-                            <p class="text-xs text-red-600 mt-1">5.8% du total</p>
+                            <p class="text-xs text-gray-500">Alertes en attente</p>
+                            <p id="rptAlerts" class="text-2xl font-bold text-gray-800">—</p>
+                            <p id="rptAlertsVar" class="text-xs text-gray-400 mt-1">chargement…</p>
                         </div>
                         <div class="bg-gray-50 rounded-lg p-4">
-                            <p class="text-xs text-gray-500">Alertes générées</p>
-                            <p class="text-2xl font-bold text-gray-800">23</p>
-                            <p class="text-xs text-yellow-600 mt-1">12 non traitées</p>
+                            <p class="text-xs text-gray-500">Employés actifs</p>
+                            <p id="rptEmployees" class="text-2xl font-bold text-gray-800">—</p>
+                            <p id="rptEmployeesVar" class="text-xs text-gray-400 mt-1">chargement…</p>
                         </div>
                     </div>
                     
@@ -710,37 +726,15 @@
             }
         });
         
-        // Initialisation des graphiques
+        // Initialisation des graphiques (données réelles chargées ensuite)
         const ctx = document.getElementById('previewChart').getContext('2d');
-        new Chart(ctx, {
+        const lineChart = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: ['01/03', '02/03', '03/03', '04/03', '05/03', '06/03', '07/03', '08/03', '09/03', '10/03', '11/03', '12/03', '13/03', '14/03', '15/03'],
-                datasets: [{
-                    label: 'Tentatives',
-                    data: [98, 105, 112, 108, 115, 95, 87, 102, 118, 124, 119, 113, 107, 98, 92],
-                    borderColor: '#4f46e5',
-                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                    tension: 0.3,
-                    fill: true
-                }, {
-                    label: 'Succès',
-                    data: [92, 99, 105, 101, 108, 89, 82, 96, 111, 117, 112, 106, 101, 93, 87],
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    tension: 0.3,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
+            data: { labels: [], datasets: [
+                { label: 'Tentatives', data: [], borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.1)', tension: 0.3, fill: true },
+                { label: 'Succès',     data: [], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.3, fill: true }
+            ]},
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
         });
         
         // Camembert
@@ -1038,13 +1032,13 @@
         document.getElementById('reportType').addEventListener('change', function(e) {
             selectReportType(e.target.value);
         });
-        
+
         // Déconnexion
         document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
             e.preventDefault();
             window.location.href = 'login.html';
         });
-        
+
         // Fermeture du modal en cliquant à l'extérieur
         window.addEventListener('click', function(e) {
             const modal = document.getElementById('scheduleModal');
@@ -1052,6 +1046,53 @@
                 closeScheduleModal();
             }
         });
+
+        // ── Chargement des données réelles ──────────────────────────────
+        async function loadReportsData() {
+            try {
+                const [kpisResp, actResp] = await Promise.all([
+                    API.dashboard.getKpis(),
+                    API.dashboard.getActivity(30)
+                ]);
+
+                // KPIs — champs exacts retournés par /dashboard/kpis
+                if (kpisResp && kpisResp.status === 'success' && kpisResp.data) {
+                    const k = kpisResp.data;
+                    const total      = k.attempts_today ?? 0;
+                    const rate       = k.success_rate != null ? k.success_rate.toFixed(1) + '%' : '—';
+                    const successCnt = total > 0 ? Math.round(total * (k.success_rate ?? 0) / 100) : 0;
+                    const failedCnt  = total - successCnt;
+                    const alerts     = k.pending_alerts ?? 0;
+                    const employees  = k.total_employees ?? 0;
+
+                    document.getElementById('rptAttempts').textContent    = total.toLocaleString('fr-FR');
+                    document.getElementById('rptAttemptsVar').textContent  = `${failedCnt} échec(s)`;
+                    document.getElementById('rptSuccessRate').textContent  = rate;
+                    document.getElementById('rptSuccessTarget').textContent = `cible : ${k.success_target ?? 95}%`;
+                    document.getElementById('rptAlerts').textContent       = alerts;
+                    document.getElementById('rptAlertsVar').textContent    = 'alertes en attente';
+                    document.getElementById('rptEmployees').textContent    = employees;
+                    document.getElementById('rptEmployeesVar').textContent = 'employés actifs';
+                }
+
+                // Graphique linéaire — backend retourne { labels:[...], attempts:[...], successes:[...] }
+                if (actResp && actResp.status === 'success' && actResp.data) {
+                    const d = actResp.data;
+                    const labels    = Array.isArray(d.labels)    ? d.labels    : [];
+                    const attempts  = Array.isArray(d.attempts)  ? d.attempts  : [];
+                    const successes = Array.isArray(d.successes) ? d.successes : [];
+
+                    lineChart.data.labels = labels;
+                    lineChart.data.datasets[0].data = attempts;
+                    lineChart.data.datasets[1].data = successes;
+                    lineChart.update();
+                }
+            } catch (err) {
+                console.warn('Erreur chargement rapports:', err.message);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadReportsData);
     </script>
     
     <!-- Theme Toggle Event Listener -->
@@ -1078,8 +1119,8 @@
             if (logoutLink) {
                 logoutLink.addEventListener('click', function(e) {
                     e.preventDefault();
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
+                    sessionStorage.removeItem('token');
+                    sessionStorage.removeItem('user');
                     window.location.href = 'login.html';
                 });
             }

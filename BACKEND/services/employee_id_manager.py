@@ -92,7 +92,7 @@ class EmployeeIDManager:
                 return False, {
                     "error": "ANCIEN_ID_DETECTED",
                     "message": "Cet ID a été remplacé. Contactez l'admin pour obtenir votre nouvel ID.",
-                    "alert_sent": true
+                    "alert_sent": True
                 }
             
             return False, {"error": "Employee ID non trouvé"}
@@ -164,19 +164,19 @@ class EmployeeIDManager:
         Créer une alerte pour les admins en cas d'anomalie
         """
         try:
-            from models.alert import Alerte
-            
+            from models.log import Alerte  # Alerte est défini dans models/log.py
+
             alert = Alerte(
-                user_id=user_id,
-                type_alerte=alert_type,
-                message=message,
-                details=details or {},
-                date_alerte=datetime.utcnow(),
-                lue=False
+                type='securite',
+                gravite='moyenne',
+                message=message[:500],
+                utilisateur_id=user_id,
+                titre=alert_type,
+                description=str(details) if details else message,
             )
             db.session.add(alert)
             db.session.commit()
-            
+
             logger.info(f"Alerte créée: {alert_type} pour user {user_id}")
             return True
         except Exception as e:

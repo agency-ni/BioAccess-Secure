@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('C:\\Users\\Charbelus\\Desktop\\BioAccess-Secure\\Client Desktop\\vosk-model-small-fr-0.22', 'model'), ('C:\\Users\\Charbelus\\Desktop\\BioAccess-Secure\\Client Desktop\\haarcascade_frontalface_default.xml', '.')]
+datas = [('C:\\Users\\HP\\Documents\\BioAccess-Secure\\Client Desktop\\vosk-model-small-fr-0.22', 'model'), ('C:\\Users\\HP\\Documents\\BioAccess-Secure\\Client Desktop\\haarcascade_frontalface_default.xml', '.')]
 binaries = []
 hiddenimports = ['cv2']
 tmp_ret = collect_all('vosk')
@@ -9,7 +9,7 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    ['C:\\Users\\Charbelus\\Desktop\\BioAccess-Secure\\Client Desktop\\maindesktop.py'],
+    ['C:\\Users\\HP\\Documents\\BioAccess-Secure\\Client Desktop\\maindesktop.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,

@@ -1,12 +1,29 @@
 #!/usr/bin/env python3
 """
-Point d'entrée principal de l'application BioAccess Secure
+Point d'entrée de développement de l'application BioAccess Secure.
+Utiliser seulement pour tests locaux et développement.
 """
 
 import os
+import atexit
+import signal
+import sys
+import threading
 from app import create_app
 
 app = create_app()
+
+def _cleanup():
+    """Nettoie les threads daemon au shutdown pour éviter _enter_buffered_busy"""
+    for thread in threading.enumerate():
+        if thread is not threading.main_thread() and thread.daemon:
+            try:
+                thread.join(timeout=0.5)
+            except:
+                pass
+
+atexit.register(_cleanup)
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

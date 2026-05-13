@@ -17,7 +17,7 @@ except ImportError:
     RedisIntegration = None
 try:
     from sentry_sdk.integrations.celery import CeleryIntegration
-except ImportError:
+except (ImportError, Exception):
     CeleryIntegration = None
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.tracing import trace

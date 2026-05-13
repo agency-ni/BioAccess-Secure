@@ -4,9 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BioAccess Secure - Profil</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%234f46e5'/%3E%3Cpath d='M30 40 L45 70 L60 40' stroke='white' stroke-width='8' fill='none' stroke-linecap='round' /%3E%3Ccircle cx='35' cy='35' r='6' fill='white'/%3E%3Ccircle cx='65' cy='35' r='6' fill='white'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="theme.js"></script>
+    <script src="api.js"></script>
+    <script src="superadmin.js"></script>
+    <script src="js/profile.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>* { font-family: 'Inter', sans-serif; }
         
@@ -283,6 +288,18 @@
             
             <!-- Footer sidebar - fixe en bas -->
             <div class="sidebar-footer flex-shrink-0">
+                <!-- Toggle Super Admin -->
+                <div class="flex items-center justify-between mb-3 pb-2" style="border-bottom:1px solid rgba(0,0,0,0.07);">
+                    <div class="flex items-center gap-2">
+                        <i id="saIcon" class="fas fa-shield-alt text-xs" style="color:#9ca3af;transition:color .3s;"></i>
+                        <span id="saLabel" class="text-xs font-medium" style="color:#6b7280;transition:color .3s;">Mode Protégé</span>
+                    </div>
+                    <button id="superAdminToggle" title="Activer le mode Super Admin"
+                        class="relative w-10 h-5 rounded-full focus:outline-none flex-shrink-0"
+                        style="background-color:#d1d5db;transition:background-color .3s ease;cursor:pointer;">
+                        <span class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow-sm block" style="transition:transform .3s ease;"></span>
+                    </button>
+                </div>
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
                         <span class="text-indigo-600 font-bold text-sm" id="userInitials">AD</span>
@@ -338,27 +355,27 @@
                             <div class="grid grid-cols-2 gap-4 mb-6">
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">Nom</label>
-                                    <input type="text" value="Système" class="w-full p-2 border rounded-lg bg-gray-50" readonly>
+                                    <input id="lastName" type="text" value="Système" class="w-full p-2 border rounded-lg bg-gray-50" readonly>
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">Prénom</label>
-                                    <input type="text" value="Admin" class="w-full p-2 border rounded-lg bg-gray-50" readonly>
+                                    <input id="firstName" type="text" value="Admin" class="w-full p-2 border rounded-lg bg-gray-50" readonly>
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">Email</label>
-                                    <input type="email" value="admin@bioaccess.com" class="w-full p-2 border rounded-lg">
+                                    <input id="email" type="email" value="admin@bioaccess.com" class="w-full p-2 border rounded-lg">
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">Département</label>
-                                    <input type="text" value="Informatique" class="w-full p-2 border rounded-lg bg-gray-50" readonly>
+                                    <input id="department" type="text" value="Informatique" class="w-full p-2 border rounded-lg bg-gray-50" readonly>
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">Téléphone</label>
-                                    <input type="tel" value="+229 01 23 45 67" class="w-full p-2 border rounded-lg">
+                                    <input id="phone" type="tel" value="+229 01 23 45 67" class="w-full p-2 border rounded-lg">
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-1">Rôle</label>
-                                    <input type="text" value="Super Admin" class="w-full p-2 border rounded-lg bg-gray-50" readonly>
+                                    <input id="role" type="text" value="Super Admin" class="w-full p-2 border rounded-lg bg-gray-50" readonly>
                                 </div>
                             </div>
                             
@@ -385,13 +402,12 @@
                                         <p class="font-medium">Double authentification (2FA)</p>
                                         <p class="text-sm text-gray-500">Sécurisez votre compte avec 2FA</p>
                                     </div>
-                                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">Activer</button>
-                                </div>
-                                
-                                <div class="flex justify-between items-center">
-                                    <div>
-                                        <p class="font-medium">Sessions actives</p>
-                                        <p class="text-sm text-gray-500">2 sessions actives</p>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input id="twoFaToggle" type="checkbox" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+                            <div id="profileSaveStatus" class="text-sm text-gray-500 mt-3">Aucun changement enregistré.</div>
                                     </div>
                                     <button class="border px-4 py-2 rounded-lg text-sm">Voir</button>
                                 </div>
@@ -409,28 +425,7 @@
                                         <th class="pb-2">IP</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <tr class="border-t">
-                                        <td class="py-2">09:45</td>
-                                        <td>Connexion</td>
-                                        <td>192.168.1.100</td>
-                                    </tr>
-                                    <tr class="border-t">
-                                        <td class="py-2">09:30</td>
-                                        <td>Ajout utilisateur - Sophie Martin</td>
-                                        <td>192.168.1.100</td>
-                                    </tr>
-                                    <tr class="border-t">
-                                        <td class="py-2">08:15</td>
-                                        <td>Modification configuration seuils</td>
-                                        <td>192.168.1.100</td>
-                                    </tr>
-                                    <tr class="border-t">
-                                        <td class="py-2">Hier 17:20</td>
-                                        <td>Export rapport PDF</td>
-                                        <td>192.168.1.100</td>
-                                    </tr>
-                                </tbody>
+                                <tbody id="recentActionsBody"></tbody>
                             </table>
                         </div>
                     </div>
@@ -447,12 +442,12 @@
                 themeToggleBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     window.themeManager.toggle();
-                    
+
                     const isDark = window.themeManager.isDarkMode();
                     themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
                     themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
                 });
-                
+
                 const isDark = window.themeManager.isDarkMode();
                 themeToggleBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
                 themeToggleBtn.title = isDark ? 'Mode clair' : 'Mode sombre';
@@ -463,12 +458,13 @@
             if (logoutLink) {
                 logoutLink.addEventListener('click', function(e) {
                     e.preventDefault();
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
+                    sessionStorage.removeItem('token');
+                    sessionStorage.removeItem('user');
                     window.location.href = 'login.html';
                 });
             }
         });
     </script>
+
 </body>
 </html>

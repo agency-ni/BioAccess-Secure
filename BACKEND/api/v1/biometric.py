@@ -3,7 +3,7 @@ Routes API pour la gestion des permissions biométriques
 Endpoint pour contrôler l'accès aux périphériques
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from functools import wraps
 from typing import Dict, Tuple
 from datetime import datetime
@@ -15,6 +15,7 @@ from core.biometric_permissions import (
     DeviceAccessLevel,
     setup_default_permissions
 )
+from api.middlewares.auth_middleware import token_required, admin_required
 
 logger = logging.getLogger(__name__)
 
@@ -22,43 +23,25 @@ logger = logging.getLogger(__name__)
 biometric_bp = Blueprint('biometric', __name__, url_prefix='/api/v1/biometric')
 
 
-def require_admin(f):
-    """Décorateur pour vérifier que l'utilisateur est admin"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        user_role = request.headers.get('X-User-Role', '').lower()
-        
-        if user_role not in ['admin', 'super_admin']:
-            return jsonify({'error': 'Admin required'}), 403
-        
-        return f(*args, **kwargs)
-    return decorated_function
-
-
 # ============════════════════════════════════════════════════════════════
 # PERMISSIONS - GET
 # ============════════════════════════════════════════════════════════════
 
 @biometric_bp.route('/permissions/<user_id>', methods=['GET'])
+@token_required
 def get_user_permissions(user_id: str) -> Tuple[Dict, int]:
     """
     Récupérer les permissions d'un utilisateur
-    
+    Accès : l'utilisateur lui-même OU un admin/super_admin.
+
     GET /api/v1/biometric/permissions/<user_id>
-    
-    Response:
-        {
-            "success": true,
-            "data": {
-                "use_camera": true,
-                "use_microphone": true,
-                "record_face": true,
-                "record_voice": true,
-                "access_biometric_data": false,
-                "view_biometric_logs": false
-            }
-        }
     """
+    # Self/admin check
+    caller_id = str(g.user_id)
+    caller_role = g.user_role
+    if caller_id != str(user_id) and caller_role not in ['admin', 'super_admin']:
+        return jsonify({'success': False, 'error': 'Accès non autorisé'}), 403
+
     try:
         permissions = biometric_permissions.get_user_permissions(user_id)
         
@@ -84,6 +67,7 @@ def get_user_permissions(user_id: str) -> Tuple[Dict, int]:
 
 
 @biometric_bp.route('/check-permission', methods=['POST'])
+@token_required
 def check_permission() -> Tuple[Dict, int]:
     """
     Vérifier une permission spécifique
@@ -143,7 +127,7 @@ def check_permission() -> Tuple[Dict, int]:
 # ============════════════════════════════════════════════════════════════
 
 @biometric_bp.route('/permissions/<user_id>/grant', methods=['POST'])
-@require_admin
+@admin_required
 def grant_permission(user_id: str) -> Tuple[Dict, int]:
     """
     Accorder une permission
@@ -191,7 +175,7 @@ def grant_permission(user_id: str) -> Tuple[Dict, int]:
 
 
 @biometric_bp.route('/permissions/<user_id>/revoke', methods=['POST'])
-@require_admin
+@admin_required
 def revoke_permission(user_id: str) -> Tuple[Dict, int]:
     """
     Révoquer une permission
@@ -239,7 +223,7 @@ def revoke_permission(user_id: str) -> Tuple[Dict, int]:
 
 
 @biometric_bp.route('/permissions/<user_id>/setup-default', methods=['POST'])
-@require_admin
+@admin_required
 def setup_default_perms(user_id: str) -> Tuple[Dict, int]:
     """
     Configurer les permissions par défaut selon le rôle
@@ -287,7 +271,7 @@ def setup_default_perms(user_id: str) -> Tuple[Dict, int]:
 # ============════════════════════════════════════════════════════════════
 
 @biometric_bp.route('/access-log', methods=['GET'])
-@require_admin
+@admin_required
 def get_access_log() -> Tuple[Dict, int]:
     """
     Récupérer le log d'accès aux périphériques
@@ -317,7 +301,7 @@ def get_access_log() -> Tuple[Dict, int]:
 
 
 @biometric_bp.route('/export-config', methods=['GET'])
-@require_admin
+@admin_required
 def export_config() -> Tuple[Dict, int]:
     """
     Exporter la configuration actuelle

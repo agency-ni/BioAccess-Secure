@@ -51,10 +51,10 @@ call :progress 2 "Mise à jour de PIP et outils..."
 "%PYTHON_EXE%" -m pip install --upgrade pip wheel setuptools >> "%LOG_FILE%" 2>&1
 
 call :progress 3 "Installation des dépendances (OpenCV, Vosk)..."
-:: On verrouille les versions pour éviter les ruptures futures
+:: Installation des packages sans verrouillage de version pour compatibilité Python 3.14
 "%PYTHON_EXE%" -m pip install ^
-opencv-contrib-python==4.10.0.84 ^
-numpy==1.26.4 ^
+opencv-contrib-python ^
+numpy ^
 vosk==0.3.45 ^
 requests cryptography pillow tqdm pyinstaller >> "%LOG_FILE%" 2>&1
 

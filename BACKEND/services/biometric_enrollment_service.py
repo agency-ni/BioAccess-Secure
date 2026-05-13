@@ -47,11 +47,12 @@ class BiometricEnrollmentService:
     Service d'enregistrement biométrique
     Supporte deux modes: upload et live
     """
-    
-    MIN_FACES_REQUIRED = 1  # Minimum de visages pour enregistrement complet
+
+    MIN_FACES_REQUIRED = 2   # FIX: minimum 2 captures cohérentes requises
     MAX_FACES_PER_USER = 10  # Maximum de templates par utilisateur
-    FACE_THRESHOLD = 0.6  # Seuil de similarité
-    MIN_QUALITY_SCORE = 0.4  # Score qualité minimum
+    FACE_THRESHOLD = 0.6     # Seuil de similarité
+    MIN_QUALITY_SCORE = 0.5  # FIX: seuil relevé de 0.4 → 0.5
+    MIN_LAPLACIAN_VARIANCE = 100.0  # FIX: variance Laplacien min (image nette)
     
     def __init__(self):
         """Initialise le service d'enregistrement"""
@@ -155,7 +156,9 @@ class BiometricEnrollmentService:
             EnrollmentResult
         """
         try:
-            # Décoder base64
+            # Décoder base64 (accepte "data:image/...;base64,XXX" ou "XXX" directement)
+            if ',' in image_base64:
+                image_base64 = image_base64.split(',', 1)[1]
             image_data = base64.b64decode(image_base64)
             return self.enroll_face_from_upload(
                 user_id,
@@ -269,24 +272,45 @@ class BiometricEnrollmentService:
         try:
             # Convertir BGR → RGB
             rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            
+            gray_img = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2GRAY)
+            laplacian = cv2.Laplacian(gray_img, cv2.CV_64F).var()
+            if laplacian < self.MIN_LAPLACIAN_VARIANCE:
+                return EnrollmentResult(
+                    success=False,
+                    error="Image floue",
+                    user_id=user_id
+                )
+
             # Utiliser service biométrique existant
-            encoding, quality, faces_count = self.biometric_service.extract_face_features(
-                rgb_img
-            )
-            
+            result = self.biometric_service.extract_face_features(rgb_img)
+            if isinstance(result, tuple):
+                encoding = result[0] if len(result) > 0 else None
+                quality = result[1] if len(result) > 1 else None
+                faces_count = result[2] if len(result) > 2 else None
+            else:
+                encoding = result
+                quality = None
+                faces_count = None
+
             if encoding is None:
                 return EnrollmentResult(
                     success=False,
-                    error="Aucun visage détecté dans l'image",
+                    error="Visage non détecté",
                     user_id=user_id
                 )
-            
-            # Vérifier qualité
-            if quality < self.MIN_QUALITY_SCORE:
+
+            if faces_count and faces_count > 1:
                 return EnrollmentResult(
                     success=False,
-                    error=f"Qualité insuffisante ({quality:.1%}). Minimum: {self.MIN_QUALITY_SCORE:.1%}",
+                    error="Plusieurs visages détectés",
+                    user_id=user_id
+                )
+
+            # Vérifier qualité
+            if quality is not None and quality < self.MIN_QUALITY_SCORE:
+                return EnrollmentResult(
+                    success=False,
+                    error="Qualité insuffisante",
                     user_id=user_id,
                     quality_score=quality
                 )

@@ -85,25 +85,31 @@ class User(UserMixin, db.Model):
         Exemple: 1002218AAKH
         Garantit l'unicité par contrainte de base de données
         """
-        # Obtenir le compte total d'utilisateurs + offset
-        count = User.query.count()
-        numeric_part = str(1000000 + count).zfill(7)
-        
-        # Générer 4 caractères aléatoires (A-Z)
-        random_part = ''.join(random.choices(string.ascii_uppercase, k=4))
-        
-        employee_id = numeric_part + random_part
-        
-        # Vérifier l'unicité (au cas où collision très improbable)
-        while User.query.filter_by(employee_id=employee_id).first():
+        # Génère un identifiant entièrement aléatoire pour éviter la race condition
+        # liée à l'utilisation de COUNT() comme base du numérique séquentiel.
+        # La contrainte UNIQUE en base de données reste le filet de sécurité final.
+        while True:
+            numeric_part = str(random.randint(1000000, 9999999))
             random_part = ''.join(random.choices(string.ascii_uppercase, k=4))
             employee_id = numeric_part + random_part
-        
-        return employee_id
+            if not User.query.filter_by(employee_id=employee_id).first():
+                return employee_id
     
     # Méthodes (conformes au diagramme)
     def getInfos(self):
         """Retourne les informations publiques de l'utilisateur"""
+        try:
+            templates = self.templates.filter_by(is_active=True).all() if hasattr(self, 'templates') else []
+            face_enrolled = any(t.type_biometrique == 'FACE' for t in templates)
+            voice_enrolled = any(t.type_biometrique == 'VOICE' for t in templates)
+            biometric_enrolled = face_enrolled or voice_enrolled
+            templates_count = len(templates)
+        except Exception:
+            face_enrolled = False
+            voice_enrolled = False
+            biometric_enrolled = False
+            templates_count = 0
+
         return {
             'id': self.id,
             'nom': self.nom,
@@ -116,7 +122,11 @@ class User(UserMixin, db.Model):
             'twofa_enabled': self.twofa_enabled,
             'employee_id': self.employee_id,
             'created_at': self.date_creation.isoformat() if self.date_creation else None,
-            'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None
+            'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
+            'biometric_enrolled': biometric_enrolled,
+            'face_enrolled': face_enrolled,
+            'voice_enrolled': voice_enrolled,
+            'templates_count': templates_count,
         }
     
     def updateProfil(self, **kwargs):
@@ -162,79 +172,70 @@ class User(UserMixin, db.Model):
         return f"<User {self.email} ({self.role})>"
 
 
-class Admin(User):
+class Admin(db.Model):
     """
-    Modèle Admin (hérite de User)
-    Correspond à la classe Admin du diagramme
+    Table d'extension pour les données spécifiques aux admins.
+    Liée à users.id par FK (joined-table, non-héritée pour éviter
+    les conflits de mapper SQLAlchemy avec concrete=True).
     """
     __tablename__ = 'admins'
-    __mapper_args__ = {
-        'polymorphic_identity': 'admin',
-        'concrete': True
-    }
-    
-    id = db.Column(db.String(36), db.ForeignKey('users.id'), primary_key=True)
-    
-    # Attributs spécifiques Admin (conformes au diagramme)
+
+    id = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
     niveau_habilitation = db.Column(db.String(50), default='standard')  # standard, super
     date_derniere_connexion = db.Column(db.DateTime, nullable=True)
-    
-    # Relations spécifiques
-    configurations = db.relationship('Configuration', backref='admin', lazy='dynamic')
-    
-    # Méthodes (conformes au diagramme)
+
+    # Relation bidirectionnelle vers User
+    user = db.relationship('User', backref=db.backref('admin_profile', uselist=False, lazy='select'))
+
     def gererConfiguration(self):
-        """Gère la configuration système"""
         pass
-    
+
     def consulterLogs(self):
-        """Consulte les logs"""
         from models.log import LogAcces
         return LogAcces.query.order_by(LogAcces.date_heure.desc()).all()
-    
+
     def gererAlertes(self):
-        """Gère les alertes"""
-        from models.alert import Alerte
+        from models.log import Alerte
         return Alerte.query.filter_by(traitee=False).all()
 
+    def __repr__(self):
+        return f"<Admin id={self.id} niveau={self.niveau_habilitation}>"
 
-class Employe(User):
+
+class Employe(db.Model):
     """
-    Modèle Employé (hérite de User)
-    Correspond à la classe Employé du diagramme
+    Table d'extension pour les données spécifiques aux employés.
+    Liée à users.id par FK (joined-table, non-héritée).
     """
     __tablename__ = 'employes'
-    __mapper_args__ = {
-        'polymorphic_identity': 'employe',
-        'concrete': True
-    }
-    
-    id = db.Column(db.String(36), db.ForeignKey('users.id'), primary_key=True)
-    
-    # Attributs spécifiques Employé (conformes au diagramme)
+
+    id = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
     date_embauche = db.Column(db.Date, nullable=True)
     poste_occupe = db.Column(db.String(100), nullable=True)
     manager_id = db.Column(db.String(36), db.ForeignKey('employes.id'), nullable=True)
-    
-    # Relations
-    poste_travail = db.relationship('PosteTravail', backref='employe', uselist=False)
-    tentatives = db.relationship('TentativeAuth', backref='employe', lazy='dynamic')
-    
-    # Méthodes (conformes au diagramme)
+
+    # Relation bidirectionnelle vers User
+    user = db.relationship('User', backref=db.backref('employe_profile', uselist=False, lazy='select'))
+
     def authentifier(self):
-        """Authentifie l'employé"""
-        # La logique d'authentification est gérée ailleurs
         return True
+
+    def __repr__(self):
+        return f"<Employe id={self.id}>"
 
 
 class UserSession(db.Model):
     """Sessions actives des utilisateurs"""
     __tablename__ = 'user_sessions'
-    
+
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
-    session_token = db.Column(db.String(512), unique=True, nullable=False)
+    # nullable=True : la session biométrique n'utilise pas de token séparé
+    session_token = db.Column(db.String(512), unique=True, nullable=True)
     refresh_token = db.Column(db.String(512), unique=True, nullable=True)
+    # Champs utilisés par facial_auth.py
+    token_type = db.Column(db.String(20), default='bearer')
+    auth_method = db.Column(db.String(20), nullable=True)  # FACE, VOICE, PASSWORD
     ip_address = db.Column(db.String(45), nullable=False)
     user_agent = db.Column(db.String(256), nullable=True)
     device_fingerprint = db.Column(db.String(128), nullable=True)

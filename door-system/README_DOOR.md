@@ -248,7 +248,7 @@ python3 main.py
 Exécuter sur le serveur PostgreSQL:
 
 ```bash
-sudo -u postgres psql bioaccess_db < migration_auth_logs.sql
+sudo -u postgres psql bioaccess < migration_auth_logs.sql
 ```
 
 ### Créer utilisateur pour la porte

@@ -3,8 +3,6 @@ Gestion des files d'attente asynchrones (Celery)
 Pour les tâches longues : envoi emails, génération rapports, logs
 """
 
-from celery import Celery
-from celery.schedules import crontab
 import logging
 import os
 
@@ -15,14 +13,16 @@ celery_app = None
 def init_queue(app):
     """Initialise Celery avec Redis comme broker"""
     global celery_app
-    
-    # En développement, Celery est optionnel
-    if app.config['FLASK_ENV'] != 'production' and os.environ.get('REDIS_ENABLED', 'False').lower() != 'true':
-        logger.info("⚠️  Celery/Queue désactivé (mode développement local)")
+
+    # En développement ou si Redis est volontairement désactivé
+    if not app.config.get('REDIS_ENABLED', True):
+        logger.info("⚠️  Celery/Queue désactivé par configuration")
         celery_app = None
         return
-    
+
     try:
+        from celery import Celery
+        from celery.schedules import crontab
         celery_app = Celery(
             'bioaccess',
             broker=app.config['REDIS_URL'],

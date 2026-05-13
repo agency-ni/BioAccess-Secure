@@ -28,7 +28,7 @@ class AuditService:
         log = LogAcces(
             type_acces='config',
             statut='succes',
-            adresse_ip=ip_address,
+            adresse_ip=ip_address or '127.0.0.1',
             utilisateur_id=user_id,
             details={
                 'action': action,
@@ -36,10 +36,9 @@ class AuditService:
                 **details
             } if details else {'action': action}
         )
-        
-        db.session.add(log)
-        db.session.commit()
-        
+
+        log.enregistrer()
+
         logger.info(f"AUDIT: {action} par {user_id}")
         return log
     

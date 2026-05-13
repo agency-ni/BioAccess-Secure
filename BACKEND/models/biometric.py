@@ -21,12 +21,14 @@ class TemplateBiometrique(db.Model):
     
     # Attributs (conformes au diagramme)
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    type = db.Column(db.Enum('facial', 'vocal', name='type_biometrie'), nullable=False)
-    donnees = db.Column(db.LargeBinary, nullable=False)  # Template chiffré
+    type_biometrique = db.Column(db.String(50), nullable=False)  # FACE, VOICE
+    template_data = db.Column(db.JSON, nullable=False)  # Template en JSON array
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+    date_derniere_utilisation = db.Column(db.DateTime, nullable=True)
+    label = db.Column(db.String(255), nullable=True)
     
     # Clé étrangère
-    utilisateur_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
     
     # Métadonnées de sécurité
     quality_score = db.Column(db.Float, default=0.0)  # Score de qualité (0-1)
@@ -39,12 +41,8 @@ class TemplateBiometrique(db.Model):
         Compare ce template avec un autre
         Retourne un score de similarité (0-1)
         """
-        if self.type != template.type:
+        if self.type_biometrique != template.type_biometrique:
             return 0.0
-        
-        # Déchiffrer les données
-        data1 = SecurityManager.decrypt_data(self.donnees.decode())
-        data2 = SecurityManager.decrypt_data(template.donnees.decode())
         
         # Logique de comparaison (simplifiée)
         # En production, utiliser des algorithmes spécialisés
@@ -52,10 +50,11 @@ class TemplateBiometrique(db.Model):
         from scipy.spatial.distance import cosine
         
         try:
-            vec1 = np.frombuffer(data1.encode())
-            vec2 = np.frombuffer(data2.encode())
-            similarity = 1 - cosine(vec1, vec2)
-            return float(similarity)
+            vec1 = np.array(self.template_data, dtype=np.float64)
+            vec2 = np.array(template.template_data, dtype=np.float64)
+            if vec1.shape != vec2.shape or vec1.size == 0:
+                return 0.0
+            return float(1.0 - cosine(vec1, vec2))
         except:
             return 0.0
     
@@ -63,17 +62,18 @@ class TemplateBiometrique(db.Model):
         """
         Génère un template à partir de données brutes
         """
-        # Chiffrer les données
-        encrypted = SecurityManager.encrypt_data(data)
-        self.donnees = encrypted.encode()
+        # Stocker les données en JSON
+        self.template_data = data if isinstance(data, list) else [data]
         return self
     
     def to_dict(self):
         """Version dictionnaire (sans données sensibles)"""
         return {
             'id': self.id,
-            'type': self.type,
+            'type_biometrique': self.type_biometrique,
             'date_creation': self.date_creation.isoformat(),
+            'date_derniere_utilisation': self.date_derniere_utilisation.isoformat() if self.date_derniere_utilisation else None,
+            'label': self.label,
             'quality_score': self.quality_score,
             'version': self.version,
             'is_active': self.is_active
@@ -93,7 +93,7 @@ class PhraseAleatoire(db.Model):
     langue = db.Column(db.String(10), default='fr')
     
     # Clé étrangère
-    utilisateur_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
     
     # Métadonnées
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
@@ -107,7 +107,9 @@ class PhraseAleatoire(db.Model):
         """
         query = cls.query
         if user_id:
-            query = query.filter_by(utilisateur_id=user_id)
+            query = query.filter_by(user_id=user_id)
+        else:
+            query = query.filter(cls.user_id.is_(None))
         
         return query.order_by(db.func.random()).first()
     
@@ -138,7 +140,7 @@ class TentativeAuth(db.Model):
     user_agent = db.Column(db.String(256))
     
     # Clés étrangères
-    utilisateur_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
     template_id = db.Column(db.String(36), db.ForeignKey('templates_biometriques.id'), nullable=True)
     phrase_id = db.Column(db.String(36), db.ForeignKey('phrases_aleatoires.id'), nullable=True)
     
@@ -159,16 +161,15 @@ class TentativeAuth(db.Model):
             type_acces='auth',
             statut=self.resultat,
             raison_echec=self.raison_echec,
-            adresse_ip=self.adresse_ip,
-            utilisateur_id=self.utilisateur_id,
+            adresse_ip=self.adresse_ip or '127.0.0.1',
+            utilisateur_id=self.user_id,
             details={
                 'etape': self.etape,
                 'score': self.score_similarite,
                 'temps_ms': self.temps_traitement_ms
             }
         )
-        db.session.add(log)
-        db.session.commit()
+        log.enregistrer()
         
         return self
     
@@ -208,11 +209,10 @@ class AuthenticationAttempt(db.Model):
     is_admin_attempt = db.Column(db.Boolean, default=False, index=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     
-    # Index pour requêtes rapides
+    # Index pour requêtes rapides (ix_authentication_attempts_timestamp est créé par index=True sur la colonne)
     __table_args__ = (
         db.Index('idx_auth_user_timestamp', 'user_id', 'timestamp'),
         db.Index('idx_auth_success_timestamp', 'success', 'timestamp'),
-        db.Index('ix_authentication_attempts_timestamp', 'timestamp'),
     )
     
     def to_dict(self):

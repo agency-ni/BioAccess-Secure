@@ -8,7 +8,7 @@ GET    /api/v1/dashboard/health
 GET    /api/v1/dashboard/recent-logins
 """
 
-from flask import Blueprint, request, g
+from flask import Blueprint, request, g, jsonify, current_app
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc
 
@@ -55,30 +55,50 @@ def get_kpis():
     # Alertes non traitées
     pending_alerts = Alerte.query.filter_by(traitee=False).count()
     
-    # Variation par rapport à hier
+    # Variation tentatives par rapport à hier
     yesterday = today - timedelta(days=1)
     attempts_yesterday = LogAcces.query.filter(
         LogAcces.date_heure >= yesterday,
         LogAcces.date_heure < today
     ).count()
-    
+
     variation = 0
     if attempts_yesterday > 0:
         variation = round(
-            ((attempts_today - attempts_yesterday) / attempts_yesterday) * 100,
-            1
+            ((attempts_today - attempts_yesterday) / attempts_yesterday) * 100, 1
         )
-    
-    return {
+
+    # Variation employés par rapport au mois dernier
+    last_month = today - timedelta(days=30)
+    employees_last_month = User.query.filter(
+        User.is_active == True,
+        User.role == 'employe',
+        User.date_creation <= last_month
+    ).count()
+    employees_variation = total_employees - employees_last_month
+
+    # Variation alertes par rapport à hier
+    alerts_yesterday = Alerte.query.filter(
+        Alerte.date_creation >= yesterday,
+        Alerte.date_creation < today,
+        Alerte.traitee == False
+    ).count()
+    alerts_today_new = Alerte.query.filter(
+        Alerte.date_creation >= today,
+        Alerte.traitee == False
+    ).count()
+    alerts_variation = alerts_today_new - alerts_yesterday
+
+    return jsonify({
         'total_employees': total_employees,
-        'employees_variation': '+3',  # À calculer réellement
+        'employees_variation': f"{employees_variation:+d}",
         'attempts_today': attempts_today,
         'attempts_variation': f"{variation:+.1f}%",
         'success_rate': success_rate,
         'success_target': 95,
         'pending_alerts': pending_alerts,
-        'alerts_variation': '+2'  # À calculer réellement
-    }
+        'alerts_variation': f"{alerts_variation:+d}"
+    })
 
 @dashboard_bp.route('/activity', methods=['GET'])
 @token_required
@@ -130,7 +150,7 @@ def get_recent_alerts():
         desc(Alerte.date_creation)
     ).limit(5).all()
     
-    return [a.to_dict() for a in alerts]
+    return jsonify([a.to_dict() for a in alerts])
 
 @dashboard_bp.route('/top-failures', methods=['GET'])
 @token_required
@@ -168,7 +188,7 @@ def get_top_failures():
             'percentage': round((f.fail_count / max_fail) * 100)
         })
     
-    return result
+    return jsonify(result)
 
 @dashboard_bp.route('/health', methods=['GET'])
 @token_required
@@ -178,36 +198,40 @@ def get_system_health():
     # Vérifier la base de données
     db_status = 'healthy'
     try:
-        db.session.execute('SELECT 1')
+        db.session.execute(db.text('SELECT 1'))
     except:
         db_status = 'unhealthy'
     
     # Simuler les autres composants
-    return [
+    return jsonify([
         {'name': 'Serveur', 'status': 'healthy', 'color': 'green'},
         {'name': 'Base données', 'status': db_status, 'color': 'green' if db_status == 'healthy' else 'red'},
         {'name': 'API', 'status': 'healthy', 'color': 'green'},
-        {'name': 'Borne 1', 'status': 'degraded', 'color': 'yellow'},
-    ]
+        {'name': 'Borne 1', 'status': 'unknown', 'color': 'gray'},
+    ])
 
 @dashboard_bp.route('/recent-logins', methods=['GET'])
 @admin_required
 def get_recent_admin_logins():
     """Dernières connexions admin"""
-    recent = LoginLog.query.filter(
-        LoginLog.success == True
-    ).order_by(
-        desc(LoginLog.created_at)
-    ).limit(5).all()
-    
-    result = []
-    for log in recent:
-        user = User.query.get(log.user_id) if log.user_id else None
-        result.append({
-            'admin': user.full_name if user else 'Inconnu',
-            'date': log.created_at.isoformat(),
-            'ip': log.ip_address,
-            'status': 'success'
-        })
-    
-    return result
+    try:
+        recent = LoginLog.query.filter(
+            LoginLog.success.is_(True)
+        ).order_by(
+            desc(LoginLog.timestamp)
+        ).limit(5).all()
+
+        result = []
+        for log in recent:
+            user = db.session.get(User, log.user_id) if log.user_id else None
+            result.append({
+                'admin': user.full_name if user else (log.email or 'Inconnu'),
+                'date': log.timestamp.isoformat() if log.timestamp else None,
+                'ip': log.ip_address or '',
+                'status': 'success'
+            })
+
+        return jsonify(result)
+    except Exception as e:
+        current_app.logger.error(f"Erreur recent-logins: {e}", exc_info=True)
+        return jsonify([])

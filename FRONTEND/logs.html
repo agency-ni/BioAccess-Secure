@@ -4,12 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BioAccess Secure - Logs</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%234f46e5'/%3E%3Cpath d='M30 40 L45 70 L60 40' stroke='white' stroke-width='8' fill='none' stroke-linecap='round' /%3E%3Ccircle cx='35' cy='35' r='6' fill='white'/%3E%3Ccircle cx='65' cy='35' r='6' fill='white'/%3E%3C/svg%3E">
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Theme Manager -->
     <script src="theme.js"></script>
+    <script src="api.js"></script>
+    <script src="superadmin.js"></script>
     <!-- jsPDF pour PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- SheetJS pour Excel -->
@@ -363,6 +367,18 @@
             
             <!-- Footer sidebar - fixe en bas -->
             <div class="sidebar-footer flex-shrink-0">
+                <!-- Toggle Super Admin -->
+                <div class="flex items-center justify-between mb-3 pb-2" style="border-bottom:1px solid rgba(0,0,0,0.07);">
+                    <div class="flex items-center gap-2">
+                        <i id="saIcon" class="fas fa-shield-alt text-xs" style="color:#9ca3af;transition:color .3s;"></i>
+                        <span id="saLabel" class="text-xs font-medium" style="color:#6b7280;transition:color .3s;">Mode Protégé</span>
+                    </div>
+                    <button id="superAdminToggle" title="Activer le mode Super Admin"
+                        class="relative w-10 h-5 rounded-full focus:outline-none flex-shrink-0"
+                        style="background-color:#d1d5db;transition:background-color .3s ease;cursor:pointer;">
+                        <span class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow-sm block" style="transition:transform .3s ease;"></span>
+                    </button>
+                </div>
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
                         <span class="text-indigo-600 font-bold text-sm" id="userInitials">AD</span>
@@ -433,8 +449,6 @@
                             <label class="block text-xs text-gray-500 mb-2 font-semibold">Utilisateur</label>
                             <select id="filterUser" class="w-full p-2 border rounded-lg text-sm">
                                 <option value="">Tous</option>
-                                <option value="Jean Dupont">Jean Dupont</option>
-                                <option value="Claire Martin">Claire Martin</option>
                             </select>
                         </div>
                         <!-- Type accès -->
@@ -530,14 +544,54 @@
     </div>
     
     <script>
+        // Auth guard
+        if (!sessionStorage.getItem('token')) { window.location.href = 'login.html'; }
+
         // ========== LOGIQUE FILTRES LOGS ==========
-        const logs = [
-            { timestamp: '10/03/2026 09:34', user: 'Jean Dupont', type: 'Poste', source: 'DESKTOP', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.15', hash: 'a3f2e8b9c1d4e5f6' },
-            { timestamp: '10/03/2026 08:15', user: 'Claire Martin', type: 'Porte', source: 'DOOR', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.20', hash: 'b4e3f9c2d5e6f7a1' },
-            { timestamp: '10/03/2026 07:45', user: 'Jean Dupont', type: 'Poste', source: 'DESKTOP', status: 'Échec', reason: 'Reconnaissance échouée', ip: '192.168.1.15', hash: 'c5f4g0d3e6f7g8b2' },
-            { timestamp: '09/03/2026 14:20', user: 'Claire Martin', type: 'Porte', source: 'DOOR', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.20', hash: 'd6g5h1e4f7g8h9c3' },
-            { timestamp: '09/03/2026 12:00', user: 'Jean Dupont', type: 'Poste', source: 'DESKTOP', status: 'Succès', reason: 'Accès autorisé', ip: '192.168.1.15', hash: 'e7h6i2f5g8h9i0d4' },
-        ];
+        let allLogs = [];
+        let currentMeta = { total: 0, page: 1, per_page: 50 };
+
+        function mapApiLog(l) {
+            const d = l.date_heure ? new Date(l.date_heure) : null;
+            const ts = d ? d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+            const type = l.type_acces || 'auth';
+            const source = type.includes('door') || type.includes('porte') ? 'DOOR' : 'DESKTOP';
+            return {
+                timestamp: ts,
+                user: l.user_name || l.utilisateur_id || '—',
+                type: type.charAt(0).toUpperCase() + type.slice(1),
+                source,
+                status: l.statut === 'succes' ? 'Succès' : 'Échec',
+                reason: l.raison_echec || (l.statut === 'succes' ? 'Accès autorisé' : 'Accès refusé'),
+                ip: l.adresse_ip || '—',
+                hash: l.hash || '—'
+            };
+        }
+
+        async function loadLogs(page = 1) {
+            const tbody = document.querySelector('tbody');
+            tbody.innerHTML = '<tr><td colspan="9" class="p-4 text-center text-gray-400">Chargement…</td></tr>';
+            try {
+                const res = await API.logs.getAll({ page, per_page: 50 });
+                const raw = Array.isArray(res) ? res : (res.data || []);
+                currentMeta = (res.meta) || { total: raw.length, page, per_page: 50 };
+                allLogs = raw.map(mapApiLog);
+                renderLogs(allLogs);
+                populateUserFilter(allLogs);
+            } catch (e) {
+                console.error('Erreur chargement logs:', e.message);
+                tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-red-500">Erreur : ${e.message}</td></tr>`;
+            }
+        }
+
+        function populateUserFilter(logs) {
+            const sel = document.getElementById('filterUser');
+            if (!sel) return;
+            const users = [...new Set(logs.map(l => l.user).filter(Boolean))].sort();
+            const current = sel.value;
+            sel.innerHTML = '<option value="">Tous</option>' +
+                users.map(u => `<option value="${u}"${u === current ? ' selected' : ''}>${u}</option>`).join('');
+        }
 
         function isValidDateRange() {
             const dateFrom = document.getElementById('dateFrom').value;
@@ -592,7 +646,7 @@
             const filterStatus = document.getElementById('filterStatus').value.trim();
             const filterIP = document.getElementById('filterIP').value.trim().toLowerCase();
 
-            const filtered = logs.filter(log => {
+            const filtered = allLogs.filter(log => {
                 const dateMatch = isDateInRange(log.timestamp, dateFrom, dateTo);
                 const userMatch = !filterUser || log.user === filterUser;
                 const typeMatch = !filterType || log.type === filterType;
@@ -815,19 +869,11 @@
             document.getElementById('filterSource').value = '';
             document.getElementById('filterStatus').value = '';
             document.getElementById('filterIP').value = '';
-            renderLogs(logs);
+            renderLogs(allLogs);
         });
 
         // Initialisation
-        renderLogs(logs);
-
-        // Logout
-        document.querySelector('a[href="login.html"]')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = 'login.html';
-        });
+        loadLogs();
     </script>
     
     <!-- Theme Toggle Event Listener -->
@@ -854,8 +900,8 @@
             if (logoutLink) {
                 logoutLink.addEventListener('click', function(e) {
                     e.preventDefault();
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
+                    sessionStorage.removeItem('token');
+                    sessionStorage.removeItem('user');
                     window.location.href = 'login.html';
                 });
             }

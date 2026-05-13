@@ -19,33 +19,27 @@ csrf = CSRFProtect()
 
 def init_csrf(app):
     """Initialise la protection CSRF pour l'application"""
-    # Configuration renforcée
-    app.config['WTF_CSRF_CHECK_DEFAULT'] = True  # Par défaut, vérifier CSRF sur toutes les méthodes non-safe
-    app.config['WTF_CSRF_TIME_LIMIT'] = None  # Tokens CSRF n'expire pas
-    app.config['WTF_CSRF_METHODS'] = ['POST', 'PUT', 'PATCH', 'DELETE']  # Méthodes sensibles
-    app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken', 'X-CSRF-Token']
-    app.config['WTF_CSRF_SSL_STRICT'] = True  # Strict SSL en production
+    # L'API utilise JWT Bearer — le navigateur ne peut pas injecter
+    # Authorization cross-origin, donc CSRF n'est pas un vecteur d'attaque ici.
+    app.config['WTF_CSRF_ENABLED'] = False  # désactivé définitivement pour cette API
+    app.config['WTF_CSRF_CHECK_DEFAULT'] = False
+    app.config['WTF_CSRF_SSL_STRICT'] = False
 
     csrf.init_app(app)
-    
+
     # Headers de réponse renforçant la sécurité
     @app.after_request
     def set_csrf_token_header(response):
-        """
-        Ajoute le token CSRF au header X-CSRFToken pour SPA/JS
-        Les clients JS doivent inclure ce token dans leurs requêtes
-        """
+        """Expose le token CSRF dans le header pour les SPA qui en auraient besoin"""
         if 'X-CSRFToken' not in response.headers:
             try:
                 from flask_wtf.csrf import generate_csrf
-                token = generate_csrf()
-                response.headers['X-CSRFToken'] = token
+                response.headers['X-CSRFToken'] = generate_csrf()
             except Exception as e:
                 logger.debug(f"Erreur génération CSRF token: {e}")
-        
         return response
-    
-    logger.info("✅ Protection CSRF initialisée avec Flask-WTF")
+
+    logger.info("✅ Protection CSRF initialisée")
 
 
 def exempt_csrf(f):

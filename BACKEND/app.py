@@ -10,7 +10,7 @@ from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 from flask_compress import Compress
 from prometheus_flask_exporter import PrometheusMetrics
-from flasgger import Flasgger
+# from flasgger import Flasgger
 
 # Configuration
 from config import config_by_name
@@ -35,7 +35,8 @@ from api.middlewares.sentry_middleware import setup_sentry_middleware
 # Blueprints
 from api.v1 import (
     auth_bp, users_bp, logs_bp, alerts_bp,
-    dashboard_bp, biometric_bp, access_bp, audit_bp, facial_bp, health_bp
+    dashboard_bp, biometric_bp, access_bp, audit_bp, facial_bp, health_bp,
+    enrollment_bp, admin_biometric_bp, config_bp, desktop_bp
 )
 
 # Utils
@@ -90,18 +91,21 @@ def create_app(config_name=None):
     init_rate_limiter(app)
     
     # Monitoring Prometheus
-    metrics = PrometheusMetrics(app, path='/metrics')
-    metrics.info('bioaccess_info', 'BioAccess Secure API', version='2.0.0')
+    try:
+        metrics = PrometheusMetrics(app, path='/metrics')
+        metrics.info('bioaccess_info', 'BioAccess Secure API', version='2.0.0')
+    except Exception as e:
+        logger.warning(f"⚠️  PrometheusMetrics non initialisé: {e}")
     
     # Monitoring Sentry (Error Tracking & Alerting)
     SentryConfig.init_sentry(app)
     
     # Documentation API OpenAPI/Swagger (Flasgger simplifié pour le dev)
-    try:
-        swagger = Flasgger(app)
-        logger.info("✅ Swagger/API Documentation initialisée")
-    except Exception as e:
-        logger.warning(f"⚠️  Erreur Swagger: {e}")
+    # try:
+    #     swagger = Flasgger(app)
+    #     logger.info("✅ Swagger/API Documentation initialisée")
+    # except Exception as e:
+    #     logger.warning(f"⚠️  Erreur Swagger: {e}")
     
     # ============================================
     # MIDDLEWARES PERSONNALISÉS
@@ -114,7 +118,10 @@ def create_app(config_name=None):
     # app.wsgi_app = AuditMiddleware(app.wsgi_app, app.config)
     
     # Sentry monitoring (Error tracking & alerting)
-    setup_sentry_middleware(app, app.config)
+    try:
+        setup_sentry_middleware(app, app.config)
+    except Exception as e:
+        logger.warning(f"⚠️  Sentry middleware non initialisé: {e}")
     
     # ============================================
     # GESTIONNAIRES D'ERREURS
@@ -129,40 +136,47 @@ def create_app(config_name=None):
     @app.before_request
     def before_request():
         """Actions avant chaque requête"""
-        # Stocker l'IP client
-        g.client_ip = get_client_ip(request)
-        
-        # Stocker le User-Agent
+        try:
+            g.client_ip = get_client_ip(request)
+        except Exception:
+            g.client_ip = request.remote_addr or 'unknown'
+
         g.user_agent = request.headers.get('User-Agent', 'unknown')
-        
-        # Vérification basique de sécurité
+
         if request.content_length and request.content_length > app.config['MAX_CONTENT_LENGTH']:
             return jsonify({'error': 'Fichier trop volumineux'}), 413
-        
-        # Validation CSRF renforcée pour les requêtes sensibles
-        csrf_error = CSRFValidationMiddleware.validate_csrf_headers()
-        if csrf_error:
-            return csrf_error
-    
+
+        try:
+            csrf_error = CSRFValidationMiddleware.validate_csrf_headers()
+            if csrf_error:
+                return csrf_error
+        except Exception as e:
+            logger.error(f"Erreur CSRF validation: {e}")
+
     @app.after_request
     def after_request(response):
         """Actions après chaque requête"""
-        # Ajouter des headers de sécurité
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'DENY'
-        response.headers['X-XSS-Protection'] = '1; mode=block'
-        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        
-        # CSP (Content Security Policy)
-        response.headers['Content-Security-Policy'] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data:; "
-            "font-src 'self'; "
-            "connect-src 'self'"
-        )
-        
+        try:
+            response.headers['X-Content-Type-Options'] = 'nosniff'
+            response.headers['X-Frame-Options'] = 'DENY'
+            response.headers['X-XSS-Protection'] = '1; mode=block'
+            response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+
+            content_type = response.content_type or ''
+            if 'text/html' in content_type:
+                response.headers['Content-Security-Policy'] = (
+                    "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; "
+                    "connect-src 'self' http://localhost:5000 ws://localhost:5000; "
+                    "media-src 'self' blob:;"
+                )
+            else:
+                response.headers['Content-Security-Policy'] = (
+                    "default-src 'none'; "
+                    "frame-ancestors 'none'"
+                )
+        except Exception as e:
+            logger.error(f"Erreur after_request headers: {e}")
+
         return response
     
     # ============================================
@@ -189,48 +203,68 @@ def create_app(config_name=None):
     
     @app.route('/')
     def index():
-        """Page d'accueil de l'API"""
-        return jsonify({
-            'name': 'BioAccess Secure API',
-            'version': app.config['API_VERSION'],
-            'status': 'operational',
-            'endpoints': {
-                'auth': f"{app.config['API_PREFIX']}/auth",
-                'users': f"{app.config['API_PREFIX']}/users",
-                'logs': f"{app.config['API_PREFIX']}/logs",
-                'alerts': f"{app.config['API_PREFIX']}/alerts",
-                'dashboard': f"{app.config['API_PREFIX']}/dashboard",
-                'biometric': f"{app.config['API_PREFIX']}/biometric",
-                'access': f"{app.config['API_PREFIX']}/access",
-                'audit': f"{app.config['API_PREFIX']}/audit"
-            },
-            'documentation': '/docs'  # Swagger à ajouter
-        })
+        """Redirige vers le login (frontend servi par run_prod.py)"""
+        from flask import redirect
+        return redirect('/login.html')
+    
+    # ============================================
+    # SERVIR LES FICHIERS STATIQUES DU FRONTEND
+    # ============================================
+    
+    from flask import send_from_directory, abort
+    FRONTEND_DIR = os.path.join(os.path.dirname(__file__), '..', 'FRONTEND')
+    
+    @app.route('/<path:filename>')
+    def serve_frontend(filename):
+        """Sert les fichiers statiques du frontend (HTML, JS, CSS, etc.)"""
+        # Bloquer les routes API et endpoints de monitoring
+        if filename.startswith(('api/', 'health', 'ready', 'metrics', 'docs')):
+            return abort(404)
+        try:
+            return send_from_directory(FRONTEND_DIR, filename)
+        except Exception:
+            # Si le fichier n'existe pas, servir login.html (SPA fallback)
+            try:
+                return send_from_directory(FRONTEND_DIR, 'login.html')
+            except Exception:
+                return abort(404)
     
     # ============================================
     # ENREGISTREMENT DES BLUEPRINTS
     # ============================================
-    
+
     api_prefix = app.config['API_PREFIX']
-    
+
     # Blueprints obligatoires
-    app.register_blueprint(health_bp, url_prefix=f"{api_prefix}")
-    app.register_blueprint(auth_bp, url_prefix=f"{api_prefix}/auth")
-    app.register_blueprint(facial_bp, url_prefix=f"{api_prefix}/facial")
-    app.register_blueprint(dashboard_bp, url_prefix=f"{api_prefix}/dashboard")
-    app.register_blueprint(biometric_bp, url_prefix=f"{api_prefix}/biometric")
-    
+    app.register_blueprint(health_bp,           url_prefix=f"{api_prefix}")
+    app.register_blueprint(auth_bp,             url_prefix=f"{api_prefix}/auth")
+    app.register_blueprint(facial_bp,           url_prefix=f"{api_prefix}/facial")
+    app.register_blueprint(dashboard_bp,        url_prefix=f"{api_prefix}/dashboard")
+    app.register_blueprint(biometric_bp,        url_prefix=f"{api_prefix}/biometric")
+    app.register_blueprint(enrollment_bp,       url_prefix=f"{api_prefix}/auth/biometric")
+    app.register_blueprint(admin_biometric_bp,  url_prefix=f"{api_prefix}/admin/biometric")
+    app.register_blueprint(config_bp,           url_prefix=f"{api_prefix}/config")
+    app.register_blueprint(desktop_bp,          url_prefix=f"{api_prefix}/desktop")
+
     # Blueprints optionnels (vérifier None)
     if users_bp:
-        app.register_blueprint(users_bp, url_prefix=f"{api_prefix}/users")
+        app.register_blueprint(users_bp,  url_prefix=f"{api_prefix}/users")
     if logs_bp:
-        app.register_blueprint(logs_bp, url_prefix=f"{api_prefix}/logs")
+        app.register_blueprint(logs_bp,   url_prefix=f"{api_prefix}/logs")
     if alerts_bp:
         app.register_blueprint(alerts_bp, url_prefix=f"{api_prefix}/alerts")
     if access_bp:
         app.register_blueprint(access_bp, url_prefix=f"{api_prefix}/access")
     if audit_bp:
-        app.register_blueprint(audit_bp, url_prefix=f"{api_prefix}/audit")
+        app.register_blueprint(audit_bp,  url_prefix=f"{api_prefix}/audit")
+
+    # Exempter toutes les routes API du CSRF.
+    # Les routes JWT Bearer sont inhéremment CSRF-safe : un attaquant cross-origin
+    # ne peut pas injecter un header Authorization Bearer depuis un autre domaine.
+    # csrf.exempt() s'applique aux fonctions de vue (pas aux blueprints directement).
+    for _endpoint, _view_func in app.view_functions.items():
+        if _endpoint not in ('static', 'index', 'health', 'ready'):
+            csrf.exempt(_view_func)
     
     app.logger.info(f"✅ Application BioAccess Secure démarrée en mode {config_name}")
     
@@ -239,9 +273,9 @@ def create_app(config_name=None):
 def cache_health_check():
     """Vérifie la connexion Redis"""
     try:
-        from core.cache import cache
-        cache.set('health_check', 'ok', ex=5)
-        result = cache.get('health_check')
+        from core.cache import Cache
+        Cache.set('health_check', 'ok', ex=5)
+        result = Cache.get('health_check')
         return result == 'ok'
     except Exception as e:
         logging.error(f"Redis health check failed: {str(e)}")

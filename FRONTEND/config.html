@@ -4,9 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BioAccess Secure - Configuration</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%234f46e5'/%3E%3Cpath d='M30 40 L45 70 L60 40' stroke='white' stroke-width='8' fill='none' stroke-linecap='round' /%3E%3Ccircle cx='35' cy='35' r='6' fill='white'/%3E%3Ccircle cx='65' cy='35' r='6' fill='white'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="theme.js"></script>
+    <script src="api.js"></script>
+    <script src="superadmin.js"></script>
+    <script src="js/config.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>* { font-family: 'Inter', sans-serif; }
         
@@ -209,6 +214,32 @@
             color: #15803d !important;
         }
 
+        .toggle-switch .peer + div {
+            position: relative;
+            transition: background-color .25s ease, border-color .25s ease;
+        }
+
+        .toggle-switch .peer + div::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            border-radius: 9999px;
+            background: white;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+            transition: transform .25s ease;
+        }
+
+        .toggle-switch .peer:checked + div::after {
+            transform: translateX(20px);
+        }
+
+        .toggle-switch .peer:focus + div {
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+        }
+
         .bg-blue-100 .text-blue-700,
         .bg-blue-100.text-blue-700,
         span.bg-blue-100 {
@@ -279,6 +310,18 @@
             
             <!-- Footer sidebar - fixe en bas -->
             <div class="sidebar-footer flex-shrink-0">
+                <!-- Toggle Super Admin -->
+                <div class="flex items-center justify-between mb-3 pb-2" style="border-bottom:1px solid rgba(0,0,0,0.07);">
+                    <div class="flex items-center gap-2">
+                        <i id="saIcon" class="fas fa-shield-alt text-xs" style="color:#9ca3af;transition:color .3s;"></i>
+                        <span id="saLabel" class="text-xs font-medium" style="color:#6b7280;transition:color .3s;">Mode Protégé</span>
+                    </div>
+                    <button id="superAdminToggle" title="Activer le mode Super Admin"
+                        class="relative w-10 h-5 rounded-full focus:outline-none flex-shrink-0"
+                        style="background-color:#d1d5db;transition:background-color .3s ease;cursor:pointer;">
+                        <span class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow-sm block" style="transition:transform .3s ease;"></span>
+                    </button>
+                </div>
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
                         <span class="text-indigo-600 font-bold text-sm" id="userInitials">AD</span>
@@ -311,7 +354,7 @@
             
             <div class="p-6">
                 <!-- Tabs -->
-                <div class="border-b mb-6">
+                <div class="flex items-center justify-between mb-6 border-b pb-4">
                     <div class="flex gap-6">
                         <button class="tab-btn active pb-2 border-b-2 border-indigo-600 text-indigo-600 font-medium" data-tab="securite">Sécurité</button>
                         <button class="tab-btn pb-2 text-gray-500 hover:text-gray-700" data-tab="acces">Accès physique</button>
@@ -319,6 +362,9 @@
                         <button class="tab-btn pb-2 text-gray-500 hover:text-gray-700" data-tab="journalisation">Journalisation</button>
                         <button class="tab-btn pb-2 text-gray-500 hover:text-gray-700" data-tab="api">API</button>
                     </div>
+                    <button id="restoreDefaultsBtn" onclick="restoreDefaults()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition">
+                        Restaurer défaut
+                    </button>
                 </div>
                 
                 <!-- Contenu Sécurité -->
@@ -371,7 +417,7 @@
                     </div>
                     
                     <div class="mt-6 pt-4 border-t">
-                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
+                        <button data-sa="write" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
                             Enregistrer les modifications
                         </button>
                     </div>
@@ -389,22 +435,7 @@
                                     <th>Après</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr class="border-t">
-                                    <td class="py-2">10/03 09:30</td>
-                                    <td>Admin Système</td>
-                                    <td>Seuil facial</td>
-                                    <td>0.65</td>
-                                    <td>0.60</td>
-                                </tr>
-                                <tr class="border-t">
-                                    <td class="py-2">08/03 14:15</td>
-                                    <td>Thomas Petit</td>
-                                    <td>Tentatives max</td>
-                                    <td>5</td>
-                                    <td>3</td>
-                                </tr>
-                            </tbody>
+                            <tbody id="configHistoryBody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -448,7 +479,7 @@
                     </div>
 
                     <div class="mt-6 pt-4 border-t">
-                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
+                        <button data-sa="write" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
                             Enregistrer les modifications
                         </button>
                     </div>
@@ -503,7 +534,7 @@
                     </div>
 
                     <div class="mt-6 pt-4 border-t">
-                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
+                        <button data-sa="write" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
                             Enregistrer les modifications
                         </button>
                     </div>
@@ -553,7 +584,7 @@
                     </div>
 
                     <div class="mt-6 pt-4 border-t">
-                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
+                        <button data-sa="write" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
                             Enregistrer les modifications
                         </button>
                     </div>
@@ -620,7 +651,7 @@
                     </div>
 
                     <div class="mt-6 pt-4 border-t">
-                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
+                        <button data-sa="write" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onclick="saveConfigChanges()">
                             Enregistrer les modifications
                         </button>
                     </div>
@@ -674,144 +705,7 @@
             voiceThresholdValue.textContent = parseFloat(this.value).toFixed(2);
         });
 
-        // ========== SAUVEGARDE DES MODIFICATIONS ==========
-        function saveConfigChanges() {
-            // Collecter les données du tab Sécurité
-            const facialThreshold = document.getElementById('facialThreshold').value;
-            const voiceThreshold = document.getElementById('voiceThreshold').value;
-            const maxAttempts = document.getElementById('maxAttempts').value;
-            const blockDuration = document.getElementById('blockDuration').value;
-            const liveDetection = document.getElementById('liveDetection').checked;
-            const sessionTimeout = document.getElementById('sessionTimeout').value;
-
-            // Collecter les données du tab Accès physique
-            const lockDelay = document.getElementById('lockDelay')?.value;
-            const doorOpenTime = document.getElementById('doorOpenTime')?.value;
-            const antiTailgating = document.getElementById('antiTailgating')?.checked;
-            const accessAlarm = document.getElementById('accessAlarm')?.checked;
-
-            // Collecter les données du tab Journalisation
-            const logLevel = document.getElementById('logLevel')?.value;
-            const logRetention = document.getElementById('logRetention')?.value;
-            const autoArchive = document.getElementById('autoArchive')?.checked;
-            const secureBackup = document.getElementById('secureBackup')?.checked;
-
-            // Collecter les données du tab Notifications
-            const emailAlerts = document.getElementById('emailAlerts')?.checked;
-            const smsAlerts = document.getElementById('smsAlerts')?.checked;
-            const systemAlerts = document.getElementById('systemAlerts')?.checked;
-            const alertLevel = document.getElementById('alertLevel')?.value;
-
-            // Collecter les données du tab API
-            const apiEnabled = document.getElementById('apiEnabled')?.checked;
-            const apiRateLimit = document.getElementById('apiRateLimit')?.value;
-            const apiVersion = document.getElementById('apiVersion')?.value;
-            const oauth2 = document.getElementById('oauth2')?.checked;
-            const tlsEncryption = document.getElementById('tlsEncryption')?.checked;
-            const customHeaders = document.getElementById('customHeaders')?.checked;
-
-            const configData = {
-                securite: {
-                    facialThreshold,
-                    voiceThreshold,
-                    maxAttempts,
-                    blockDuration,
-                    liveDetection,
-                    sessionTimeout
-                },
-                acces: {
-                    lockDelay,
-                    doorOpenTime,
-                    antiTailgating,
-                    accessAlarm
-                },
-                notifications: {
-                    emailAlerts,
-                    smsAlerts,
-                    systemAlerts,
-                    alertLevel
-                },
-                journalisation: {
-                    logLevel,
-                    logRetention,
-                    autoArchive,
-                    secureBackup
-                },
-                api: {
-                    apiEnabled,
-                    apiRateLimit,
-                    apiVersion,
-                    oauth2,
-                    tlsEncryption,
-                    customHeaders
-                }
-            };
-
-            // Sauvegarder dans localStorage
-            localStorage.setItem('configBioAccess', JSON.stringify(configData));
-            
-            // Afficher une notification de succès
-            alert('✅ Configuration enregistrée avec succès !');
-            
-            // Log dans la console pour vérification
-            console.log('Configuration sauvegardée:', configData);
-        }
-
-        // Charger les configurations sauvegardées au chargement
-        window.addEventListener('load', function() {
-            const savedConfig = localStorage.getItem('configBioAccess');
-            if (savedConfig) {
-                try {
-                    const config = JSON.parse(savedConfig);
-                    
-                    // Restaurer les valeurs Sécurité
-                    if (config.securite) {
-                        document.getElementById('facialThreshold').value = config.securite.facialThreshold || 0.6;
-                        document.getElementById('voiceThreshold').value = config.securite.voiceThreshold || 0.6;
-                        document.getElementById('facialThresholdValue').textContent = parseFloat(config.securite.facialThreshold || 0.6).toFixed(2);
-                        document.getElementById('voiceThresholdValue').textContent = parseFloat(config.securite.voiceThreshold || 0.6).toFixed(2);
-                    }
-                    
-                    // Restaurer les valeurs Accès physique
-                    if (config.acces) {
-                        document.getElementById('lockDelay').value = config.acces.lockDelay || 5;
-                        document.getElementById('doorOpenTime').value = config.acces.doorOpenTime || 3;
-                        document.getElementById('antiTailgating').checked = config.acces.antiTailgating !== false;
-                        document.getElementById('accessAlarm').checked = config.acces.accessAlarm !== false;
-                    }
-                    
-                    // Restaurer les valeurs Notifications
-                    if (config.notifications) {
-                        document.getElementById('emailAlerts').checked = config.notifications.emailAlerts !== false;
-                        document.getElementById('smsAlerts').checked = config.notifications.smsAlerts === true;
-                        document.getElementById('systemAlerts').checked = config.notifications.systemAlerts !== false;
-                        document.getElementById('alertLevel').value = config.notifications.alertLevel || 'all';
-                    }
-                    
-                    // Restaurer les valeurs Journalisation
-                    if (config.journalisation) {
-                        document.getElementById('logLevel').value = config.journalisation.logLevel || 'info';
-                        document.getElementById('logRetention').value = config.journalisation.logRetention || 90;
-                        document.getElementById('autoArchive').checked = config.journalisation.autoArchive !== false;
-                        document.getElementById('secureBackup').checked = config.journalisation.secureBackup !== false;
-                    }
-                    
-                    // Restaurer les valeurs API
-                    if (config.api) {
-                        document.getElementById('apiEnabled').checked = config.api.apiEnabled !== false;
-                        document.getElementById('apiRateLimit').value = config.api.apiRateLimit || 100;
-                        document.getElementById('apiVersion').value = config.api.apiVersion || 'v1.0';
-                        document.getElementById('oauth2').checked = config.api.oauth2 !== false;
-                        document.getElementById('tlsEncryption').checked = config.api.tlsEncryption !== false;
-                        document.getElementById('customHeaders').checked = config.api.customHeaders !== false;
-                    }
-                    
-                    console.log('Configuration restaurée:', config);
-                } catch (e) {
-                    console.error('Erreur lors du chargement de la configuration:', e);
-                }
-            }
-        });
+        // Config logic is loaded from FRONTEND/js/config.js
     </script>
     
     <!-- Theme Toggle Event Listener -->
@@ -838,8 +732,8 @@
             if (logoutLink) {
                 logoutLink.addEventListener('click', function(e) {
                     e.preventDefault();
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
+                    sessionStorage.removeItem('token');
+                    sessionStorage.removeItem('user');
                     window.location.href = 'login.html';
                 });
             }

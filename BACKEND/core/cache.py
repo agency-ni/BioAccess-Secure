@@ -18,9 +18,9 @@ def init_cache(app):
     """Initialise la connexion Redis"""
     global redis_client
     
-    # En développement, Redis est optionnel
-    if app.config['FLASK_ENV'] != 'production' and os.environ.get('REDIS_ENABLED', 'False').lower() != 'true':
-        logger.info("⚠️  Cache Redis désactivé (mode développement local)")
+    # En développement ou si Redis est volontairement désactivé
+    if not app.config.get('REDIS_ENABLED', True):
+        logger.info("⚠️  Cache Redis désactivé par configuration")
         redis_client = None
         return
     

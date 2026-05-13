@@ -25,22 +25,30 @@ def init_db(app):
         try:
             # Tester la connexion
             db.session.execute(text('SELECT 1'))
-            
-            # Créer les tables si elles n'existent pas
-            db.create_all()
-            
-            # Seed les phrases aléatoires
-            seed_random_phrases()
-            
-            logger.info("✅ Base de données initialisée avec succès")
+            logger.info("✅ Connexion à la base de données réussie")
         except OperationalError as e:
             logger.error(f"❌ Erreur de connexion à la BDD: {e}")
-            # En production, on peut vouloir arrêter l'application
-            if app.config['FLASK_ENV'] == 'production':
+            if app.config.get('FLASK_ENV') == 'production':
                 raise
+            return
+
+        try:
+            # Créer les tables manquantes uniquement (checkfirst=True = ne crash pas si elles existent déjà)
+            db.create_all()
         except Exception as e:
-            logger.error(f"❌ Erreur initialisation BDD: {e}")
-            raise
+            # Tables / index déjà existants → pas bloquant, purger l'état de la session
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            logger.warning(f"⚠️  db.create_all() partiel (tables/index existants): {e}")
+
+        try:
+            seed_random_phrases()
+        except Exception as e:
+            logger.warning(f"⚠️  Seed phrases ignoré: {e}")
+
+        logger.info("✅ Base de données initialisée")
 
 
 def seed_random_phrases():
@@ -84,7 +92,7 @@ def seed_random_phrases():
                 id=str(uuid.uuid4()),
                 texte=texte,
                 langue='fr',
-                utilisateur_id=None,  # Phrases globales
+                user_id=None,  # Phrases globales (colonne ORM = user_id)
                 date_creation=datetime.utcnow()
             )
             db.session.add(phrase)

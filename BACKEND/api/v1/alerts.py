@@ -6,13 +6,15 @@ PUT    /api/v1/alerts/<alert_id>
 POST   /api/v1/alerts/<alert_id>/resolve
 """
 
-from flask import Blueprint, request, g
+from flask import Blueprint, request, g, current_app
+from functools import wraps
 from datetime import datetime
 import logging
 
 from core.database import db
-from core.errors import ValidationError, NotFoundError
-from api.middlewares.auth_middleware import token_required, admin_required
+from core.errors import ValidationError, NotFoundError, AuthenticationError, AuthorizationError
+from core.security import SecurityManager
+from api.middlewares.auth_middleware import token_required, admin_required, get_token_from_header
 from api.response_handler import APIResponse
 
 from models.log import Alerte
@@ -20,6 +22,43 @@ from models.log import Alerte
 logger = logging.getLogger(__name__)
 
 alerts_bp = Blueprint('alerts', __name__)
+
+
+def admin_or_door_required(f):
+    """
+    Accepte soit un JWT Bearer admin soit un X-Admin-Token (door-system).
+    Protège les endpoints appelés par le door-system ET le frontend admin.
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # 1. X-Admin-Token : authentification door-system
+        x_admin_token = request.headers.get('X-Admin-Token', '')
+        configured_token = current_app.config.get('ADMIN_TOKEN', '')
+        if x_admin_token and configured_token and x_admin_token == configured_token:
+            return f(*args, **kwargs)
+
+        # 2. JWT Bearer : authentification frontend admin
+        from models.user import User
+        token = get_token_from_header()
+        if not token:
+            raise AuthenticationError("Authentification requise")
+
+        payload = SecurityManager.decode_jwt_token(token)
+        if not payload:
+            raise AuthenticationError("Token invalide ou expiré")
+
+        user = User.query.get(payload.get('user_id') or payload.get('sub'))
+        if not user or not user.is_active:
+            raise AuthenticationError("Utilisateur invalide")
+
+        if user.role not in ['admin', 'super_admin']:
+            raise AuthorizationError("Accès réservé aux administrateurs")
+
+        g.user = user
+        g.user_id = user.id
+        g.user_role = user.role
+        return f(*args, **kwargs)
+    return decorated
 
 
 @alerts_bp.route('', methods=['GET'])
@@ -313,6 +352,7 @@ def update_alert_access(alert_id):
 
 
 @alerts_bp.route('/access/check/<user_id>', methods=['GET'])
+@admin_or_door_required
 def check_user_access(user_id):
     """
     ENDPOINT CRITIQUE: Vérifier si un utilisateur peut accéder
@@ -380,9 +420,10 @@ def check_user_access(user_id):
 
 
 @alerts_bp.route('/access/status/<user_id>', methods=['GET'])
+@admin_or_door_required
 def get_access_status(user_id):
     """
     Alias pour check_user_access
     GET /api/v1/alerts/access/status/{user_id}
     """
-    return check_user_access(user_id)
+    return check_user_access.__wrapped__(user_id)

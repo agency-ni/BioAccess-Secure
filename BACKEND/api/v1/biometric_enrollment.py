@@ -363,8 +363,8 @@ def authenticate():
                 'user': {
                     'id': user.id,
                     'email': user.email,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
+                    'prenom': user.prenom,
+                    'nom': user.nom,
                     'role': user.role
                 },
                 'similarity_score': round(result.similarity_score, 4),

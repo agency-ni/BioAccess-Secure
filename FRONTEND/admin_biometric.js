@@ -5,7 +5,7 @@
  */
 
 const API_BASE = '/api/v1';
-const TOKEN = localStorage.getItem('token');
+const TOKEN = sessionStorage.getItem('token') || localStorage.getItem('token');
 
 let currentPage = 0;
 let selectedFaceImage = null;
@@ -245,8 +245,11 @@ async function startLiveCapture() {
         document.getElementById('livePreview').classList.add('hidden');
         startQualityDetection();
     } catch (error) {
-        showMessage('enrollmentResult', 
-            'Impossible d\'accéder à la caméra. Vérifiez les permissions.', 'error');
+        let msg = 'Impossible d\'accéder à la caméra.';
+        if (error.name === 'NotAllowedError') msg = 'Permission caméra refusée — autorisez la caméra dans les paramètres du navigateur (icône 🔒).';
+        else if (error.name === 'NotFoundError') msg = 'Aucune caméra détectée — utilisez l\'import de photo.';
+        else if (error.name === 'NotReadableError') msg = 'Caméra utilisée par une autre application — fermez-la et réessayez.';
+        showMessage('enrollmentResult', msg, 'error');
     }
 }
 
@@ -342,6 +345,7 @@ document.getElementById('enrollEmail').addEventListener('input', setupEnrollment
 document.getElementById('enrollRole').addEventListener('change', setupEnrollmentValidation);
 
 async function submitEnrollment() {
+    if (typeof SuperAdmin !== 'undefined' && !SuperAdmin.require()) return;
     const email = document.getElementById('enrollEmail').value.trim();
     const firstName = document.getElementById('enrollFirstName').value.trim();
     const lastName = document.getElementById('enrollLastName').value.trim();

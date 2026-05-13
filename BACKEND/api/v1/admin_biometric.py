@@ -8,9 +8,9 @@ from functools import wraps
 from datetime import datetime, timedelta
 import logging
 
-from core.errors import ValidationError, AuthenticationError
 from core.logger import log_audit
 from api.middlewares.auth_middleware import token_required
+from api.middlewares.rate_limiter import limiter
 from services.biometric_authentication_service import BiometricAuthenticationService
 from services.biometric_enrollment_service import BiometricEnrollmentService
 from services.audit_service import AuditService
@@ -33,7 +33,7 @@ def admin_required(f):
     """Décorateur pour vérifier que l'utilisateur est admin"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not g.get('is_admin'):
+        if g.get('user_role') not in ['admin', 'super_admin']:
             return jsonify({'success': False, 'message': 'Admin required'}), 403
         return f(*args, **kwargs)
     return decorated_function
@@ -55,7 +55,7 @@ def get_dashboard_stats():
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         
         # Count users
-        total_users = User.query.filter_by(active=True).count()
+        total_users = User.query.filter_by(is_active=True).count()
         
         # Auth stats (last 24h)
         auth_24h = AuthenticationAttempt.query.filter(
@@ -77,7 +77,7 @@ def get_dashboard_stats():
 
         return jsonify({
             'success': True,
-            'admin_name': g.user_name or 'Administrator',
+            'admin_name': g.user.full_name if g.get('user') else 'Administrator',
             'stats': {
                 'total_users': total_users,
                 'auth_24h': auth_24h,
@@ -142,23 +142,25 @@ def enroll_new_user():
         if existing_user:
             return jsonify({'success': False, 'message': 'Utilisateur déjà existant'}), 409
 
-        # Create user
+        # Create user (champs conformes au modèle User)
         new_user = User(
             email=email,
-            first_name=first_name,
-            last_name=last_name,
+            prenom=first_name,
+            nom=last_name,
             role=role,
-            require_biometric=require_biometric,
-            active=True
+            is_active=True
         )
+        new_user.set_password(User.generate_employee_id())  # mot de passe temporaire
+        new_user.employee_id = User.generate_employee_id()
+        new_user.employee_id_created_at = datetime.now()
         
         db.session.add(new_user)
         db.session.flush()  # Get the ID without committing
 
-        # Enroll biometric
-        enroll_result = enrollment_service.enroll_face_from_upload(
+        # Enroll biometric (face_image est une chaîne base64)
+        enroll_result = enrollment_service.enroll_face_from_base64(
             user_id=str(new_user.id),
-            image_data=face_image,
+            image_base64=face_image,
             label=f"Enregistrement admin - {datetime.now().strftime('%d/%m/%Y')}",
             check_duplicate=True
         )
@@ -217,13 +219,15 @@ def enroll_face():
     """
     try:
         data = request.get_json() or {}
-        user_id = data.get('user_id', '').strip()
+        user_id   = data.get('user_id', '').strip()
         image_b64 = data.get('image_b64', '').strip()
-        
+        liveness_confirmed = bool(data.get('liveness_confirmed', True))
+        ear_min            = data.get('ear_min', None)
+
         # Validation
         if not user_id or not image_b64:
             return jsonify({
-                'success': False, 
+                'success': False,
                 'error': 'user_id et image_b64 obligatoires',
                 'code': 'MISSING_FIELDS'
             }), 400
@@ -237,10 +241,20 @@ def enroll_face():
                 'code': 'USER_NOT_FOUND'
             }), 404
         
-        # Enrôler le visage
-        enroll_result = enrollment_service.enroll_face_from_upload(
+        # Vérifier liveness avant enrôlement
+        from services.biometric_service import BiometricService as _BS
+        alive, liveness_err = _BS.verify_liveness(liveness_confirmed, ear_min)
+        if not alive:
+            return jsonify({
+                'success': False,
+                'error': liveness_err or 'Détection de vivant échouée',
+                'code': 'LIVENESS_FAILED'
+            }), 400
+
+        # Enrôler le visage (image_b64 = chaîne base64 → méthode dédiée)
+        enroll_result = enrollment_service.enroll_face_from_base64(
             user_id=user_id,
-            image_data=image_b64,
+            image_base64=image_b64,
             label=f"Enrôlement facial admin - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
             check_duplicate=True
         )
@@ -267,9 +281,9 @@ def enroll_face():
             'success': True,
             'message': f'Enrôlement facial réussi pour {user.email}',
             'user_id': user_id,
-            'confidence': enroll_result.confidence if hasattr(enroll_result, 'confidence') else None
+            'quality_score': enroll_result.quality_score if hasattr(enroll_result, 'quality_score') else None
         }), 200
-        
+
     except Exception as e:
         logger.error(f"Face enrollment error: {str(e)}")
         return jsonify({
@@ -322,31 +336,24 @@ def enroll_voice():
         # Enrôler la voix (utiliser BiometricService directement)
         from services.biometric_service import BiometricService
         import base64
-        import io
-        import numpy as np
-        import cv2
-        
+
         try:
             # Décoder le base64 audio
             audio_data = base64.b64decode(audio_b64)
             
-            # Créer un template vocal
+            # Créer et persister le template vocal (process_voice_sample commit en interne)
             vocal_template = BiometricService.process_voice_sample(
                 audio_data=audio_data,
                 user_id=user_id,
                 phrase_text=None
             )
-            
+
             if not vocal_template:
                 return jsonify({
                     'success': False,
-                    'error': 'Impossible de traiter l\'audio',
+                    'error': "Impossible de traiter l'audio",
                     'code': 'AUDIO_PROCESSING_FAILED'
                 }), 400
-            
-            # Sauvegarder le template
-            db.session.add(vocal_template)
-            db.session.commit()
             
         except Exception as e:
             logger.error(f"Voice template creation error: {str(e)}")
@@ -371,7 +378,7 @@ def enroll_voice():
             'success': True,
             'message': f'Enrôlement vocal réussi pour {user.email}',
             'user_id': user_id,
-            'confidence': enroll_result.confidence if hasattr(enroll_result, 'confidence') else None
+            'quality_score': None
         }), 200
         
     except Exception as e:
@@ -396,24 +403,24 @@ def get_desktop_users():
     Liste tous les utilisateurs Desktop avec leurs stats
     """
     try:
-        users = User.query.filter_by(role='desktop_user', active=True).all()
-        
+        users = User.query.filter_by(role='desktop_user', is_active=True).all()
+
         result = []
         for user in users:
             last_auth = AuthenticationAttempt.query.filter_by(
                 user_id=str(user.id), success=True
             ).order_by(AuthenticationAttempt.timestamp.desc()).first()
-            
-            template_count = len(user.biometric_templates) if hasattr(user, 'biometric_templates') else 0
-            
+
+            template_count = user.templates.count() if hasattr(user, 'templates') else 0
+
             result.append({
                 'id': str(user.id),
-                'full_name': f"{user.first_name} {user.last_name}".strip(),
+                'full_name': user.full_name,
                 'email': user.email,
-                'is_active': user.active,
+                'is_active': user.is_active,
                 'template_count': template_count,
                 'last_auth': last_auth.timestamp.isoformat() if last_auth else None,
-                'created_at': user.created_at.isoformat() if user.created_at else None
+                'created_at': user.date_creation.isoformat() if user.date_creation else None
             })
 
         return jsonify({
@@ -457,15 +464,17 @@ def get_auth_logs():
         
         # Apply filters
         if email_filter:
-            query = query.filter(AuthenticationAttempt.user_email.ilike(f"%{email_filter}%"))
-        
+            query = query.filter(AuthenticationAttempt.email.ilike(f"%{email_filter}%"))
+
         if result_filter == 'success':
             query = query.filter_by(success=True)
         elif result_filter == 'failed':
             query = query.filter_by(success=False)
-        
-        if auth_type_filter and auth_type_filter in ['admin', 'desktop', 'web']:
-            query = query.filter_by(auth_type=auth_type_filter)
+
+        if auth_type_filter == 'admin':
+            query = query.filter_by(is_admin_attempt=True)
+        elif auth_type_filter in ['desktop', 'web']:
+            query = query.filter_by(is_admin_attempt=False)
 
         # Pagination
         total = query.count()
@@ -478,12 +487,12 @@ def get_auth_logs():
             result.append({
                 'id': str(log.id),
                 'timestamp': log.timestamp.isoformat(),
-                'user_email': log.user_email,
+                'user_email': log.email,
                 'success': log.success,
                 'similarity_score': log.similarity_score,
-                'auth_type': log.auth_type,
-                'client_ip': log.client_ip,
-                'error_message': log.error_message
+                'auth_type': 'admin' if log.is_admin_attempt else 'user',
+                'client_ip': log.ip_address,
+                'reason': log.reason
             })
 
         return jsonify({
@@ -569,6 +578,7 @@ def get_error_alerts():
 
 
 @admin_biometric_bp.route('/log-client-error', methods=['POST'])
+@limiter.limit("10 per minute")
 def log_client_error():
     """
     POST /api/v1/admin/biometric/log-client-error

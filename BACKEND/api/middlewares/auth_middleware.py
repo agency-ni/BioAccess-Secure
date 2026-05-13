@@ -6,6 +6,7 @@ from functools import wraps
 from flask import request, g
 from core.security import SecurityManager
 from core.errors import AuthenticationError, AuthorizationError
+from core.database import db
 from models.user import User
 import logging
 
@@ -37,7 +38,7 @@ def token_required(f):
             raise AuthenticationError("Token invalide ou expiré")
         
         # Récupérer l'utilisateur
-        user = User.query.get(payload.get('user_id'))
+        user = db.session.get(User, payload.get('user_id') or payload.get('sub'))
         if not user:
             raise AuthenticationError("Utilisateur non trouvé")
         
@@ -84,7 +85,7 @@ def optional_token(f):
         if token:
             payload = SecurityManager.decode_jwt_token(token)
             if payload:
-                user = User.query.get(payload.get('user_id'))
+                user = db.session.get(User, payload.get('user_id') or payload.get('sub'))
                 if user and user.is_active:
                     g.user = user
                     g.user_id = user.id

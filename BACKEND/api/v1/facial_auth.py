@@ -12,6 +12,10 @@ import base64
 import io
 import logging
 import uuid
+import numpy as np
+import cv2
+import face_recognition
+from scipy.spatial.distance import cosine as cosine_distance
 
 from core.database import db
 from core.errors import AuthenticationError, ValidationError, NotFoundError
@@ -224,10 +228,15 @@ def verify_face() -> Tuple[Dict, int]:
             email = data['email'].lower()
             user = User.query.filter_by(email=email).first()
             identifier = f"email:{email}"
-        
+
+        # Priorité 3: user_id UUID direct (Door-System)
+        elif 'user_id' in data and data['user_id']:
+            user = User.query.get(data['user_id'])
+            identifier = f"user_id:{str(data['user_id'])[:8]}"
+
         else:
-            raise ValidationError("employee_id ou email requis")
-        
+            raise ValidationError("employee_id, email ou user_id requis")
+
         # Log de tentative
         login_log = LoginLog(
             email=user.email if user else data.get('email', ''),
@@ -248,16 +257,20 @@ def verify_face() -> Tuple[Dict, int]:
             raise AuthenticationError("Compte désactivé")
         
         # ========== VÉRIFICATION BIOMÉTRIQUE ==========
-        # Décoder l'image
+        # Décoder et encoder l'image
         try:
             image_bytes = base64.b64decode(data['image_data'])
-            image_file = io.BytesIO(image_bytes)
+            nparr = np.frombuffer(image_bytes, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if img is None:
+                raise ValidationError("Image illisible")
+            rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            provided_encoding, _quality, n_faces = BiometricService.extract_face_features(rgb_img)
+        except ValidationError:
+            raise
         except Exception as e:
             raise ValidationError(f"Erreur décodage image: {e}")
-        
-        # Traiter l'image
-        provided_encoding = biometric_service.process_face_image(image_file)
-        
+
         if provided_encoding is None:
             db.session.add(login_log)
             db.session.commit()
@@ -280,14 +293,13 @@ def verify_face() -> Tuple[Dict, int]:
         matched = False
         
         for template in templates:
-            similarity = biometric_service.verify_face(
-                template.template_data,
-                provided_encoding
-            )
-            
+            known_enc = np.array(template.template_data)
+            dist = face_recognition.face_distance([known_enc], provided_encoding)[0]
+            similarity = float(max(0.0, 1.0 - dist))
+
             if similarity > best_similarity:
                 best_similarity = similarity
-                if similarity >= 0.85:  # Seuil minimum 0.85 pour visage
+                if dist < 0.55:  # seuil face_recognition (distance < 0.55 = match)
                     matched = True
                     template.date_derniere_utilisation = datetime.now()
         
@@ -601,10 +613,15 @@ def verify_voice() -> Tuple[Dict, int]:
             email = data['email'].lower()
             user = User.query.filter_by(email=email).first()
             identifier = f"email:{email}"
-        
+
+        # Priorité 3: user_id UUID direct (Door-System)
+        elif 'user_id' in data and data['user_id']:
+            user = User.query.get(data['user_id'])
+            identifier = f"user_id:{str(data['user_id'])[:8]}"
+
         else:
-            raise ValidationError("employee_id ou email requis")
-        
+            raise ValidationError("employee_id, email ou user_id requis")
+
         # Log de tentative
         login_log = LoginLog(
             email=user.email if user else data.get('email', ''),
@@ -652,14 +669,12 @@ def verify_voice() -> Tuple[Dict, int]:
         matched = False
         
         for template in templates:
-            similarity = biometric_service.verify_voice(
-                template.template_data,
-                provided_encoding
-            )
-            
+            stored = np.array(template.template_data, dtype=np.float32)
+            similarity = float(1.0 - cosine_distance(stored, provided_encoding))
+
             if similarity > best_similarity:
                 best_similarity = similarity
-                if similarity >= 0.85:  # Seuil minimum 0.85 pour voix
+                if similarity >= BiometricService.VOICE_THRESHOLD:
                     matched = True
                     template.date_derniere_utilisation = datetime.now()
         
