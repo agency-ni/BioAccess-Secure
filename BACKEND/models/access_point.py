@@ -19,7 +19,7 @@ class PosteTravail(db.Model):
     # Attributs (conformes au diagramme)
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     nom = db.Column(db.String(100), nullable=False)
-    adresse_ip = db.Column(db.String(45), unique=True, nullable=False)
+    adresse_ip = db.Column(db.String(45), unique=False, nullable=True)
     systeme = db.Column(db.String(50), default='Windows')
     statut = db.Column(db.Enum('actif', 'inactif', 'verrouille', name='statut_poste'), default='actif')
     

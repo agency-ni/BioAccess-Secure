@@ -30,6 +30,10 @@ import hashlib
 import platform
 import threading
 import subprocess
+import json
+import base64
+import logging
+import requests
 from pathlib import Path
 from datetime import datetime
 from enum import Enum, auto
@@ -37,6 +41,8 @@ from typing import Optional, Tuple
 
 import tkinter as tk
 from tkinter import ttk, messagebox
+
+logger = logging.getLogger("bioaccess.desktop")
 
 try:
     from enroll_handler import VoiceEnrollmentDialog
@@ -1291,6 +1297,11 @@ class BioAccessApp(tk.Tk):
         self._integrity_guard   = IntegrityGuard()
         self._permissions_ok    = False  # Permissions requises pour l'auth biométrique
         self._permissions_checked = False
+        self._device_token      = None   # JWT du device (si device_id existe)
+        self._session_monitor   = None   # WindowsSessionMonitor
+        self._backend_enrolled  = False  # True si utilisateur enrolle via admin backend
+        self._backend_user_id   = None   # UUID user backend (pas employee_id)
+        self._server_reachable  = False  # connexion backend confirmee au demarrage
 
         self.title(f"BioAccess Secure v{Config.VERSION}")
         self.configure(bg=C_BG)
@@ -1298,17 +1309,291 @@ class BioAccessApp(tk.Tk):
         sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry(f"1060x720+{(sw-1060)//2}+{(sh-720)//2}")
         self.resizable(True, True)
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self._screens = {}
         self._build_ui()
         self.show_screen("lock")
 
-        # Intégrité + surveillance admin lancées après affichage
+        # Initialiser device_token depuis device.id (appel asynchrone)
+        self.after(100, self._init_device_token)
+        # Verifier connexion backend et afficher notification
+        self.after(200, self._check_backend_connection)
+        # Integrite + surveillance admin lancees apres affichage
         self.after(400, self._run_integrity_check)
         # PRIORITAIRE : Vérification permissions périphériques biométriques AVANT l'auth
         self.after(300, self._run_permissions_check_mandatory)
+        # Surveiller les événements de session Windows (verrouillage / déverrouillage)
+        self.after(600, self._start_session_monitor)
         self._poll_admin()
+
+    def _on_close(self):
+        """Arrête proprement le session monitor avant de quitter."""
+        if self._session_monitor:
+            try:
+                self._session_monitor.stop()
+            except Exception:
+                pass
+        self.destroy()
+
+    def _start_session_monitor(self):
+        """Démarre WindowsSessionMonitor pour déclencher l'auth au déverrouillage."""
+        try:
+            from windows_integration import WindowsSessionMonitor, WindowsSessionPolling
+            monitor = WindowsSessionMonitor(
+                on_unlock_callback=self._on_session_unlock,
+                on_lock_callback=self._on_session_lock,
+            )
+            monitor.start()
+            self._session_monitor = monitor
+        except Exception as e:
+            logger.debug(f"_start_session_monitor: {e}")
+
+    def _on_session_lock(self):
+        """Appelé quand Windows se verrouille — réaffiche l'écran de verrou."""
+        logger.info("Session verrouillée — passage écran lock")
+        self.after(0, lambda: self.show_screen("lock"))
+
+    def _on_session_unlock(self):
+        """
+        Appelé quand Windows se déverrouille.
+        Si un device_token est disponible → déclenche l'auth biométrique automatique.
+        """
+        logger.info("Session déverrouillée — tentative auth biométrique auto")
+        def trigger():
+            if self._device_token:
+                # Récupérer le user_id depuis le cache ou le fichier device.id
+                uid = ""
+                try:
+                    device_file = SCRIPT_DIR / "device.id"
+                    if device_file.exists():
+                        data = json.loads(device_file.read_text(encoding='utf-8'))
+                        # employee_id est la cle auth desk (ex: 2421434JTKO), pas le UUID
+                    uid = data.get('employee_id', '').strip()   # cle auth desk
+                    if not uid:
+                        # Fallback: cache offline
+                        try:
+                            from offline_cache import OfflineCache
+                            device_data = json.loads((SCRIPT_DIR / "device.id").read_text(encoding='utf-8'))
+                            did = device_data.get('device_id', '')
+                            entry = OfflineCache().get_entry(did)
+                            uid = entry.get('user_id', '')
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                if uid:
+                    self.after(0, lambda u=uid: self._go_to_auth(u))
+                else:
+                    self.after(0, lambda: self.show_screen("lock"))
+            else:
+                self.after(0, lambda: self.show_screen("lock"))
+        threading.Thread(target=trigger, daemon=True).start()
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # DEVICE TOKEN — charger depuis device.id et s'authentifier
+    # ══════════════════════════════════════════════════════════════════════════
+    def _init_device_token(self):
+        """
+        Initialise le device token au démarrage :
+        1. Annonce la machine au backend (crée/met à jour PosteTravail) → récupère device_id
+        2. Sauvegarde device_id dans device.id si absent
+        3. Appelle device-login → stocke le JWT
+        4. Si le serveur est inaccessible → tente le mode offline (cache local)
+        """
+        def load():
+            try:
+                import uuid as _uuid
+                import platform as _platform
+
+                mac = ':'.join(
+                    ['{:02X}'.format(((_uuid.getnode() >> i) & 0xFF))
+                     for i in range(0, 48, 8)][::-1]
+                )
+                hostname = _platform.node()
+                device_file = SCRIPT_DIR / "device.id"
+                server_reachable = False
+
+                # ── Étape 1 : Announce ──────────────────────────────────────
+                try:
+                    ann = requests.post(
+                        f"{Config.API_BASE_URL}/api/v1/desktop/announce",
+                        json={
+                            'mac_address': mac,
+                            'hostname': hostname,
+                            'systeme': _platform.system(),
+                            'os_version': _platform.version()[:50],
+                        },
+                        timeout=5,
+                    )
+                    server_reachable = True
+                    if ann.ok:
+                        ann_data = ann.json()
+                        server_device_id = ann_data.get('device_id', '').strip()
+                        linked = ann_data.get('linked', False)
+
+                        # Sauvegarder device_id si absent du fichier local
+                        if server_device_id:
+                            existing = {}
+                            if device_file.exists():
+                                try:
+                                    existing = json.loads(device_file.read_text(encoding='utf-8'))
+                                except Exception:
+                                    pass
+                            # Toujours mettre a jour device_id et employee_id depuis announce
+                            emp_id_key = ann_data.get('employee_id') or ''   # cle auth desk (ex: 2421434JTKO)
+                            emp_uuid   = ann_data.get('employee_uuid') or ''
+                            if not existing.get('device_id') or emp_id_key:
+                                existing['device_id']   = server_device_id
+                                existing['mac_address'] = mac
+                                if emp_id_key:
+                                    existing['employee_id']   = emp_id_key
+                                    existing['employee_uuid'] = emp_uuid
+                                device_file.write_text(
+                                    json.dumps(existing, indent=2), encoding='utf-8'
+                                )
+                                logger.info(f"device_id/employee_id sauvegardes: {server_device_id} / {emp_id_key}")
+
+                        if not linked:
+                            logger.info("Machine non encore liée à un employé — en attente d'enrôlement")
+                            return
+                except Exception as ann_err:
+                    logger.debug(f"announce: {ann_err}")
+
+                # ── Étape 2 : Lire device.id ────────────────────────────────
+                if not device_file.exists():
+                    return
+
+                try:
+                    data = json.loads(device_file.read_text(encoding='utf-8'))
+                except Exception:
+                    return
+                device_id = data.get('device_id', '').strip()
+                if not device_id:
+                    return
+
+                # ── Étape 3 : device-login (si serveur joignable) ───────────
+                if server_reachable:
+                    r = requests.post(
+                        f"{Config.API_BASE_URL}/api/v1/auth/device-login",
+                        json={'device_id': device_id},
+                        timeout=5,
+                        headers={'Content-Type': 'application/json'},
+                    )
+                    if r.status_code == 200:
+                        resp = r.json()
+                        token = resp.get('access_token')
+                        if token:
+                            self._device_token     = token
+                            self._backend_enrolled = True
+                            self._backend_user_id  = resp.get('user_id', '')
+                            logger.info(f"Device token charge (device_id={device_id})")
+                            # Mettre à jour le cache offline + synchroniser les logs en attente
+                            try:
+                                from offline_cache import OfflineCache
+                                oc = OfflineCache()
+                                oc.save_successful_auth(device_id, resp)
+                                oc.sync_logs(Config.API_BASE_URL, token)
+                            except Exception:
+                                pass
+                            return
+                    else:
+                        try:
+                            err = r.json().get('message') or r.json().get('error') or f"HTTP {r.status_code}"
+                        except Exception:
+                            err = f"HTTP {r.status_code}"
+                        logger.warning(f"device-login échoué: {err}")
+
+                # ── Étape 4 : Fallback offline ──────────────────────────────
+                try:
+                    from offline_cache import OfflineCache
+                    cache = OfflineCache()
+                    if cache.has_valid_entry(device_id):
+                        self._device_token = "__offline__"
+                        logger.info("Mode offline activé — authentification depuis le cache local")
+                    else:
+                        logger.warning("Cache offline absent ou expiré")
+                except Exception as oe:
+                    logger.debug(f"offline_cache: {oe}")
+
+            except Exception as e:
+                logger.debug(f"_init_device_token: {e}")
+
+        threading.Thread(target=load, daemon=True).start()
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # CONNEXION BACKEND — notification au demarrage
+    # ══════════════════════════════════════════════════════════════════════════
+    def _check_backend_connection(self):
+        """
+        Verifie la connexion au backend au demarrage et affiche une notification.
+        Lance en arriere-plan pour ne pas bloquer l'UI.
+        """
+        def probe():
+            try:
+                r = requests.get(
+                    f"{Config.API_BASE_URL}/health",
+                    timeout=4,
+                )
+                ok = r.status_code == 200
+            except Exception:
+                ok = False
+
+            self._server_reachable = ok
+
+            def show():
+                if ok:
+                    self._show_connection_badge('SERVEUR CONNECTE', '#16a34a')
+                else:
+                    self._show_connection_badge('SERVEUR HORS LIGNE — mode local', '#b91c1c')
+            self.after(0, show)
+
+        threading.Thread(target=probe, daemon=True).start()
+
+    def _show_connection_badge(self, text: str, color: str):
+        """Affiche une petite carte de statut de connexion (disparait apres 6s)."""
+        try:
+            badge = tk.Frame(self, bg=color, padx=10, pady=6)
+            tk.Label(badge, text=f'[ {text} ]', bg=color, fg='white',
+                     font=('Courier', 9, 'bold')).pack()
+            badge.place(relx=1.0, rely=0.0, anchor='ne', x=-10, y=10)
+            self.after(6000, badge.destroy)
+        except Exception:
+            pass
+
+    def _verify_employee_id_api(self, employee_id: str) -> dict:
+        """
+        Verifie l'employee_id contre le backend via POST /api/v1/auth/device-login.
+        Retourne {'ok': bool, 'user_id': str, 'user_name': str, 'token': str,
+                  'device_id': str|None, 'error': str}
+        """
+        try:
+            r = requests.post(
+                f"{Config.API_BASE_URL}/api/v1/auth/device-login",
+                json={'employee_id': employee_id},
+                timeout=5,
+                headers={'Content-Type': 'application/json'},
+            )
+            if r.status_code == 200:
+                data = r.json()
+                return {
+                    'ok':        True,
+                    'user_id':   data.get('user_id', ''),
+                    'user_name': data.get('user_name', ''),
+                    'token':     data.get('access_token', ''),
+                    'device_id': data.get('device_id'),
+                    'error':     '',
+                }
+            else:
+                try:
+                    msg = r.json().get('message') or r.json().get('error') or f'HTTP {r.status_code}'
+                except Exception:
+                    msg = f'HTTP {r.status_code}'
+                return {'ok': False, 'error': msg, 'user_id': '', 'user_name': '', 'token': '', 'device_id': None}
+        except requests.exceptions.ConnectionError:
+            return {'ok': False, 'error': 'Serveur inaccessible', 'user_id': '', 'user_name': '', 'token': '', 'device_id': None}
+        except Exception as e:
+            return {'ok': False, 'error': str(e), 'user_id': '', 'user_name': '', 'token': '', 'device_id': None}
 
     # ══════════════════════════════════════════════════════════════════════════
     # VERROU SYSTÈME
@@ -1848,18 +2133,29 @@ class BioAccessApp(tk.Tk):
         if not REQUESTS_OK:
             return True, "Mode local (requests non disponible)"
         try:
+            # Utiliser le device_token si disponible (sinon pas de header)
             headers = {}
-            if Config.API_TOKEN:
+            token = self._device_token
+            if token and token != "__offline__":
+                headers["Authorization"] = f"Bearer {token}"
+            elif Config.API_TOKEN:
                 headers["Authorization"] = f"Bearer {Config.API_TOKEN}"
+
             r = requests.get(
                 f"{Config.API_BASE_URL}/api/v1/alerts/access/check/{uid}",
                 headers=headers, timeout=3)
+
             if r.status_code == 200:
                 d = r.json()
-                return d.get("allow_access", True), d.get("reason", "")
+                # L'endpoint retourne "allowed" (nouveau) ou "allow_access" (ancien)
+                allowed = d.get("allowed", d.get("allow_access", True))
+                return allowed, d.get("reason", "")
             elif r.status_code == 404:
                 return True, "Non géré par l'administration"
-            return False, f"Erreur API ({r.status_code})"
+            elif r.status_code in (401, 403):
+                # Pas de token valide → on autorise (l'auth biométrique est le vrai garde-fou)
+                return True, "Vérification admin non disponible"
+            return True, f"Erreur API ({r.status_code}) — accès non bloqué"
         except requests.exceptions.ConnectionError:
             return True, "Backend hors ligne — vérification locale"
         except Exception as e:
@@ -1991,21 +2287,20 @@ class BioAccessApp(tk.Tk):
             self.lock_uid_status.config(
                 text=f"✓  User_ID «{uid}» reconnu localement", fg=C_SUCCESS)
         else:
-            self.lock_uid_status.config(
-                text="✗  User_ID inconnu — enregistrez-vous d'abord", fg=C_ERROR)
+            # Ne pas bloquer les utilisateurs enrolles via le backend (verification faite a la soumission)
+            if len(uid) >= 6:
+                self.lock_uid_status.config(
+                    text="→  Appuyez sur Valider pour verifier", fg=C_MUTED)
+            else:
+                self.lock_uid_status.config(text="", fg=C_MUTED)
 
     def _on_lock_submit(self):
         uid = self.lock_uid_var.get().strip()
         if not uid:
             self.lock_admin_msg.config(text="⚠ Entrez votre User_ID.", fg=C_WARNING)
             return
-        if uid not in load_users():
-            self.lock_admin_msg.config(
-                text="✗ User_ID inconnu. Contactez votre administrateur.",
-                fg=C_ERROR)
-            return
 
-        # ── VÉRIFICATION PERMISSIONS BIOMÉTRIQUES AVANT D'AUTORISER L'ACCÈS ──
+        # ── VÉRIFICATION PERMISSIONS BIOMÉTRIQUES AVANT D'AUTORISER L'ACCÈS ──────
         if PERM_MGR_OK and not self._permissions_ok:
             self.lock_admin_msg.config(
                 text="✗ Permissions biométriques manquantes — impossible de continuer.",
@@ -2018,18 +2313,55 @@ class BioAccessApp(tk.Tk):
             ))
             return
 
-        # ── ACTIVATION DU VERROU au 1er User_ID soumis ──────────────────────
+        # ── ACTIVATION DU VERROU au 1er User_ID soumis ────────────────────
         if not self._uid_submitted:
             self._uid_submitted = True
             self._apply_lock()
 
         self.lock_admin_msg.config(
-            text="⏳ Vérification auprès de l'administrateur...", fg=C_WARNING)
+            text="⏳ Vérification de l'identifiant...", fg=C_WARNING)
         self.lock_submit_btn.config(state="disabled")
         self.status_var.set(f"Vérification accès pour {uid}...")
 
         def check():
-            allowed, reason = self._check_admin_access(uid)
+            # 1. Vérifier dans la base locale (ancienne méthode)
+            is_local_user = uid in load_users()
+
+            # 2. Si absent localement → vérifier via le backend
+            backend_result = None
+            if not is_local_user and REQUESTS_OK:
+                backend_result = self._verify_employee_id_api(uid)
+                if backend_result['ok']:
+                    self._backend_enrolled = True
+                    self._backend_user_id  = backend_result['user_id']
+                    if backend_result['token']:
+                        self._device_token = backend_result['token']
+                    logger.info(f"Utilisateur backend confirmé: {uid} -> {self._backend_user_id}")
+
+            user_known = is_local_user or (backend_result is not None and backend_result['ok'])
+
+            if not user_known:
+                err_msg = "✗ ID inconnu. Vérifiez votre clé d'authentification ou contactez l'administrateur."
+                if backend_result and backend_result.get('error') == 'Serveur inaccessible':
+                    err_msg = "✗ Serveur hors ligne et ID non reconnu localement."
+                def show_err(m=err_msg):
+                    self.lock_submit_btn.config(state="normal")
+                    self.lock_admin_msg.config(text=m, fg=C_ERROR)
+                    if self._uid_submitted and not self._admin_granted:
+                        self._uid_submitted = False
+                        self._locked = False
+                        self.overrideredirect(False)
+                        self.attributes("-fullscreen", False)
+                        self.attributes("-topmost", False)
+                        self.resizable(True, True)
+                        self.protocol("WM_DELETE_WINDOW", self._on_close)
+                self.after(0, show_err)
+                return
+
+            # 3. Vérifier accès admin (alertes de blocage actives)
+            check_id = self._backend_user_id if self._backend_enrolled else uid
+            allowed, reason = self._check_admin_access(check_id)
+
             def update():
                 self.lock_submit_btn.config(state="normal")
                 if allowed:
@@ -2418,8 +2750,11 @@ class BioAccessApp(tk.Tk):
 
     def _start_auth(self):
         uid = self.auth_userid_var.get().strip()
-        if not uid or uid not in load_users():
+        if not uid:
             self._auth_fail("User_ID introuvable"); return
+        # Pour les utilisateurs backend-enrolled, on ne vérifie pas le fichier local
+        if not self._backend_enrolled and uid not in load_users():
+            self._auth_fail("User_ID introuvable localement — rechargez l'application"); return
         self._stop_event.clear()
         self.auth_btn.config(state="disabled")
         self.stop_auth_btn.config(state="normal")
@@ -2478,6 +2813,12 @@ class BioAccessApp(tk.Tk):
     def _face_thread(self, uid: str):
         if not OPENCV_OK:
             self.after(0, lambda: self._auth_fail("OpenCV non installé")); return
+
+        # Utilisateurs enrôlés via l'admin → auth biométrique serveur
+        if self._backend_enrolled:
+            self._face_thread_backend(uid)
+            return
+
         face_file = FACES_DIR / f"{uid}.yml"
         if not face_file.exists() or not load_users().get(uid, {}).get("face"):
             self.after(0, lambda: self._auth_fail("Aucun profil facial")); return
@@ -2518,6 +2859,85 @@ class BioAccessApp(tk.Tk):
                     self.after(0, lambda: self._auth_success(uid, "face")); return
             att += 1; time.sleep(0.1)
         cap.release()
+        if not self._stop_event.is_set():
+            self.after(0, lambda: self._auth_fail("Visage non reconnu"))
+
+    def _face_thread_backend(self, uid: str):
+        """Auth faciale via backend API pour utilisateurs enrolles par l'admin."""
+        if not OPENCV_OK:
+            self.after(0, lambda: self._auth_fail("OpenCV non installe")); return
+
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            self.after(0, lambda: self._auth_fail("Camera inaccessible")); return
+
+        try:
+            cascade = cv2.CascadeClassifier(
+                cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+            max_att = 80
+            att = 0
+
+            while not self._stop_event.is_set() and att < max_att:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                faces = cascade.detectMultiScale(gray, 1.1, 5, minSize=(80, 80))
+                if len(faces) == 0:
+                    att += 1; time.sleep(0.1); continue
+
+                try:
+                    _, buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    img_b64 = base64.b64encode(buf.tobytes()).decode('ascii')
+                except Exception as enc_err:
+                    logger.debug(f"encode error: {enc_err}")
+                    att += 1; time.sleep(0.1); continue
+
+                try:
+                    headers = {'Content-Type': 'application/json'}
+                    token = self._device_token
+                    if token and token != "__offline__":
+                        headers['Authorization'] = f"Bearer {token}"
+
+                    r = requests.post(
+                        f"{Config.API_BASE_URL}/api/v1/auth/biometric/authenticate",
+                        json={'image_base64': img_b64, 'auth_type': 'desktop'},
+                        headers=headers,
+                        timeout=10,
+                    )
+
+                    if r.status_code == 200:
+                        data = r.json()
+                        if data.get('success'):
+                            recognized_id = data.get('user_id', '')
+                            if recognized_id == self._backend_user_id:
+                                cap.release()
+                                self.after(0, lambda: self._auth_success(uid, "face"))
+                                return
+                            else:
+                                logger.warning(
+                                    f"Face reconnue mauvais user: {recognized_id} != {self._backend_user_id}")
+                                att += 3
+                    elif r.status_code == 401:
+                        cap.release()
+                        self.after(0, lambda: self._auth_fail(
+                            "Profil biometrique non enrole — contactez l'administrateur"))
+                        return
+
+                except requests.exceptions.ConnectionError:
+                    cap.release()
+                    self.after(0, lambda: self._auth_fail(
+                        "Serveur hors ligne — auth backend impossible"))
+                    return
+                except Exception as req_err:
+                    logger.debug(f"biometric API error: {req_err}")
+
+                att += 1; time.sleep(0.1)
+        finally:
+            try: cap.release()
+            except Exception: pass
+
         if not self._stop_event.is_set():
             self.after(0, lambda: self._auth_fail("Visage non reconnu"))
 

@@ -69,12 +69,20 @@ class VoiceEnrollmentDialog(tk.Toplevel):
                  font=('Inter', 12, 'bold')).pack(anchor='w')
 
         self.phrase_box = tk.Frame(self, bg='#fde68a', bd=1, relief='solid')
-        self.phrase_box.pack(fill='x', padx=16, pady=(0, 12))
-        self.phrase_label = tk.Label(self.phrase_box, text='', bg='#fde68a', fg='#111827',
+        self.phrase_box.pack(fill='x', padx=16, pady=(0, 4))
+        # Choisir UNE seule phrase aléatoire à l'ouverture
+        self._chosen_phrase = random.choice(VOICE_PHRASES)
+        self.phrase_label = tk.Label(self.phrase_box, text=f'« {self._chosen_phrase} »',
+                                     bg='#fde68a', fg='#111827',
                                      font=('Inter', 13, 'bold'), wraplength=480, justify='left')
         self.phrase_label.pack(padx=12, pady=12)
 
-        self.record_btn = tk.Button(self, text='Enregistrer', command=self._on_record,
+        # Bouton pour changer de phrase sans recommencer
+        tk.Button(self, text='↻ Nouvelle phrase', command=self._new_phrase,
+                  bg='#f8fafc', fg='#4b5563', font=('Inter', 9),
+                  bd=1, relief='solid', cursor='hand2').pack(pady=(0, 8))
+
+        self.record_btn = tk.Button(self, text='⏺ Enregistrer', command=self._on_record,
                                     bg='#111827', fg='white', activebackground='#374151',
                                     font=('Inter', 11, 'bold'), bd=0, padx=16, pady=10, cursor='hand2')
         self.record_btn.pack(pady=(0, 12))
@@ -88,6 +96,11 @@ class VoiceEnrollmentDialog(tk.Toplevel):
         self.status_label = tk.Label(self, text='Cliquez sur Enregistrer pour commencer.',
                                      bg='#f8fafc', fg='#4b5563', font=('Inter', 10))
         self.status_label.pack(anchor='w', padx=16)
+
+    def _new_phrase(self):
+        """Remplace la phrase par une autre aléatoire sans relancer l'enregistrement."""
+        self._chosen_phrase = random.choice([p for p in VOICE_PHRASES if p != self._chosen_phrase] or VOICE_PHRASES)
+        self.phrase_label.config(text=f'« {self._chosen_phrase} »')
 
     def _update_transcript(self, value: str):
         self.transcript = value or ''
@@ -155,7 +168,7 @@ class VoiceEnrollmentDialog(tk.Toplevel):
             self._finish(False, f'Erreur audio : {exc}')
             return
 
-        phrase = self.phrase_label.cget('text').strip('«» ').strip()
+        phrase = getattr(self, '_chosen_phrase', self.phrase_label.cget('text').strip('«» ').strip())
         similarity = _similarity(self.transcript, phrase)
         if similarity >= 0.9:
             self.after(0, lambda: self._set_status('Phrase reconnue avec succès.', False))

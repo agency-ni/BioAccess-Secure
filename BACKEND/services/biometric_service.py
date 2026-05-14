@@ -138,6 +138,37 @@ class BiometricService:
     # ──────────────────────────────────────────────────────────────
 
     @staticmethod
+    def _decode_audio(audio_bytes: bytes):
+        """
+        Tente de décoder audio_bytes en signal PCM via librosa/soundfile,
+        puis via pydub si le format n'est pas supporté directement (ex. WebM).
+        Retourne (y: np.ndarray, sr: int).
+        """
+        import librosa
+
+        try:
+            y, sr = librosa.load(io.BytesIO(audio_bytes), sr=16000, mono=True)
+            return y, sr
+        except Exception:
+            pass
+
+        # Fallback pydub — gère WebM/OGG/MP3 sans ffmpeg système via pydub
+        try:
+            from pydub import AudioSegment
+            seg = AudioSegment.from_file(io.BytesIO(audio_bytes))
+            seg = seg.set_frame_rate(16000).set_channels(1).set_sample_width(2)
+            pcm_bytes = seg.raw_data
+            y = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+            return y, 16000
+        except Exception:
+            pass
+
+        raise ValueError(
+            "Format audio non reconnu. Utilisez WAV, OGG ou MP3. "
+            "Pour WebM, installez pydub (pip install pydub)."
+        )
+
+    @staticmethod
     def extract_voice_features(audio_file, phrase_text=None):
         """
         Extrait un embedding vocal MFCC 80-dim normalisé.
@@ -145,7 +176,7 @@ class BiometricService:
         Parameters
         ----------
         audio_file : BytesIO | bytes | file-like
-            Audio brut (webm / ogg / wav / mp3 acceptés par librosa)
+            Audio brut (wav / ogg / mp3 ; webm si pydub installé)
 
         Returns
         -------
@@ -162,8 +193,7 @@ class BiometricService:
             else:
                 audio_bytes = bytes(audio_file)
 
-            # Décodage — librosa accepte webm/ogg/wav/mp3 via soundfile/ffmpeg
-            y, sr = librosa.load(io.BytesIO(audio_bytes), sr=16000, mono=True)
+            y, sr = BiometricService._decode_audio(audio_bytes)
 
             if len(y) < sr * 0.3:   # < 300 ms → trop court
                 logger.warning("Audio trop court pour MFCC (< 300 ms)")
@@ -231,9 +261,8 @@ class BiometricService:
         Retourne le template ORM (déjà commité).
         """
         try:
-            import librosa
             audio_bytes = bytes(audio_data)
-            y, sr = librosa.load(io.BytesIO(audio_bytes), sr=16000, mono=True)
+            y, sr = BiometricService._decode_audio(audio_bytes)
             quality_score = BiometricService.compute_voice_quality(y, sr)
 
             embedding = BiometricService.extract_voice_features(

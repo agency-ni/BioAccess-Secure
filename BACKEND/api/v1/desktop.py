@@ -50,7 +50,7 @@ def _get_or_create_poste(mac: str, ip: str, hostname: str,
     if not poste:
         poste = PosteTravail(
             nom=hostname or 'Desktop',
-            adresse_ip=ip,
+            adresse_ip=ip or None,
             systeme=systeme or 'Windows',
             mac_address=mac,
             os_version=os_version,
@@ -59,7 +59,7 @@ def _get_or_create_poste(mac: str, ip: str, hostname: str,
         )
         db.session.add(poste)
     else:
-        poste.adresse_ip = ip
+        poste.adresse_ip = ip or poste.adresse_ip
         poste.last_seen = datetime.utcnow()
         poste.statut = 'actif'
         if os_version:
@@ -91,12 +91,16 @@ def announce():
 
         poste = _get_or_create_poste(mac, ip, hostname, systeme, os_version)
 
+        # Récupérer la clé desk de l'employé si lié
+        emp = db.session.get(User, poste.employe_id) if poste.employe_id else None
         return jsonify({
-            'success': True,
-            'machine_id': poste.id,
-            'employee_id': poste.employe_id,
-            'device_id': poste.id,
-            'linked': poste.employe_id is not None,
+            'success':       True,
+            'machine_id':    poste.id,
+            'device_id':     poste.id,
+            'employee_uuid': poste.employe_id,           # UUID interne
+            'employee_id':   emp.employee_id if emp else None,  # clé auth desktop (ex: 2421434JTKO)
+            'employee_name': f"{emp.prenom} {emp.nom}" if emp else None,
+            'linked':        poste.employe_id is not None,
         })
     except Exception as e:
         db.session.rollback()

@@ -6,6 +6,8 @@ POST   /api/v1/auth/logout
 POST   /api/v1/auth/change-password
 POST   /api/v1/auth/forgot-password
 POST   /api/v1/auth/reset-password
+POST   /api/v1/auth/device-login                    (client desktop uniquement)
+POST   /api/v1/auth/biometric                       (client desktop + web)
 GET    /api/v1/auth/me
 """
 
@@ -24,6 +26,7 @@ from api.middlewares.auth_middleware import token_required, optional_token
 from api.middlewares.rate_limiter import login_limiter, sensitive_limiter
 
 from models.user import User, UserSession, LoginLog
+from models.access_point import PosteTravail
 from schemas.auth import (
     LoginRequest, ChangePasswordRequest,
     ForgotPasswordRequest, ResetPasswordRequest
@@ -107,6 +110,90 @@ def login():
         'expires_in': 3600,
         'user': user.getInfos()
     }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POST /api/v1/auth/device-login   (client desktop — authentification par device)
+# ─────────────────────────────────────────────────────────────────────────────
+@auth_bp.route('/device-login', methods=['POST'])
+def device_login():
+    """
+    Authentifie un client desktop. Accepte:
+      - device_id   (UUID PosteTravail -- backward compat)
+      - employee_id (cle affichee dans l'admin, ex: 2421434JTKO)
+    Retourne un JWT valide 24h.
+    """
+    data = request.get_json(silent=True) or {}
+    device_id   = data.get('device_id',   '').strip()
+    employee_id = data.get('employee_id', '').strip()
+
+    if not device_id and not employee_id:
+        raise ValidationError("device_id ou employee_id requis")
+
+    try:
+        user  = None
+        poste = None
+
+        # Resolution par device_id (UUID PosteTravail)
+        if device_id:
+            poste = db.session.get(PosteTravail, device_id)
+            if poste:
+                if not poste.employe_id:
+                    log_audit('device_login_failed', None, request.remote_addr,
+                             {'device_id': device_id, 'reason': 'device_not_linked'})
+                    raise AuthenticationError(
+                        "Appareil non encore associe a un employe — enrolement requis.")
+                user = db.session.get(User, poste.employe_id)
+                if not user:
+                    log_audit('device_login_failed', poste.employe_id, request.remote_addr,
+                             {'device_id': device_id, 'reason': 'user_not_found'})
+                    raise AuthenticationError("Utilisateur introuvable. Contactez l'administrateur.")
+
+        # Resolution par employee_id (cle auth desktop affichee dans l'admin)
+        if not user and employee_id:
+            user = User.query.filter_by(employee_id=employee_id).first()
+            if user:
+                poste = PosteTravail.query.filter_by(employe_id=user.id).first()
+                logger.info(f"device_login par employee_id={employee_id} -> user={user.id}")
+
+        if not user:
+            log_audit('device_login_failed', None, request.remote_addr,
+                     {'device_id': device_id, 'employee_id': employee_id, 'reason': 'not_found'})
+            raise AuthenticationError(
+                "ID non reconnu. Verifiez votre cle d'authentification ou contactez l'administrateur.")
+
+        # Auto-activer si inactif (apres enrolement via admin)
+        if not user.is_active:
+            user.is_active = True
+            logger.info(f"Compte {user.id} auto-active via device-login")
+
+        access_token = SecurityManager.generate_jwt_token(
+            user.id, user.role, timedelta(hours=24)
+        )
+        user.last_login_at = datetime.utcnow()
+        user.last_login_ip = request.remote_addr
+        db.session.commit()
+
+        log_audit('device_login_success', user.id, request.remote_addr,
+                 {'device_id': device_id or (poste.id if poste else None),
+                  'employee_id': user.employee_id})
+
+        return {
+            'access_token':  access_token,
+            'token_type':    'bearer',
+            'expires_in':    86400,
+            'user_id':       user.id,
+            'user_email':    user.email,
+            'user_name':     user.full_name,
+            'employee_id':   user.employee_id,
+            'device_id':     poste.id if poste else None,
+            'message':       'Connexion appareil reussie',
+        }, 200
+
+    except AuthenticationError:
+        raise
+    except Exception as e:
+        logger.error(f"device_login error: {e}", exc_info=True)
+        raise ValidationError(f"Erreur d'authentification: {e}")
 
 @auth_bp.route('/refresh', methods=['POST'])
 def refresh_token():
@@ -712,3 +799,78 @@ def voice_challenge():
             'phrase': text,
             'instruction': 'Lisez cette phrase à voix haute et clairement'
         }), 200
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POST /api/v1/auth/device-uninstall
+# ─────────────────────────────────────────────────────────────────────────────
+@auth_bp.route('/device-uninstall', methods=['POST'])
+def device_uninstall():
+    """
+    Notifie le backend lors de la désinstallation du client desktop.
+    Requiert une authentification par mot de passe.
+    Body: {device_id, password, reason?}
+    """
+    from models.log import Alerte
+
+    data = request.get_json(silent=True) or {}
+    device_id = data.get('device_id', '').strip()
+    password  = data.get('password', '').strip()
+    reason    = data.get('reason', 'Désinstallation manuelle')
+
+    if not device_id:
+        raise ValidationError("device_id requis")
+    if not password:
+        raise ValidationError("Authentification requise pour désinstaller (mot de passe)")
+
+    try:
+        poste = db.session.get(PosteTravail, device_id)
+        if not poste or not poste.employe_id:
+            raise AuthenticationError("Appareil non reconnu")
+
+        user = db.session.get(User, poste.employe_id)
+        if not user:
+            raise AuthenticationError("Utilisateur introuvable")
+
+        if not user.check_password(password):
+            log_audit('uninstall_auth_failed', user.id, request.remote_addr,
+                     {'device_id': device_id})
+            raise AuthenticationError("Mot de passe incorrect")
+
+        # Créer l'alerte d'audit
+        alerte = Alerte(
+            type='securite',
+            gravite='haute',
+            message=f"Désinstallation client desktop — {user.prenom} {user.nom} ({user.email})",
+            titre='Désinstallation détectée',
+            description=(
+                f"L'employé {user.prenom} {user.nom} a désinstallé le client desktop.\n"
+                f"IP: {request.remote_addr}\n"
+                f"Poste: {poste.nom}\n"
+                f"Raison: {reason}"
+            ),
+            utilisateur_id=user.id,
+            statut='Non traitée',
+            priorite='Haute',
+            resource=f"poste-{poste.id[:8]}",
+        )
+        db.session.add(alerte)
+
+        # Désactiver le poste (soft delete)
+        poste.statut = 'inactif'
+        db.session.commit()
+
+        log_audit('device_uninstall', user.id, request.remote_addr,
+                 {'device_id': device_id, 'reason': reason})
+
+        return jsonify({
+            'success': True,
+            'message': "Désinstallation enregistrée. L'administrateur a été notifié."
+        }), 200
+
+    except (AuthenticationError, ValidationError):
+        raise
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"device_uninstall error: {e}", exc_info=True)
+        raise ValidationError(f"Erreur: {e}")
