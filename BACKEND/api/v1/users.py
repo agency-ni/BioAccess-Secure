@@ -222,7 +222,7 @@ def get_user(user_id):
                 status_code=403
             )
         
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return APIResponse.error(
                 "Utilisateur non trouvé",
@@ -263,7 +263,7 @@ def update_user(user_id):
                 status_code=403
             )
         
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return APIResponse.error(
                 "Utilisateur non trouvé",
@@ -307,7 +307,7 @@ def delete_user(user_id):
     """
     try:
         # Empêcher de supprimer super_admin
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return APIResponse.error(
                 "Utilisateur non trouvé",
@@ -360,7 +360,7 @@ def send_employee_id_email(user_id):
     }
     """
     try:
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return APIResponse.error(
                 "Utilisateur non trouvé",
@@ -421,7 +421,7 @@ def update_user_role(user_id):
     Response: { status, code, timestamp, message, data: {user...} }
     """
     try:
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return APIResponse.error(
                 "Utilisateur non trouvé",
@@ -466,7 +466,7 @@ def activate_user(user_id):
     POST /api/v1/users/<user_id>/activate
     """
     try:
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return APIResponse.error(
                 "Utilisateur non trouvé",
@@ -500,7 +500,7 @@ def deactivate_user(user_id):
     POST /api/v1/users/<user_id>/deactivate
     """
     try:
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return APIResponse.error(
                 "Utilisateur non trouvé",

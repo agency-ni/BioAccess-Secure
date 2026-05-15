@@ -14,6 +14,7 @@ from core.logger import log_audit
 from api.middlewares.auth_middleware import token_required, optional_token
 from services.biometric_enrollment_service import BiometricEnrollmentService
 from services.biometric_authentication_service import BiometricAuthenticationService
+from core.database import db
 
 logger = logging.getLogger(__name__)
 
@@ -283,111 +284,11 @@ def delete_template(template_id):
 
 
 # ============================================================
-# AUTHENTIFICATION FACIALE
-# ============================================================
-
-@enrollment_bp.route('/authenticate', methods=['POST'])
-def authenticate():
-    """
-    Authentifie un utilisateur par visage
-    
-    POST /api/v1/auth/biometric/authenticate
-    Body:
-        {
-            "email": "user@example.com",
-            "image_base64": "data:image/jpeg;base64,...",
-            "source": "admin|desktop"  // optionnel
-        }
-    
-    Response:
-        {
-            "success": true,
-            "token": "jwt_token",
-            "user": {
-                "id": "uuid",
-                "email": "user@example.com",
-                "first_name": "John",
-                "last_name": "Doe",
-                "role": "admin"
-            },
-            "similarity_score": 0.95,
-            "message": "Authentification réussie"
-        }
-    """
-    try:
-        data = request.get_json()
-        
-        if not data or 'email' not in data or 'image_base64' not in data:
-            return jsonify({
-                'success': False,
-                'error': 'email et image_base64 requises'
-            }), 400
-        
-        email = data['email'].lower()
-        image_base64 = data['image_base64']
-        source = data.get('source', 'unknown')
-        is_admin = source == 'admin'
-        
-        # Gérer data URI
-        if image_base64.startswith('data:image'):
-            image_base64 = image_base64.split(',')[1]
-        
-        # Obtenir IP client
-        client_ip = request.remote_addr
-        client_user_agent = request.headers.get('User-Agent')
-        
-        # Authentifier
-        result = auth_service.authenticate_by_face(
-            email=email,
-            image_base64=image_base64,
-            client_ip=client_ip,
-            client_user_agent=client_user_agent,
-            is_admin=is_admin
-        )
-        
-        if result.success:
-            from models.user import User
-            user = User.query.get(result.user_id)
-            
-            log_audit(
-                user_id=result.user_id,
-                action='AUTHENTICATION',
-                resource='user_session',
-                details={'method': 'FACE_BIOMETRIC', 'source': source},
-                status='SUCCESS'
-            )
-            
-            return jsonify({
-                'success': True,
-                'token': result.token,
-                'user': {
-                    'id': user.id,
-                    'email': user.email,
-                    'prenom': user.prenom,
-                    'nom': user.nom,
-                    'role': user.role
-                },
-                'similarity_score': round(result.similarity_score, 4),
-                'message': result.message
-            }), 200
-        else:
-            return jsonify({
-                'success': False,
-                'error': result.error,
-                'similarity_score': result.similarity_score
-            }), 401
-    
-    except Exception as e:
-        logger.error(f"Erreur authentification: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': 'Erreur serveur'
-        }), 500
-
-
-# ============================================================
 # LOGS & STATISTIQUES ADMIN
 # ============================================================
+# NOTE: POST /authenticate (biométrique) est géré par auth_bp.biometric_authenticate
+# dans api/v1/auth.py, url_prefix=/auth → URL finale /api/v1/auth/biometric/authenticate.
+# Doublon supprimé ici pour éviter un conflit de routing Flask/Werkzeug.
 
 @enrollment_bp.route('/admin/logs', methods=['GET'])
 @token_required
@@ -412,7 +313,7 @@ def get_admin_logs():
     try:
         # Vérifier permissions admin
         from models.user import User
-        user = User.query.get(g.user_id)
+        user = db.session.get(User, g.user_id)
         
         if user.role != 'admin':
             return jsonify({
@@ -468,7 +369,7 @@ def get_admin_stats():
     try:
         # Vérifier permissions admin
         from models.user import User
-        user = User.query.get(g.user_id)
+        user = db.session.get(User, g.user_id)
         
         if user.role != 'admin':
             return jsonify({

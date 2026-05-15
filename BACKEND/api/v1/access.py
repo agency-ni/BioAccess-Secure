@@ -40,7 +40,7 @@ def get_user_permissions(user_id):
                 status_code=403
             )
         
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return APIResponse.error(
                 "Utilisateur non trouvé",
@@ -96,7 +96,7 @@ def check_access():
                 status_code=400
             )
         
-        user = User.query.get(g.user_id)
+        user = db.session.get(User, g.user_id)
         if not user or not user.is_active:
             return APIResponse.success(
                 {'access_allowed': False, 'reason': 'Utilisateur inactif'},
@@ -105,7 +105,7 @@ def check_access():
         
         # Vérifier selon le type de ressource
         if resource == 'door':
-            door = Porte.query.get(resource_id)
+            door = db.session.get(Porte, resource_id)
             if not door:
                 return APIResponse.error(
                     "Porte non trouvée",
@@ -120,7 +120,7 @@ def check_access():
             )
         
         elif resource == 'workstation':
-            workstation = PosteTravail.query.get(resource_id)
+            workstation = db.session.get(PosteTravail, resource_id)
             if not workstation:
                 return APIResponse.error(
                     "Poste de travail non trouvé",

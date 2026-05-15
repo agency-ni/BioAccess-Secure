@@ -21,6 +21,69 @@ logger = logging.getLogger(__name__)
 logs_bp = Blueprint('logs', __name__)
 
 
+@logs_bp.route('', methods=['POST'])
+@token_required
+def create_log():
+    """
+    Créer un log d'accès (depuis les clients desktop ou door).
+
+    POST /api/v1/logs
+    Body: {
+        type_acces: 'poste'|'auth'|'porte'|'config',
+        statut:     'succes'|'echec',
+        raison_echec?: str,
+        resource?:  str,
+        details?:   {}
+    }
+    """
+    from models.log import LogAcces
+    from core.security import SecurityManager
+    try:
+        data = request.get_json() or {}
+        type_acces = data.get('type_acces', 'auth')
+        if type_acces not in ('poste', 'porte', 'auth', 'config'):
+            type_acces = 'auth'
+        statut = data.get('statut', data.get('success'))
+        if isinstance(statut, bool):
+            statut = 'succes' if statut else 'echec'
+        if statut not in ('succes', 'echec'):
+            statut = 'succes' if data.get('success') else 'echec'
+
+        log = LogAcces(
+            type_acces=type_acces,
+            statut=statut,
+            raison_echec=data.get('raison_echec') or data.get('reason'),
+            adresse_ip=request.remote_addr or '127.0.0.1',
+            utilisateur_id=g.user_id if hasattr(g, 'user_id') else None,
+            resource=data.get('resource') or data.get('hostname'),
+            source_type='DESKTOP',
+            details=data.get('details', {
+                'method': data.get('method'),
+                'hostname': data.get('hostname'),
+                'timestamp': data.get('timestamp'),
+            }),
+            user_agent=request.headers.get('User-Agent', 'desktop'),
+        )
+        log_data = {
+            'id': log.id,
+            'date_heure': str(log.date_heure),
+            'type_acces': log.type_acces,
+            'statut': log.statut,
+            'adresse_ip': log.adresse_ip,
+            'utilisateur_id': log.utilisateur_id,
+        }
+        log.hash_actuel = SecurityManager.hash_log_entry(log_data)
+        dernier = LogAcces.query.order_by(LogAcces.date_heure.desc()).first()
+        if dernier:
+            log.hash_precedent = dernier.hash_actuel
+        db.session.add(log)
+        db.session.commit()
+        return APIResponse.success({'id': log.id}, "Log enregistré", status_code=201)
+    except Exception as e:
+        logger.error(f"Erreur création log: {e}")
+        return APIResponse.error("Erreur création log", status_code=500)
+
+
 @logs_bp.route('', methods=['GET'])
 @admin_required
 def list_logs():
@@ -88,7 +151,7 @@ def get_log(log_id):
     Response: { status, code, timestamp, message, data: {log...} }
     """
     try:
-        log = LogAcces.query.get(log_id)
+        log = db.session.get(LogAcces, log_id)
         if not log:
             return APIResponse.error(
                 "Log non trouvé",

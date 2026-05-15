@@ -325,7 +325,7 @@ def reset_password():
     if not payload:
         raise AuthenticationError("Token invalide ou expiré")
     
-    user = User.query.get(payload['user_id'])
+    user = db.session.get(User, payload['user_id'])
     if not user:
         raise NotFoundError("Utilisateur")
     
@@ -426,54 +426,64 @@ def my_actions():
 
 @auth_bp.route('/biometric/authenticate', methods=['POST'])
 def biometric_authenticate():
-    """Authenticate user with facial recognition"""
+    """Authentifie un utilisateur par reconnaissance faciale (desktop ou web)."""
     data = request.get_json() or {}
     image_base64 = data.get('image_base64')
-    auth_type = data.get('auth_type', 'web')
-    is_admin = data.get('is_admin', False)
-    
+    email = (data.get('email') or '').strip().lower()
+    auth_type = data.get('auth_type') or data.get('source') or 'web'
+    is_admin = bool(data.get('is_admin', False))
+
     if not image_base64:
-        raise ValidationError("Image biométrique requise")
-    
+        raise ValidationError("image_base64 requis")
+    if not email:
+        raise ValidationError("email requis pour l'authentification biométrique")
+
     try:
         from services.biometric_authentication_service import BiometricAuthenticationService
         service = BiometricAuthenticationService()
-        
-        result = service.authenticate_by_face(image_base64, auth_type, is_admin)
 
-        # authenticate_by_face retourne un dataclass AuthenticationResult
+        ua = request.user_agent.string if request.user_agent else ''
+        result = service.authenticate_by_face(
+            email, image_base64, request.remote_addr, ua, is_admin
+        )
+
         success = result.success if hasattr(result, 'success') else result.get('success', False)
 
         if success:
             user_id = result.user_id if hasattr(result, 'user_id') else result.get('user_id')
-            user = User.query.get(user_id)
+            user = db.session.get(User, user_id)
+            if not user:
+                return jsonify({'success': False, 'message': 'Utilisateur introuvable'}), 404
             access_token = SecurityManager.generate_jwt_token(
                 user.id,
                 user.role,
                 timedelta(hours=24)
             )
-
             log_audit('biometric_auth_success', user.id, request.remote_addr, {'auth_type': auth_type})
-
-            return {
+            return jsonify({
                 'success': True,
                 'access_token': access_token,
                 'user_id': user.id,
                 'user_email': user.email,
                 'user_name': user.full_name,
-                'message': 'Authentification réussie'
-            }, 200
+                'message': 'Authentification biométrique réussie',
+            }), 200
         else:
             reason = (result.error if hasattr(result, 'error') else result.get('reason', ''))
+            similarity = (result.similarity_score if hasattr(result, 'similarity_score')
+                          else result.get('similarity_score'))
             log_audit('biometric_auth_failed', None, request.remote_addr, {'reason': reason})
-            return {
+            return jsonify({
                 'success': False,
-                'message': reason or 'Authentification échouée'
-            }, 401
-            
+                'message': reason or 'Visage non reconnu',
+                'similarity_score': similarity,
+            }), 401
+
+    except ValidationError:
+        raise
     except Exception as e:
-        logging.error(f"Biometric auth error: {str(e)}")
-        raise ValidationError(f"Erreur authentification: {str(e)}")
+        logger.error(f"Erreur biometric_authenticate: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': 'Erreur serveur'}), 500
 
 @auth_bp.route('/send-verification-code', methods=['POST'])
 def send_verification_code():
@@ -499,12 +509,16 @@ def send_verification_code():
         
         # Generate 6-digit code
         code = ''.join(random.choices(string.digits, k=6))
-        
-        # Store code in temporary model
+
+        # Stocker le code dans PhraseAleatoire (texte=code, langue='2fa', user_id=user.id)
+        # Purger les anciens codes non utilisés pour cet utilisateur
+        old_codes = PhraseAleatoire.query.filter_by(user_id=user.id, langue='2fa').all()
+        for old in old_codes:
+            db.session.delete(old)
         phrase = PhraseAleatoire(
-            email=email,
-            phrase=code,
-            expires_at=datetime.utcnow() + timedelta(minutes=15)
+            texte=code,
+            langue='2fa',
+            user_id=user.id,
         )
         db.session.add(phrase)
         db.session.commit()
@@ -547,17 +561,20 @@ def verify_code():
             log_audit('verification_failed', None, request.remote_addr, {'reason': 'user_not_found'})
             raise AuthenticationError("Utilisateur non trouvé")
         
-        # Verify code
+        # Vérifier le code (stocké dans PhraseAleatoire.texte, langue='2fa', user_id=user.id)
         phrase = PhraseAleatoire.query.filter_by(
-            email=email,
-            phrase=code
-        ).first()
-        
+            texte=code,
+            user_id=user.id,
+            langue='2fa',
+        ).order_by(PhraseAleatoire.date_creation.desc()).first()
+
         if not phrase:
             log_audit('verification_failed', user.id, request.remote_addr, {'reason': 'invalid_code'})
             raise AuthenticationError("Code invalide ou expiré")
-        
-        if phrase.expires_at < datetime.utcnow():
+
+        # Vérifier l'expiration (15 min depuis date_creation)
+        from datetime import timedelta as _td
+        if phrase.date_creation + _td(minutes=15) < datetime.utcnow():
             db.session.delete(phrase)
             db.session.commit()
             log_audit('verification_failed', user.id, request.remote_addr, {'reason': 'code_expired'})

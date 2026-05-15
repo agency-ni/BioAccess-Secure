@@ -264,7 +264,7 @@ async function authenticateWithFace(imageBase64, mode = 'live') {
 
             // Redirect based on user type
             setTimeout(() => {
-                const redirectUrl = isAdmin ? '/admin_biometric_optimized.html' : '/dashboard.html';
+                const redirectUrl = isAdmin ? '/admin_biometric.html' : '/dashboard.html';
                 window.location.href = redirectUrl;
             }, 2000);
 

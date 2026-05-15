@@ -5,15 +5,21 @@ Lancer depuis le dossier BACKEND avec : python run_prod.py
 Accéder à l'application : http://localhost:5000/
 """
 
-import os
 import atexit
 import signal
 import sys
 import threading
+import time
+
+_t0 = time.time()
+print("⏳ BioAccess PRODUCTION démarrage…", flush=True)
+
 from app import create_app
 from waitress import serve
 
+print(f"📦 Modules chargés en {time.time()-_t0:.1f}s", flush=True)
 app = create_app()
+print(f"✅ Application prête en {time.time()-_t0:.1f}s au total", flush=True)
 
 def _cleanup():
     """Nettoie les threads daemon au shutdown pour éviter _enter_buffered_busy"""

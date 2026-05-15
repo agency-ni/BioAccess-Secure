@@ -47,7 +47,7 @@ def admin_or_door_required(f):
         if not payload:
             raise AuthenticationError("Token invalide ou expiré")
 
-        user = User.query.get(payload.get('user_id') or payload.get('sub'))
+        user = db.session.get(User, payload.get('user_id') or payload.get('sub'))
         if not user or not user.is_active:
             raise AuthenticationError("Utilisateur invalide")
 
@@ -59,6 +59,58 @@ def admin_or_door_required(f):
         g.user_role = user.role
         return f(*args, **kwargs)
     return decorated
+
+
+@alerts_bp.route('', methods=['POST'])
+@token_required
+def create_alert():
+    """
+    Créer une alerte (depuis les clients desktop ou door).
+
+    POST /api/v1/alerts
+    Body: {
+        type:     'securite'|'systeme'|'tentative',
+        severity: 'basse'|'moyenne'|'haute',
+        title?:   str,
+        message:  str,
+        source?:  str,
+        user_id?: str
+    }
+    """
+    try:
+        data = request.get_json() or {}
+
+        # Normaliser les champs
+        alert_type = data.get('type', 'securite')
+        if alert_type not in ('securite', 'systeme', 'tentative'):
+            alert_type = 'tentative'
+
+        severity_map = {'low': 'basse', 'medium': 'moyenne', 'high': 'haute',
+                        'critical': 'haute', 'basse': 'basse', 'moyenne': 'moyenne', 'haute': 'haute'}
+        gravite = severity_map.get(data.get('severity', 'moyenne'), 'moyenne')
+
+        message = data.get('message') or data.get('title') or 'Alerte desktop'
+        titre   = data.get('title', message[:80])
+
+        alerte = Alerte(
+            type=alert_type,
+            gravite=gravite,
+            message=message[:500],
+            titre=titre[:255] if titre else None,
+            utilisateur_id=data.get('user_id') or (g.user_id if hasattr(g, 'user_id') else None),
+            resource=data.get('source', 'desktop'),
+            statut='Non traitée',
+            priorite={'basse': 'Basse', 'moyenne': 'Moyenne', 'haute': 'Haute'}.get(gravite, 'Moyenne'),
+        )
+        db.session.add(alerte)
+        db.session.commit()
+
+        logger.info(f"Alerte desktop créée: {alert_type}/{gravite} — {titre}")
+        return APIResponse.success(alerte.to_dict(), "Alerte créée", status_code=201)
+
+    except Exception as e:
+        logger.error(f"Erreur création alerte: {e}")
+        return APIResponse.error("Erreur création alerte", status_code=500)
 
 
 @alerts_bp.route('', methods=['GET'])
@@ -127,7 +179,7 @@ def get_alert(alert_id):
     Response: { status, code, timestamp, message, data: {alert...} }
     """
     try:
-        alert = Alerte.query.get(alert_id)
+        alert = db.session.get(Alerte, alert_id)
         if not alert:
             return APIResponse.error(
                 "Alerte non trouvée",
@@ -160,7 +212,7 @@ def update_alert(alert_id):
     Response: { status, code, timestamp, message, data: {alert...} }
     """
     try:
-        alert = Alerte.query.get(alert_id)
+        alert = db.session.get(Alerte, alert_id)
         if not alert:
             return APIResponse.error(
                 "Alerte non trouvée",
@@ -203,7 +255,7 @@ def resolve_alert(alert_id):
     Response: { status, code, timestamp, message, data: {alert...} }
     """
     try:
-        alert = Alerte.query.get(alert_id)
+        alert = db.session.get(Alerte, alert_id)
         if not alert:
             return APIResponse.error(
                 "Alerte non trouvée",
@@ -306,7 +358,7 @@ def update_alert_access(alert_id):
     Response: { success: true, data: {alert} }
     """
     try:
-        alert = Alerte.query.get(alert_id)
+        alert = db.session.get(Alerte, alert_id)
         if not alert:
             return APIResponse.error(
                 "Alerte non trouvée",
@@ -374,7 +426,7 @@ def check_user_access(user_id):
         from models.user import User
         
         # Vérifier que l'utilisateur existe
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             logger.warning(f"Tentative vérification accès utilisateur inexistant: {user_id}")
             return APIResponse.success({

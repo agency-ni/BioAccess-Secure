@@ -722,7 +722,7 @@
         document.getElementById('addUserBtn').addEventListener('click', () => {
             if (!SuperAdmin.require()) return;
             _newUserStep = 1;
-            _newUserFaceFile = null;
+            _newUserFaceB64 = null;
             _newUserVoiceFile = null;
             _openNewUserWizard();
         });
@@ -1422,16 +1422,46 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    btn.innerHTML = '<i class="fas fa-check mr-1"></i>Déclenché !';
-                    btn.classList.replace('bg-indigo-600', 'bg-green-600');
-                    btn.classList.replace('hover:bg-indigo-700', 'hover:bg-green-700');
-                    setTimeout(() => {
-                        btn.innerHTML = originalHTML;
-                        btn.disabled = false;
-                        btn.classList.replace('bg-green-600', 'bg-indigo-600');
-                        btn.classList.replace('hover:bg-green-700', 'hover:bg-indigo-700');
-                    }, 4000);
-                    alert('✅ Enrôlement déclenché !\nLe client desktop doit maintenant capturer la biométrie.\nSession valable : 10 min.');
+                    btn.innerHTML = '<i class="fas fa-hourglass-half mr-1"></i>En attente...';
+                    // Polling status jusqu'à done/error (max 10 min)
+                    const sessionKey = data.session_key;
+                    let elapsed = 0;
+                    const pollInterval = setInterval(async () => {
+                        elapsed += 5;
+                        if (elapsed > 600 || !sessionKey) {
+                            clearInterval(pollInterval);
+                            btn.innerHTML = originalHTML;
+                            btn.disabled = false;
+                            return;
+                        }
+                        try {
+                            const sr = await fetch(
+                                `${API.baseURL}/desktop/enrollment/status?session_key=${sessionKey}`,
+                                { headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` } }
+                            );
+                            const sd = await sr.json();
+                            if (sd.status === 'done') {
+                                clearInterval(pollInterval);
+                                btn.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Enrôlé !';
+                                btn.classList.replace('bg-indigo-600', 'bg-green-600');
+                                btn.classList.replace('hover:bg-indigo-700', 'hover:bg-green-700');
+                                setTimeout(() => {
+                                    btn.innerHTML = originalHTML;
+                                    btn.disabled = false;
+                                    btn.classList.replace('bg-green-600', 'bg-indigo-600');
+                                    btn.classList.replace('hover:bg-green-700', 'hover:bg-indigo-700');
+                                    loadUsers();
+                                }, 5000);
+                                alert('✅ Enrôlement biométrique réussi !\nLes templates faciaux ont été créés et liés à l\'employé.');
+                            } else if (sd.status === 'error') {
+                                clearInterval(pollInterval);
+                                btn.innerHTML = originalHTML;
+                                btn.disabled = false;
+                                alert('❌ L\'enrôlement a échoué sur le poste desktop.\nVérifiez les logs du client desktop.');
+                            }
+                        } catch (_) {}
+                    }, 5000);
+                    alert('✅ Enrôlement déclenché !\nLe client desktop doit maintenant capturer la biométrie.\nSession valable : 10 min.\nCette page sera mise à jour automatiquement.');
                 } else {
                     throw new Error(data.error || data.message || `HTTP ${response.status}`);
                 }
@@ -1515,9 +1545,15 @@
                 
                 <!-- TAB INFO -->
                 <div id="tab-info" class="space-y-4">
-                    <div>
-                        <label class="text-xs text-gray-500 font-semibold">Nom</label>
-                        <input type="text" id="editNom" value="${user.nom}" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <label class="text-xs text-gray-500 font-semibold">Prénom</label>
+                            <input type="text" id="editPrenom" value="${user._raw?.prenom || ''}" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-xs text-gray-500 font-semibold">Nom</label>
+                            <input type="text" id="editNom" value="${user._raw?.nom || ''}" class="w-full border rounded px-3 py-2" style="border-color: #e5e7eb">
+                        </div>
                     </div>
                     <div>
                         <label class="text-xs text-gray-500 font-semibold">Email</label>
@@ -1634,14 +1670,15 @@
         
         // ========== VALIDATION DES INFOS OBLIGATOIRES ==========
         function validateUserInfo() {
+            const prenom = document.getElementById('editPrenom').value.trim();
             const nom = document.getElementById('editNom').value.trim();
             const email = document.getElementById('editEmail').value.trim();
             const dept = document.getElementById('editDept').value.trim();
-            
-            if (!nom || !email || !dept) {
+
+            if (!prenom || !nom || !email || !dept) {
                 return {
                     valid: false,
-                    message: '❌ Les infos obligatoires manquent : Nom, Email, Département requis avant enrôlement'
+                    message: '❌ Les infos obligatoires manquent : Prénom, Nom, Email, Département requis avant enrôlement'
                 };
             }
             
@@ -1903,13 +1940,14 @@
         // ========== FONCTION POUR ENREGISTRER LES MODIFICATIONS ==========
         async function saveUserEdit(userId) {
             if (!SuperAdmin.require()) return;
+            const prenom = document.getElementById('editPrenom').value.trim();
             const nom = document.getElementById('editNom').value.trim();
             const email = document.getElementById('editEmail').value.trim();
             const dept = document.getElementById('editDept').value.trim();
             const role = document.getElementById('editRole').value.toLowerCase() === 'admin' ? 'admin' : 'employe';
             const isActive = document.getElementById('editStatus').value === 'Actif';
             try {
-                await API.users.update(userId, { nom, email, departement: dept, role, is_active: isActive });
+                await API.users.update(userId, { prenom, nom, email, departement: dept, role, is_active: isActive });
                 closeModal();
                 await loadUsers();
                 alert('Utilisateur mis à jour');

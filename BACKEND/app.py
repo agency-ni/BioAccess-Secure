@@ -9,12 +9,12 @@ from datetime import datetime
 from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 from flask_compress import Compress
-from prometheus_flask_exporter import PrometheusMetrics
+# PrometheusMetrics importé à la demande dans create_app() si PROMETHEUS_ENABLED=True
 # from flasgger import Flasgger
 
 # Configuration
 from config import config_by_name
-from openapi import OPENAPI_SPEC
+# OPENAPI_SPEC importé à la demande (Swagger désactivé en dev)
 
 # Core
 from core.database import db, init_db, health_check
@@ -90,12 +90,14 @@ def create_app(config_name=None):
     # Rate Limiting
     init_rate_limiter(app)
     
-    # Monitoring Prometheus
-    try:
-        metrics = PrometheusMetrics(app, path='/metrics')
-        metrics.info('bioaccess_info', 'BioAccess Secure API', version='2.0.0')
-    except Exception as e:
-        logger.warning(f"⚠️  PrometheusMetrics non initialisé: {e}")
+    # Monitoring Prometheus (désactivé en dev pour accélérer le démarrage)
+    if app.config.get('PROMETHEUS_ENABLED', False):
+        try:
+            from prometheus_flask_exporter import PrometheusMetrics
+            metrics = PrometheusMetrics(app, path='/metrics')
+            metrics.info('bioaccess_info', 'BioAccess Secure API', version='2.0.0')
+        except Exception as e:
+            logger.warning(f"⚠️  PrometheusMetrics non initialisé: {e}")
     
     # Monitoring Sentry (Error Tracking & Alerting)
     SentryConfig.init_sentry(app)

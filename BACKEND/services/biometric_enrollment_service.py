@@ -17,9 +17,12 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime
-import numpy as np
-import cv2
 from PIL import Image
+from core.lazy_import import lazy_module
+
+# Chargés à la première requête biométrique, pas au démarrage
+np  = lazy_module('numpy')
+cv2 = lazy_module('cv2')
 
 from core.database import db
 from core.errors import ValidationError, AuthenticationError, ConflictError
@@ -80,7 +83,7 @@ class BiometricEnrollmentService:
         """
         try:
             # Valider utilisateur
-            user = User.query.get(user_id)
+            user = db.session.get(User, user_id)
             if not user:
                 return EnrollmentResult(
                     success=False,

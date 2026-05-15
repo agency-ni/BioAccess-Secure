@@ -71,7 +71,7 @@ class AuditService:
             }
             
             if log.utilisateur_id:
-                user = User.query.get(log.utilisateur_id)
+                user = db.session.get(User, log.utilisateur_id)
                 if user:
                     entry['user'] = user.full_name
             

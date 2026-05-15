@@ -8,7 +8,17 @@ from .biometric import biometric_bp
 from .biometric_enrollment import enrollment_bp
 from .admin_biometric import admin_biometric_bp
 from .dashboard import dashboard_bp
-from .facial_auth import facial_bp
+try:
+    from .facial_auth import facial_bp
+except ImportError as e:
+    import logging
+    logging.getLogger(__name__).warning(f"facial_auth non disponible (face_recognition/scipy manquant?): {e}")
+    from flask import Blueprint, jsonify
+    facial_bp = Blueprint('facial', __name__)
+
+    @facial_bp.route('/face/<path:p>', methods=['GET', 'POST', 'PUT', 'DELETE'])
+    def facial_unavailable(p):
+        return jsonify({'success': False, 'message': 'Module facial non disponible — installez face_recognition et scipy'}), 503
 from .health import health_bp
 from .config import config_bp
 from .desktop import desktop_bp

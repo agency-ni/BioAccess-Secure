@@ -10,12 +10,15 @@ Architecture:
 """
 
 import logging
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import numpy as np
-import cv2
 import base64
+from core.lazy_import import lazy_module
+
+# Chargés à la première requête biométrique, pas au démarrage
+np  = lazy_module('numpy')
+cv2 = lazy_module('cv2')
 import io
 
 from core.database import db
@@ -270,6 +273,7 @@ class BiometricAuthenticationService:
             token = self._generate_session_token(user.id)
             session = UserSession(
                 user_id=user.id,
+                session_token=token,
                 token_type='bearer',
                 created_at=datetime.now(),
                 expires_at=datetime.now() + timedelta(hours=24),
@@ -482,7 +486,7 @@ class BiometricAuthenticationService:
             if failed_count == self.MAX_FAILED_ATTEMPTS:
                 logger.warning(f"Compte verrouillé après {self.MAX_FAILED_ATTEMPTS} échecs: {user_id}")
                 self._create_admin_alert(
-                    user_email=User.query.get(user_id).email if user_id else "unknown",
+                    user_email=db.session.get(User, user_id).email if user_id else "unknown",
                     attempt_type="ACCOUNT_LOCKED",
                     reason=f"Trop de tentatives échouées ({self.MAX_FAILED_ATTEMPTS})"
                 )

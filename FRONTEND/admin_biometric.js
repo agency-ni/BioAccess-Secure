@@ -4,8 +4,8 @@
  * Support: Enregistrement users, Desktop users, Logs, Erreurs, Analytics
  */
 
-const API_BASE = '/api/v1';
-const TOKEN = sessionStorage.getItem('token') || localStorage.getItem('token');
+const API_BASE = window.CONFIG?.API_URL?.replace(/\/api\/v1$/, '') ? (window.CONFIG.API_URL) : '/api/v1';
+const getToken = () => sessionStorage.getItem('token') || localStorage.getItem('token') || '';
 
 let currentPage = 0;
 let selectedFaceImage = null;
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadAdminDashboard() {
     try {
         const response = await axios.get(`${API_BASE}/admin/biometric/dashboard`, {
-            headers: { Authorization: `Bearer ${TOKEN}` }
+            headers: { Authorization: `Bearer ${getToken()}` }
         });
 
         const normalizedData = normalizeResponse(response.data);
@@ -296,7 +296,7 @@ async function analyzeImageQuality(imageBase64) {
         const response = await axios.post(`${API_BASE}/biometric/analyze-quality`, {
             image_base64: imageBase64
         }, {
-            headers: { Authorization: `Bearer ${TOKEN}` }
+            headers: { Authorization: `Bearer ${getToken()}` }
         });
 
         const normalizedData = normalizeResponse(response.data);
@@ -363,14 +363,14 @@ async function submitEnrollment() {
         // Enregistrer l'utilisateur + biométrie
         const response = await axios.post(`${API_BASE}/admin/biometric/enroll-user`, {
             email,
-            first_name: firstName,
-            last_name: lastName,
+            prenom: firstName,
+            nom: lastName,
             role,
             require_biometric: requireBiometric,
             face_image_base64: selectedFaceImage,
             enrollment_mode: enrollmentMode
         }, {
-            headers: { Authorization: `Bearer ${TOKEN}` }
+            headers: { Authorization: `Bearer ${getToken()}` }
         });
 
         const normalizedData = normalizeResponse(response.data);
@@ -417,7 +417,7 @@ function setupDesktopUsers() {
 async function loadDesktopUsers() {
     try {
         const response = await axios.get(`${API_BASE}/admin/biometric/desktop-users`, {
-            headers: { Authorization: `Bearer ${TOKEN}` }
+            headers: { Authorization: `Bearer ${getToken()}` }
         });
 
         const normalizedData = normalizeResponse(response.data);
@@ -499,7 +499,7 @@ async function removeUserBiometric(userId) {
 
     try {
         const response = await axios.delete(`${API_BASE}/admin/biometric/${userId}/templates`, {
-            headers: { Authorization: `Bearer ${TOKEN}` }
+            headers: { Authorization: `Bearer ${getToken()}` }
         });
 
         const normalizedData = normalizeResponse(response.data);
@@ -565,7 +565,7 @@ async function loadAuthLogs() {
 
         const response = await axios.get(`${API_BASE}/admin/biometric/auth-logs`, {
             params: filters,
-            headers: { Authorization: `Bearer ${TOKEN}` }
+            headers: { Authorization: `Bearer ${getToken()}` }
         });
 
         const normalizedData = normalizeResponse(response.data);
@@ -642,7 +642,7 @@ function setupErrorsMonitoring() {
 async function loadErrorAlerts() {
     try {
         const response = await axios.get(`${API_BASE}/admin/biometric/error-alerts`, {
-            headers: { Authorization: `Bearer ${TOKEN}` }
+            headers: { Authorization: `Bearer ${getToken()}` }
         });
 
         const normalizedData = normalizeResponse(response.data);
@@ -720,7 +720,7 @@ function renderErrorAlerts(criticalErrors, recentErrors) {
 async function alertUserError(errorId) {
     try {
         const response = await axios.post(`${API_BASE}/admin/biometric/alert-error`, { error_id: errorId }, {
-            headers: { Authorization: `Bearer ${TOKEN}` }
+            headers: { Authorization: `Bearer ${getToken()}` }
         });
         const normalizedData = normalizeResponse(response.data);
         if (normalizedData.status === 'success') {
@@ -736,7 +736,7 @@ async function alertUserError(errorId) {
 async function resolveError(errorId) {
     try {
         const response = await axios.post(`${API_BASE}/admin/biometric/resolve-error`, { error_id: errorId }, {
-            headers: { Authorization: `Bearer ${TOKEN}` }
+            headers: { Authorization: `Bearer ${getToken()}` }
         });
         const normalizedData = normalizeResponse(response.data);
         if (normalizedData.status === 'success') {
@@ -763,7 +763,7 @@ function setupAnalytics() {
 async function loadAnalytics() {
     try {
         const response = await axios.get(`${API_BASE}/admin/biometric/analytics`, {
-            headers: { Authorization: `Bearer ${TOKEN}` }
+            headers: { Authorization: `Bearer ${getToken()}` }
         });
 
         const normalizedData = normalizeResponse(response.data);

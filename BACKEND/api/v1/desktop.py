@@ -14,9 +14,12 @@ import uuid
 import threading
 import logging
 import base64 as _b64
-import numpy as np
-import cv2
 from datetime import datetime, timedelta
+from core.lazy_import import lazy_module
+
+# Chargés à la première soumission d'enrôlement, pas au démarrage
+np  = lazy_module('numpy')
+cv2 = lazy_module('cv2')
 from flask import Blueprint, request, jsonify, g
 
 from core.database import db
@@ -198,12 +201,15 @@ def trigger_enrollment():
         if not user:
             return jsonify({'success': False, 'error': 'Employé introuvable'}), 404
 
+        # emp_desk_key = clé auth desktop (ex: 2421434JTKO), utilisée par le poll du client
+        emp_desk_key = user.employee_id or employee_id
+
         _purge_expired()
 
         # Retourner la session déjà active si elle existe
         with _lock:
             for key, sess in _sessions.items():
-                if sess['employee_id'] == employee_id and sess['status'] == 'pending':
+                if sess['employee_id'] == emp_desk_key and sess['status'] == 'pending':
                     return jsonify({
                         'success': True,
                         'session_key': key,
@@ -216,7 +222,8 @@ def trigger_enrollment():
         expires_at = datetime.utcnow() + timedelta(minutes=SESSION_TTL)
         with _lock:
             _sessions[session_key] = {
-                'employee_id': employee_id,
+                'employee_id':   emp_desk_key,  # clé poll desktop (ex: 2421434JTKO)
+                'employee_uuid': employee_id,   # UUID pour opérations BDD
                 'employee_name': f"{user.prenom} {user.nom}",
                 'status': 'pending',
                 'created_at': datetime.utcnow(),
@@ -313,7 +320,8 @@ def submit_enrollment():
                 return jsonify({'success': False, 'error': 'Session expirée'}), 410
             sess['status'] = 'processing'
 
-        employee_id = sess['employee_id']
+        employee_id   = sess['employee_id']          # clé desk (ex: 2421434JTKO)
+        employee_uuid = sess.get('employee_uuid', employee_id)  # UUID BDD
         face_ok = False
         voice_ok = False
         face_enrolled = 0
@@ -343,7 +351,7 @@ def submit_enrollment():
                     tpl = TemplateBiometrique(
                         type_biometrique='FACE',
                         template_data=encoding.tolist(),
-                        user_id=employee_id,
+                        user_id=employee_uuid,
                         quality_score=quality,
                         label=f"Desktop frame {i+1} — {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}",
                         is_active=True,
@@ -365,7 +373,7 @@ def submit_enrollment():
                     raw_v = raw_v.split(',', 1)[1]
                 audio_bytes = _b64.b64decode(raw_v)
                 from services.biometric_service import BiometricService
-                tpl = BiometricService.process_voice_sample(audio_bytes, employee_id)
+                tpl = BiometricService.process_voice_sample(audio_bytes, employee_uuid)
                 if tpl:
                     voice_ok = True
             except Exception as ex:
@@ -382,15 +390,15 @@ def submit_enrollment():
                         nom='Desktop employé',
                         adresse_ip=request.remote_addr,
                         mac_address=mac,
-                        employe_id=employee_id,
+                        employe_id=employee_uuid,
                         last_seen=datetime.utcnow(),
                         statut='actif',
                     )
                     db.session.add(poste)
                     db.session.commit()
                 else:
-                    if poste.employe_id != employee_id:
-                        poste.employe_id = employee_id
+                    if poste.employe_id != employee_uuid:
+                        poste.employe_id = employee_uuid
                     poste.last_seen = datetime.utcnow()
                     db.session.commit()
                 device_id = poste.id

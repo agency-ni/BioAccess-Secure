@@ -22,11 +22,18 @@
 
 import os
 import sys
-import cv2
+
+# cv2 doit être disponible avant la ligne 67 (face_cascade au niveau module)
+try:
+    import cv2
+except ImportError:
+    cv2 = None  # Géré via OPENCV_OK plus bas
+
 import time
 import math
 import random
 import hashlib
+import hmac
 import platform
 import threading
 import subprocess
@@ -64,7 +71,7 @@ def resource_path(relative_path):
 
 # Charge ton détecteur comme ça :
 FACE_XML = resource_path("haarcascade_frontalface_default.xml")
-face_cascade = cv2.CascadeClassifier(FACE_XML)
+face_cascade = cv2.CascadeClassifier(FACE_XML) if cv2 is not None else None
     
 # ── Modules optionnels ────────────────────────────────────────────────────────
 try:
@@ -1299,9 +1306,10 @@ class BioAccessApp(tk.Tk):
         self._permissions_checked = False
         self._device_token      = None   # JWT du device (si device_id existe)
         self._session_monitor   = None   # WindowsSessionMonitor
-        self._backend_enrolled  = False  # True si utilisateur enrolle via admin backend
-        self._backend_user_id   = None   # UUID user backend (pas employee_id)
-        self._server_reachable  = False  # connexion backend confirmee au demarrage
+        self._backend_enrolled   = False  # True si utilisateur enrolle via admin backend
+        self._backend_user_id    = None   # UUID user backend (pas employee_id)
+        self._backend_user_email = ''     # email user backend (requis pour auth biometrique)
+        self._server_reachable   = False  # connexion backend confirmee au demarrage
 
         self.title(f"BioAccess Secure v{Config.VERSION}")
         self.configure(bg=C_BG)
@@ -1369,7 +1377,7 @@ class BioAccessApp(tk.Tk):
                     if device_file.exists():
                         data = json.loads(device_file.read_text(encoding='utf-8'))
                         # employee_id est la cle auth desk (ex: 2421434JTKO), pas le UUID
-                    uid = data.get('employee_id', '').strip()   # cle auth desk
+                        uid = data.get('employee_id', '').strip()   # cle auth desk
                     if not uid:
                         # Fallback: cache offline
                         try:
@@ -1484,10 +1492,11 @@ class BioAccessApp(tk.Tk):
                         resp = r.json()
                         token = resp.get('access_token')
                         if token:
-                            self._device_token     = token
-                            self._backend_enrolled = True
-                            self._backend_user_id  = resp.get('user_id', '')
-                            logger.info(f"Device token charge (device_id={device_id})")
+                            self._device_token       = token
+                            self._backend_enrolled   = True
+                            self._backend_user_id    = resp.get('user_id', '')
+                            self._backend_user_email = resp.get('user_email', '')
+                            logger.info(f"Device token charge (device_id={device_id}, email={self._backend_user_email})")
                             # Mettre à jour le cache offline + synchroniser les logs en attente
                             try:
                                 from offline_cache import OfflineCache
@@ -1564,8 +1573,8 @@ class BioAccessApp(tk.Tk):
     def _verify_employee_id_api(self, employee_id: str) -> dict:
         """
         Verifie l'employee_id contre le backend via POST /api/v1/auth/device-login.
-        Retourne {'ok': bool, 'user_id': str, 'user_name': str, 'token': str,
-                  'device_id': str|None, 'error': str}
+        Retourne {'ok': bool, 'user_id': str, 'user_email': str, 'user_name': str,
+                  'token': str, 'device_id': str|None, 'error': str}
         """
         try:
             r = requests.post(
@@ -1577,23 +1586,24 @@ class BioAccessApp(tk.Tk):
             if r.status_code == 200:
                 data = r.json()
                 return {
-                    'ok':        True,
-                    'user_id':   data.get('user_id', ''),
-                    'user_name': data.get('user_name', ''),
-                    'token':     data.get('access_token', ''),
-                    'device_id': data.get('device_id'),
-                    'error':     '',
+                    'ok':         True,
+                    'user_id':    data.get('user_id', ''),
+                    'user_email': data.get('user_email', ''),
+                    'user_name':  data.get('user_name', ''),
+                    'token':      data.get('access_token', ''),
+                    'device_id':  data.get('device_id'),
+                    'error':      '',
                 }
             else:
                 try:
                     msg = r.json().get('message') or r.json().get('error') or f'HTTP {r.status_code}'
                 except Exception:
                     msg = f'HTTP {r.status_code}'
-                return {'ok': False, 'error': msg, 'user_id': '', 'user_name': '', 'token': '', 'device_id': None}
+                return {'ok': False, 'error': msg, 'user_id': '', 'user_email': '', 'user_name': '', 'token': '', 'device_id': None}
         except requests.exceptions.ConnectionError:
-            return {'ok': False, 'error': 'Serveur inaccessible', 'user_id': '', 'user_name': '', 'token': '', 'device_id': None}
+            return {'ok': False, 'error': 'Serveur inaccessible', 'user_id': '', 'user_email': '', 'user_name': '', 'token': '', 'device_id': None}
         except Exception as e:
-            return {'ok': False, 'error': str(e), 'user_id': '', 'user_name': '', 'token': '', 'device_id': None}
+            return {'ok': False, 'error': str(e), 'user_id': '', 'user_email': '', 'user_name': '', 'token': '', 'device_id': None}
 
     # ══════════════════════════════════════════════════════════════════════════
     # VERROU SYSTÈME
@@ -2147,9 +2157,10 @@ class BioAccessApp(tk.Tk):
 
             if r.status_code == 200:
                 d = r.json()
-                # L'endpoint retourne "allowed" (nouveau) ou "allow_access" (ancien)
-                allowed = d.get("allowed", d.get("allow_access", True))
-                return allowed, d.get("reason", "")
+                # Unwrap APIResponse envelope {status, data} or legacy {success,...}
+                payload = d.get("data", d) if d.get("status") == "success" else d
+                allowed = payload.get("allowed", payload.get("allow_access", True))
+                return allowed, payload.get("reason", "")
             elif r.status_code == 404:
                 return True, "Non géré par l'administration"
             elif r.status_code in (401, 403):
@@ -2164,7 +2175,10 @@ class BioAccessApp(tk.Tk):
     def _poll_admin(self):
         if self._auth_done and not self._locked and self._authenticated_uid:
             def check():
-                allowed, reason = self._check_admin_access(self._authenticated_uid)
+                # Local users have no backend UUID — skip admin block check
+                if not self._backend_enrolled or not self._backend_user_id:
+                    return
+                allowed, reason = self._check_admin_access(self._backend_user_id)
                 if not allowed:
                     def revoke():
                         self._auth_done = self._admin_granted = False
@@ -2332,11 +2346,12 @@ class BioAccessApp(tk.Tk):
             if not is_local_user and REQUESTS_OK:
                 backend_result = self._verify_employee_id_api(uid)
                 if backend_result['ok']:
-                    self._backend_enrolled = True
-                    self._backend_user_id  = backend_result['user_id']
+                    self._backend_enrolled   = True
+                    self._backend_user_id    = backend_result['user_id']
+                    self._backend_user_email = backend_result['user_email']
                     if backend_result['token']:
                         self._device_token = backend_result['token']
-                    logger.info(f"Utilisateur backend confirmé: {uid} -> {self._backend_user_id}")
+                    logger.info(f"Utilisateur backend confirmé: {uid} -> {self._backend_user_id} ({self._backend_user_email})")
 
             user_known = is_local_user or (backend_result is not None and backend_result['ok'])
 
@@ -2506,23 +2521,64 @@ class BioAccessApp(tk.Tk):
         # ── Droite ──────────────────────────────────────────────────────────
         right = tk.Frame(body, bg=C_BG)
         right.pack(side="left", fill="both", expand=True)
-        self.auth_canvas = AnimatedCanvas(right, mode="face")
-        self.auth_canvas.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Zone principale : AnimatedCanvas OU prévisualisation caméra (partagent le même espace)
+        self._auth_preview_area = tk.Frame(right, bg=C_BG)
+        self._auth_preview_area.pack(fill="both", expand=True, padx=20, pady=10)
+
+        self.auth_canvas = AnimatedCanvas(self._auth_preview_area, mode="face")
+        self.auth_canvas.pack(fill="both", expand=True)
+
+        # Prévisualisation caméra (face auth) — cachée par défaut
+        self.face_preview_frame = tk.Frame(self._auth_preview_area, bg="#000000",
+                                           highlightthickness=2,
+                                           highlightbackground=C_BORDER)
+        self.face_preview_label = tk.Label(self.face_preview_frame,
+                                           bg="#000000", fg=C_MUTED,
+                                           text="⏳ Initialisation caméra...",
+                                           font=("Courier", 10))
+        self.face_preview_label.pack(fill="both", expand=True)
+
+        # Statut vivacité (liveness detection)
+        self.liveness_var = tk.StringVar(value="")
+        self.liveness_label = tk.Label(right, textvariable=self.liveness_var,
+                                       bg=C_BG, fg=C_WARNING,
+                                       font=("Courier", 9, "bold"))
+        self.liveness_label.pack(pady=2)
+
+        # Résultat auth
         self.auth_result_var = tk.StringVar(value="")
         self.auth_result_label = tk.Label(right,
                                           textvariable=self.auth_result_var,
                                           bg=C_BG, fg=C_TEXT,
-                                          font=("Courier",11,"bold"))
+                                          font=("Courier", 11, "bold"))
         self.auth_result_label.pack(pady=4)
+
+        # Phrase vocale à lire
         self.audio_phrase_label = tk.Label(right, text="",
                                            bg=C_BG, fg=C_ACCENT,
-                                           font=("Courier",13,"bold"),
+                                           font=("Courier", 13, "bold"),
                                            wraplength=500, justify="center")
         self.audio_phrase_label.pack(pady=4)
+
+        # Boîte microphone + transcription temps réel + similarité
+        self._transcript_box = tk.Frame(right, bg=C_SURFACE,
+                                        highlightthickness=1,
+                                        highlightbackground=C_BORDER)
+        self.mic_indicator_var = tk.StringVar(value="")
+        tk.Label(self._transcript_box, textvariable=self.mic_indicator_var,
+                 bg=C_SURFACE, fg="#a855f7",
+                 font=("Courier", 12, "bold")).pack(pady=(8, 2))
         self.transcript_var = tk.StringVar(value="")
-        tk.Label(right, textvariable=self.transcript_var,
-                 bg=C_BG, fg=C_MUTED, font=("Courier",9),
-                 wraplength=500).pack(pady=2)
+        tk.Label(self._transcript_box, textvariable=self.transcript_var,
+                 bg=C_SURFACE, fg=C_TEXT, font=("Courier", 10),
+                 wraplength=480, justify="center").pack(pady=(2, 4), padx=12)
+        self.sim_var = tk.StringVar(value="")
+        tk.Label(self._transcript_box, textvariable=self.sim_var,
+                 bg=C_SURFACE, fg=C_SUCCESS,
+                 font=("Courier", 10, "bold")).pack(pady=(0, 8))
+        self._transcript_box.pack(padx=20, pady=4, fill="x")
+        self._transcript_box.pack_forget()  # cachée par défaut
 
     # ══════════════════════════════════════════════════════════════════════════
     # ÉCRAN 4 — ACCUEIL (poste déverrouillé)
@@ -2740,8 +2796,17 @@ class BioAccessApp(tk.Tk):
     def _update_auth_view(self):
         mode = self.auth_method.get()
         self.auth_canvas.mode = mode
-        if mode == "voice": self.phrase_frame.pack(fill="x", padx=16)
-        else:               self.phrase_frame.pack_forget()
+        if mode == "voice":
+            self.phrase_frame.pack(fill="x", padx=16)
+        else:
+            self.phrase_frame.pack_forget()
+        # Réinitialiser les zones dynamiques au changement de méthode
+        self._hide_camera_preview()
+        self.liveness_var.set("")
+        self._transcript_box.pack_forget()
+        self.mic_indicator_var.set("")
+        self.transcript_var.set("")
+        self.sim_var.set("")
 
     def _new_phrase(self):
         phrase = random.choice(PHRASES)
@@ -2752,26 +2817,29 @@ class BioAccessApp(tk.Tk):
         uid = self.auth_userid_var.get().strip()
         if not uid:
             self._auth_fail("User_ID introuvable"); return
-        # Pour les utilisateurs backend-enrolled, on ne vérifie pas le fichier local
         if not self._backend_enrolled and uid not in load_users():
             self._auth_fail("User_ID introuvable localement — rechargez l'application"); return
         self._stop_event.clear()
         self.auth_btn.config(state="disabled")
         self.stop_auth_btn.config(state="normal")
-        self.auth_result_var.set(""); self.transcript_var.set("")
+        self.auth_result_var.set("")
+        self.transcript_var.set("")
+        self.sim_var.set("")
+        self.liveness_var.set("")
         self.audio_phrase_label.config(text="")
         self.auth_canvas._success = self.auth_canvas._fail = False
         method = self.auth_method.get()
         self.status_var.set(f"Auth [{method}] — {uid}")
         if method == "face":
-            threading.Thread(target=self._face_thread,
-                             args=(uid,), daemon=True).start()
+            self._show_camera_preview()
+            threading.Thread(target=self._face_thread, args=(uid,), daemon=True).start()
         else:
+            self._hide_camera_preview()
+            self._transcript_box.pack(padx=20, pady=4, fill="x")
+            self.mic_indicator_var.set("⏳ Initialisation du microphone...")
             phrase = self._current_phrase
-            self.audio_phrase_label.config(
-                text=f'Lisez à voix haute :\n« {phrase} »')
-            threading.Thread(target=self._voice_thread,
-                             args=(uid, phrase), daemon=True).start()
+            self.audio_phrase_label.config(text=f'Lisez à voix haute :\n« {phrase} »')
+            threading.Thread(target=self._voice_thread, args=(uid, phrase), daemon=True).start()
 
     def _stop_auth(self):
         self._stop_event.set()
@@ -2779,9 +2847,181 @@ class BioAccessApp(tk.Tk):
         if hasattr(self, "stop_auth_btn"): self.stop_auth_btn.config(state="disabled")
         if hasattr(self, "auth_canvas"):
             self.auth_canvas._success = self.auth_canvas._fail = False
+        self._hide_camera_preview()
+        if hasattr(self, "_transcript_box"):
+            self._transcript_box.pack_forget()
+        if hasattr(self, "mic_indicator_var"): self.mic_indicator_var.set("")
+        if hasattr(self, "liveness_var"):      self.liveness_var.set("")
+        if hasattr(self, "sim_var"):           self.sim_var.set("")
         self.status_var.set("Prêt")
 
+    # ── Caméra preview helpers ────────────────────────────────────────────────
+    def _show_camera_preview(self):
+        """Affiche le flux caméra et masque le canvas animé."""
+        if not OPENCV_OK:
+            return
+        self.auth_canvas.stop()
+        self.auth_canvas.pack_forget()
+        self.face_preview_frame.pack(fill="both", expand=True)
+        self.liveness_var.set("⏳ Initialisation caméra...")
+
+    def _hide_camera_preview(self):
+        """Masque le flux caméra et réaffiche le canvas animé."""
+        if not hasattr(self, 'face_preview_frame'):
+            return
+        self.face_preview_frame.pack_forget()
+        if not self.auth_canvas.winfo_ismapped():
+            self.auth_canvas.pack(fill="both", expand=True)
+        if not self.auth_canvas._running:
+            self.auth_canvas.start()
+
+    def _to_photo(self, frame_rgb):
+        """Convertit un tableau numpy RGB en PhotoImage tkinter (PIL optionnel)."""
+        try:
+            from PIL import Image, ImageTk
+            return ImageTk.PhotoImage(Image.fromarray(frame_rgb))
+        except ImportError:
+            h, w = frame_rgb.shape[:2]
+            ppm = f"P6\n{w} {h}\n255\n".encode('ascii') + frame_rgb.tobytes()
+            return tk.PhotoImage(data=base64.b64encode(ppm))
+
+    def _update_camera_frame(self, frame_bgr, faces=None, liveness_status="checking"):
+        """
+        Met à jour le widget de prévisualisation caméra.
+        Doit être appelé via self.after(0, lambda: self._update_camera_frame(...))
+        """
+        if not hasattr(self, 'face_preview_label'):
+            return
+        try:
+            if not self.face_preview_label.winfo_exists():
+                return
+            frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+            # Dessiner les marqueurs sur les visages détectés
+            for (x, y, w, h) in (faces or []):
+                if liveness_status == "ok":
+                    col, tag = (0, 220, 100), "Vivant ✓"
+                elif liveness_status == "fail":
+                    col, tag = (220, 50, 50), "Photo/Vidéo ✗"
+                else:
+                    col, tag = (255, 165, 0), "Vérification..."
+                cv2.rectangle(frame_rgb, (x, y), (x + w, y + h), col, 2)
+                corner = max(12, w // 5)
+                for (dx, dy, ex, ey) in [
+                    (x, y, x + corner, y), (x, y, x, y + corner),
+                    (x + w, y, x + w - corner, y), (x + w, y, x + w, y + corner),
+                    (x, y + h, x + corner, y + h), (x, y + h, x, y + h - corner),
+                    (x + w, y + h, x + w - corner, y + h), (x + w, y + h, x + w, y + h - corner),
+                ]:
+                    cv2.line(frame_rgb, (dx, dy), (ex, ey), col, 3)
+                cv2.putText(frame_rgb, tag, (x, max(8, y - 6)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, col, 1, cv2.LINE_AA)
+            # Vue miroir (naturelle pour l'utilisateur)
+            frame_rgb = cv2.flip(frame_rgb, 1)
+            # Redimensionner selon la taille du widget
+            ph = self.face_preview_label.winfo_height() or 300
+            pw = self.face_preview_label.winfo_width() or 400
+            if ph > 10 and pw > 10:
+                h_f, w_f = frame_rgb.shape[:2]
+                scale = min(pw / w_f, ph / h_f, 1.0)
+                if scale < 0.98:
+                    frame_rgb = cv2.resize(frame_rgb,
+                                           (int(w_f * scale), int(h_f * scale)),
+                                           interpolation=cv2.INTER_LINEAR)
+            photo = self._to_photo(frame_rgb)
+            self.face_preview_label.config(image=photo, text="")
+            self.face_preview_label._photo = photo  # empêche le GC
+        except Exception as e:
+            logger.debug(f"_update_camera_frame: {e}")
+
+    def _check_liveness_frame(self, frame_bgr, prev_frames: list):
+        """
+        Détection de vivacité basique (sans ML lourd).
+        Retourne ('ok' | 'checking' | 'fail', raison).
+        Méthodes : variance Laplacien + analyse mouvement inter-trames.
+        """
+        if not OPENCV_OK or not NUMPY_OK:
+            return 'ok', ''
+        try:
+            gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+            lap_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+            # Texture trop lisse = photo imprimée ou écran plat
+            if lap_var < 20:
+                return 'fail', f'Texture plate ({lap_var:.0f}) — photo/écran détecté'
+            if len(prev_frames) < 4:
+                return 'checking', 'Analyse de vivacité...'
+            # Vérification du mouvement naturel inter-trames
+            diffs = []
+            for prev in prev_frames[-4:]:
+                pg = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
+                diffs.append(float(cv2.absdiff(gray, pg).mean()))
+            motion = sum(diffs) / len(diffs)
+            if motion < 0.25:
+                return 'fail', 'Image statique — bougez légèrement'
+            if motion > 45:
+                return 'checking', 'Stabilisez votre visage...'
+            return 'ok', f'Vivant ✓  (texture={lap_var:.0f}  mvt={motion:.1f})'
+        except Exception:
+            return 'ok', ''
+
+    def _send_auth_log(self, success: bool, method: str, uid: str, reason: str):
+        """Envoie un événement d'authentification au backend (logs + alerte si échec)."""
+        if not REQUESTS_OK or not uid:
+            return
+        token = self._device_token
+        if not token or token == "__offline__":
+            return
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {token}',
+        }
+        import platform as _pl
+        hostname = _pl.node()
+        # POST log
+        try:
+            requests.post(
+                f"{Config.API_BASE_URL}/api/v1/logs",
+                json={
+                    'type_acces':   'auth',
+                    'statut':       'succes' if success else 'echec',
+                    'raison_echec': None if success else (reason or 'Authentification échouée'),
+                    'resource':     hostname,
+                    'hostname':     hostname,
+                    'method':       method,
+                    'timestamp':    datetime.utcnow().isoformat(),
+                    'details': {
+                        'uid': uid,
+                        'method': method,
+                        'success': success,
+                    },
+                },
+                headers=headers, timeout=5,
+            )
+        except Exception:
+            pass
+        # POST alerte seulement en cas d'échec
+        if not success:
+            try:
+                requests.post(
+                    f"{Config.API_BASE_URL}/api/v1/alerts",
+                    json={
+                        'type':     'tentative',
+                        'severity': 'moyenne',
+                        'title':    f'Échec auth {method} — {uid}',
+                        'message':  reason or 'Authentification échouée',
+                        'source':   f'desktop:{hostname}',
+                        'user_id':  self._backend_user_id or '',
+                    },
+                    headers=headers, timeout=5,
+                )
+            except Exception:
+                pass
+
     def _auth_success(self, uid: str, method: str):
+        self._hide_camera_preview()
+        if hasattr(self, '_transcript_box'): self._transcript_box.pack_forget()
+        if hasattr(self, 'mic_indicator_var'): self.mic_indicator_var.set("")
+        if hasattr(self, 'liveness_var'): self.liveness_var.set("")
+        if hasattr(self, 'sim_var'): self.sim_var.set("")
         self.auth_canvas.show_success()
         self.auth_result_var.set(f"✓ Bienvenue, {uid} !")
         self.auth_result_label.config(fg=C_SUCCESS)
@@ -2790,6 +3030,8 @@ class BioAccessApp(tk.Tk):
         self._auth_done         = True
         self._authenticated_uid = uid
         self._unlock_window()
+        threading.Thread(target=self._send_auth_log,
+                         args=(True, method, uid, ""), daemon=True).start()
         def go():
             self.success_name.config(text=uid)
             self.success_method.config(
@@ -2802,12 +3044,23 @@ class BioAccessApp(tk.Tk):
         self.after(1200, go)
 
     def _auth_fail(self, reason: str = "Authentification échouée"):
+        self._hide_camera_preview()
+        if hasattr(self, '_transcript_box'): self._transcript_box.pack_forget()
+        if hasattr(self, 'mic_indicator_var'): self.mic_indicator_var.set("")
+        if hasattr(self, 'liveness_var'): self.liveness_var.set("")
+        if hasattr(self, 'sim_var'): self.sim_var.set("")
         self.auth_canvas.show_fail()
         self.auth_result_var.set(f"✗ {reason}")
         self.auth_result_label.config(fg=C_ERROR)
         self.status_var.set(f"Échec : {reason}")
         self.auth_btn.config(state="normal")
         self.stop_auth_btn.config(state="disabled")
+        uid = (self.auth_userid_var.get().strip()
+               if hasattr(self, 'auth_userid_var') else '')
+        method = (self.auth_method.get()
+                  if hasattr(self, 'auth_method') else '')
+        threading.Thread(target=self._send_auth_log,
+                         args=(False, method, uid, reason), daemon=True).start()
 
     # ── Thread faciale ─────────────────────────────────────────────────────────
     def _face_thread(self, uid: str):
@@ -2821,17 +3074,17 @@ class BioAccessApp(tk.Tk):
 
         face_file = FACES_DIR / f"{uid}.yml"
         if not face_file.exists() or not load_users().get(uid, {}).get("face"):
-            self.after(0, lambda: self._auth_fail("Aucun profil facial")); return
-        # ── Vérification permission caméra selon l'OS ────────────────────────
+            self.after(0, lambda: self._auth_fail(
+                "Aucun profil facial — inscrivez-vous d'abord")); return
+
         if PERM_MGR_OK:
             mgr    = PermissionManager()
             result = mgr.check_and_request(DevicePermission.CAMERA)
             if not result.granted:
-                msg = f"Permission caméra refusée ({platform.system()})\n{result.message}"
+                msg = f"Permission caméra refusée\n{result.message}"
                 if result.fix_steps:
                     msg += "\n" + "\n".join(result.fix_steps[:2])
                 self.after(0, lambda m=msg: self._auth_fail(m))
-                # Afficher aussi le dialogue complet
                 self.after(0, lambda: self._show_permission_dialog(
                     [("Caméra", result)], mgr))
                 return
@@ -2839,42 +3092,82 @@ class BioAccessApp(tk.Tk):
             rec = cv2.face.LBPHFaceRecognizer_create()
             rec.read(str(face_file))
         except Exception as e:
-            self.after(0, lambda: self._auth_fail(f"Erreur modèle : {e}")); return
+            self.after(0, lambda: self._auth_fail(f"Erreur modèle facial : {e}")); return
+
         cascade = cv2.CascadeClassifier(
             cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
         cap = cv2.VideoCapture(0)
         if not cap.isOpened():
             self.after(0, lambda: self._auth_fail("Caméra inaccessible")); return
+
+        prev_frames = []
+        liveness_ok_count = 0
         att = 0
-        while not self._stop_event.is_set() and att < 60:
-            ret, frame = cap.read()
-            if not ret: break
-            gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = cascade.detectMultiScale(gray, 1.1, 5, minSize=(100,100))
-            for (x,y,w,h) in faces:
-                roi = cv2.resize(gray[y:y+h, x:x+w], (200,200))
-                _, conf = rec.predict(roi)
-                if conf < 80:
-                    cap.release()
-                    self.after(0, lambda: self._auth_success(uid, "face")); return
-            att += 1; time.sleep(0.1)
-        cap.release()
+        try:
+            while not self._stop_event.is_set() and att < 100:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                faces = cascade.detectMultiScale(gray, 1.1, 5, minSize=(80, 80))
+
+                liveness, liveness_msg = self._check_liveness_frame(frame, prev_frames)
+                prev_frames.append(frame.copy())
+                if len(prev_frames) > 8:
+                    prev_frames.pop(0)
+
+                lv_color = (C_SUCCESS if liveness == 'ok'
+                            else (C_ERROR if liveness == 'fail' else C_WARNING))
+                lv_text = (("✓ " if liveness == "ok"
+                            else ("✗ " if liveness == "fail" else "⏳ ")) + liveness_msg)
+
+                self.after(0, lambda fr=frame.copy(), fa=list(faces), ls=liveness:
+                           self._update_camera_frame(fr, fa, ls))
+                self.after(0, lambda t=lv_text, c=lv_color:
+                           (self.liveness_var.set(t), self.liveness_label.config(fg=c)))
+                self.after(0, lambda p=min(100, att):
+                           self.status_var.set(f"Scan facial — {p}/100"))
+
+                if liveness == 'fail':
+                    liveness_ok_count = 0
+                    att += 1; time.sleep(0.07); continue
+
+                for (x, y, w, h) in faces:
+                    roi = cv2.resize(gray[y:y+h, x:x+w], (200, 200))
+                    _, conf = rec.predict(roi)
+                    if conf < 80:
+                        if liveness == 'ok':
+                            liveness_ok_count += 1
+                        if liveness_ok_count >= 3:
+                            self.after(0, lambda: self._auth_success(uid, "face"))
+                            return
+
+                att += 1; time.sleep(0.07)
+        finally:
+            try: cap.release()
+            except Exception: pass
+
         if not self._stop_event.is_set():
             self.after(0, lambda: self._auth_fail("Visage non reconnu"))
 
     def _face_thread_backend(self, uid: str):
-        """Auth faciale via backend API pour utilisateurs enrolles par l'admin."""
+        """Auth faciale via backend API pour utilisateurs enrôlés par l'admin."""
         if not OPENCV_OK:
-            self.after(0, lambda: self._auth_fail("OpenCV non installe")); return
+            self.after(0, lambda: self._auth_fail("OpenCV non installé")); return
 
         cap = cv2.VideoCapture(0)
         if not cap.isOpened():
-            self.after(0, lambda: self._auth_fail("Camera inaccessible")); return
+            self.after(0, lambda: self._auth_fail("Caméra inaccessible")); return
+
+        prev_frames = []
+        liveness_ok_count = 0
+        api_sent = 0   # nombre de frames envoyées à l'API
 
         try:
             cascade = cv2.CascadeClassifier(
                 cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-            max_att = 80
+            max_att = 120
             att = 0
 
             while not self._stop_event.is_set() and att < max_att:
@@ -2884,15 +3177,46 @@ class BioAccessApp(tk.Tk):
 
                 gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 faces = cascade.detectMultiScale(gray, 1.1, 5, minSize=(80, 80))
-                if len(faces) == 0:
-                    att += 1; time.sleep(0.1); continue
+
+                # Liveness sur chaque trame
+                liveness, liveness_msg = self._check_liveness_frame(frame, prev_frames)
+                prev_frames.append(frame.copy())
+                if len(prev_frames) > 8:
+                    prev_frames.pop(0)
+
+                lv_color = (C_SUCCESS if liveness == 'ok'
+                            else (C_ERROR if liveness == 'fail' else C_WARNING))
+                lv_text = (("✓ " if liveness == "ok"
+                            else ("✗ " if liveness == "fail" else "⏳ ")) + liveness_msg)
+
+                self.after(0, lambda fr=frame.copy(), fa=list(faces), ls=liveness:
+                           self._update_camera_frame(fr, fa, ls))
+                self.after(0, lambda t=lv_text, c=lv_color:
+                           (self.liveness_var.set(t), self.liveness_label.config(fg=c)))
+                self.after(0, lambda s=f"Vérification biométrique — trame {att}":
+                           self.status_var.set(s))
+
+                # N'envoyer à l'API que si liveness OK et visage détecté
+                if len(faces) == 0 or liveness == 'fail':
+                    if liveness == 'fail':
+                        liveness_ok_count = 0
+                    att += 1; time.sleep(0.07); continue
+
+                if liveness == 'ok':
+                    liveness_ok_count += 1
+                else:
+                    att += 1; time.sleep(0.07); continue  # encore en vérification
+
+                # Envoyer à l'API seulement après 2 trames vivantes confirmées
+                if liveness_ok_count < 2:
+                    att += 1; time.sleep(0.07); continue
 
                 try:
                     _, buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
                     img_b64 = base64.b64encode(buf.tobytes()).decode('ascii')
                 except Exception as enc_err:
                     logger.debug(f"encode error: {enc_err}")
-                    att += 1; time.sleep(0.1); continue
+                    att += 1; time.sleep(0.07); continue
 
                 try:
                     headers = {'Content-Type': 'application/json'}
@@ -2902,17 +3226,24 @@ class BioAccessApp(tk.Tk):
 
                     r = requests.post(
                         f"{Config.API_BASE_URL}/api/v1/auth/biometric/authenticate",
-                        json={'image_base64': img_b64, 'auth_type': 'desktop'},
+                        json={
+                            'image_base64': img_b64,
+                            'email':        self._backend_user_email,
+                            'auth_type':    'desktop',
+                            'source':       'desktop',
+                        },
                         headers=headers,
                         timeout=10,
                     )
+                    api_sent += 1
 
                     if r.status_code == 200:
                         data = r.json()
-                        if data.get('success'):
-                            recognized_id = data.get('user_id', '')
+                        payload = data.get('data', data) if data.get('status') == 'success' else data
+                        auth_ok = data.get('status') == 'success' or bool(data.get('success'))
+                        if auth_ok:
+                            recognized_id = payload.get('user_id', '')
                             if recognized_id == self._backend_user_id:
-                                cap.release()
                                 self.after(0, lambda: self._auth_success(uid, "face"))
                                 return
                             else:
@@ -2920,20 +3251,18 @@ class BioAccessApp(tk.Tk):
                                     f"Face reconnue mauvais user: {recognized_id} != {self._backend_user_id}")
                                 att += 3
                     elif r.status_code == 401:
-                        cap.release()
                         self.after(0, lambda: self._auth_fail(
-                            "Profil biometrique non enrole — contactez l'administrateur"))
+                            "Profil biométrique non enrôlé — contactez l'administrateur"))
                         return
 
                 except requests.exceptions.ConnectionError:
-                    cap.release()
                     self.after(0, lambda: self._auth_fail(
                         "Serveur hors ligne — auth backend impossible"))
                     return
                 except Exception as req_err:
                     logger.debug(f"biometric API error: {req_err}")
 
-                att += 1; time.sleep(0.1)
+                att += 1; time.sleep(0.07)
         finally:
             try: cap.release()
             except Exception: pass
@@ -2943,67 +3272,322 @@ class BioAccessApp(tk.Tk):
 
     # ── Thread vocal ───────────────────────────────────────────────────────────
     def _voice_thread(self, uid: str, phrase: str):
+        # ── Vosk non installé → guide d'installation ─────────────────────────
         if not VOSK_OK:
-            self.after(0, lambda: self._auth_fail("Vosk non installé")); return
-        mp = resource_path("vosk-model")
-        if not os.path.exists(mp):
-            self.after(0, lambda: self._auth_fail("Modèle Vosk introuvable")); return
-        # ── Vérification permission microphone selon l'OS ────────────────────
+            install_guide = (
+                "Module Vosk non installé.\n\n"
+                "Pour activer la reconnaissance vocale :\n"
+                "  1. pip install vosk sounddevice\n"
+                "  2. Télécharger un modèle français :\n"
+                "     alphacep.github.io/vosk-api/models.html\n"
+                "  3. Renommer le dossier en « vosk-model »\n"
+                "     et le placer à côté de l'application."
+            )
+            self.after(0, lambda: self.mic_indicator_var.set("✗ Vosk non installé"))
+            self.after(0, lambda: self.transcript_var.set(
+                "Installez Vosk pour la reconnaissance vocale."))
+            self.after(0, lambda m=install_guide: self._auth_fail(m))
+            return
+
+        # ── Recherche du modèle vosk ──────────────────────────────────────────
+        mp = None
+        for candidate in [
+            resource_path("vosk-model"),
+            resource_path("vosk-model-small-fr-0.22"),
+            resource_path("vosk-model-fr"),
+            str(SCRIPT_DIR / "vosk-model"),
+            str(SCRIPT_DIR / "vosk-model-small-fr-0.22"),
+        ]:
+            if os.path.exists(candidate):
+                mp = candidate
+                break
+        if mp is None:
+            self.after(0, lambda: self.mic_indicator_var.set("✗ Modèle Vosk introuvable"))
+            self.after(0, lambda: self.transcript_var.set(
+                "Placez le dossier vosk-model/ à côté de l'application."))
+            self.after(0, lambda: self._auth_fail(
+                "Modèle Vosk introuvable.\n"
+                "Téléchargez un modèle sur : alphacep.github.io/vosk-api/models.html\n"
+                "et placez-le dans un dossier nommé « vosk-model »."
+            ))
+            return
+
+        # ── Permission microphone ─────────────────────────────────────────────
         if PERM_MGR_OK:
             mgr    = PermissionManager()
             result = mgr.check_and_request(DevicePermission.MICROPHONE)
             if not result.granted:
-                msg = f"Permission microphone refusée ({platform.system()})\n{result.message}"
+                msg = f"Permission microphone refusée\n{result.message}"
                 if result.fix_steps:
                     msg += "\n" + "\n".join(result.fix_steps[:2])
                 self.after(0, lambda m=msg: self._auth_fail(m))
                 self.after(0, lambda: self._show_permission_dialog(
                     [("Microphone", result)], mgr))
                 return
+
+        # ── Initialisation Vosk + sounddevice ─────────────────────────────────
         try:
             import sounddevice as sd
             import queue as queue_module
-            
+            self.after(0, lambda: self.mic_indicator_var.set("⏳ Chargement du modèle..."))
             model  = vosk.Model(mp)
             rec    = vosk.KaldiRecognizer(model, 16000)
-            
-            # File d'attente pour l'audio avec sounddevice
-            audio_queue = queue_module.Queue()
-            
-            def audio_callback(indata, frames, time, status):
+            rec.SetWords(True)   # active les détails mot-à-mot
+            audio_queue  = queue_module.Queue()
+            audio_frames = []  # accumule le PCM brut pour l'anti-spoofing
+
+            def audio_callback(indata, frames, _time, status):
                 if status:
-                    print(status, file=sys.stderr)
-                audio_queue.put(bytes(indata))
-            
-            stream = sd.RawInputStream(samplerate=16000, blocksize=8192, dtype='int16',
-                                      channels=1, callback=audio_callback)
+                    logger.debug(f"audio: {status}")
+                chunk = bytes(indata)
+                audio_queue.put(chunk)
+                audio_frames.append(chunk)
+
+            stream = sd.RawInputStream(samplerate=16000, blocksize=4096, dtype='int16',
+                                       channels=1, callback=audio_callback)
             stream.start()
+            self.after(0, lambda: self.mic_indicator_var.set("🎙 ÉCOUTE EN COURS..."))
         except Exception as e:
-            self.after(0, lambda: self._auth_fail(f"Erreur audio : {e}")); return
-        transcript = ""; deadline = time.time() + 10
-        while not self._stop_event.is_set() and time.time() < deadline:
-            try:
-                data = audio_queue.get(timeout=0.1)
+            self.after(0, lambda err=e: self._auth_fail(f"Erreur audio : {err}"))
+            return
+
+        # ── Boucle de reconnaissance (20 secondes, résultats partiels) ────────
+        MIC_FRAMES = ["🎙", "🔴", "🎙", "🔴"]
+        transcript = ""
+        phrase_low = phrase.lower().strip()
+        deadline   = time.time() + 20
+        frame_idx  = 0
+
+        try:
+            while not self._stop_event.is_set() and time.time() < deadline:
+                # Animer l'indicateur microphone
+                remaining = int(deadline - time.time())
+                mic_sym   = MIC_FRAMES[frame_idx % len(MIC_FRAMES)]
+                frame_idx += 1
+                self.after(0, lambda m=mic_sym, r=remaining:
+                           self.mic_indicator_var.set(f"{m}  ÉCOUTE...  {r}s"))
+
+                try:
+                    data = audio_queue.get(timeout=0.25)
+                except queue_module.Empty:
+                    continue
+
                 if rec.AcceptWaveform(data):
-                    transcript = json.loads(rec.Result()).get("text","").lower().strip()
-                    self.after(0, lambda t=transcript:
-                               self.transcript_var.set(f'Reconnu : « {t} »'))
-                    break
-            except queue_module.Empty:
-                continue
-        stream.stop(); stream.close()
-        if self._stop_event.is_set(): return
-        sim = self._sim(transcript, phrase.lower().strip())
+                    # Résultat final d'un segment
+                    text = json.loads(rec.Result()).get("text", "").lower().strip()
+                    if text:
+                        transcript = text
+                        sim = self._sim(transcript, phrase_low)
+                        sim_pct = int(sim * 100)
+                        self.after(0, lambda t=transcript:
+                                   self.transcript_var.set(f'« {t} »'))
+                        self.after(0, lambda s=sim_pct:
+                                   self.sim_var.set(
+                                       f'Similarité : {s}% '
+                                       + ('✓' if s >= 60 else '— continuez...')))
+                        if sim >= 0.6:
+                            stream.stop(); stream.close()
+                            self.after(0, lambda: self.mic_indicator_var.set(
+                                "🔍 Analyse anti-spoofing..."))
+                            verdict, v_reason, v_score = self._check_voice_liveness(
+                                audio_frames)
+                            if verdict == 'fail':
+                                self.after(0, lambda r=v_reason: self._auth_fail(
+                                    f"Voix rejetée : {r}"))
+                            elif verdict == 'suspect':
+                                self.after(0, lambda r=v_reason: self._auth_fail(
+                                    f"Voix suspecte — réessayez.\n{r}"))
+                            else:
+                                self.after(0, lambda: self._auth_success(uid, "voice"))
+                            return
+                else:
+                    # Résultat partiel — affiche au fil de l'eau comme ChatGPT
+                    partial = json.loads(rec.PartialResult()).get("partial", "").strip()
+                    if partial:
+                        sim = self._sim(partial.lower(), phrase_low)
+                        self.after(0, lambda p=partial:
+                                   self.transcript_var.set(f'« {p}... »'))
+                        self.after(0, lambda s=int(sim * 100):
+                                   self.sim_var.set(f'Similarité : {s}%'))
+        finally:
+            try: stream.stop(); stream.close()
+            except Exception: pass
+
+        if self._stop_event.is_set():
+            return
+
+        # Tentative finale avec le dernier résultat accumulé
+        final_text = json.loads(rec.FinalResult()).get("text", "").lower().strip()
+        if final_text:
+            transcript = final_text
+
+        sim = self._sim(transcript, phrase_low)
+        sim_pct = int(sim * 100)
         self.after(0, lambda t=transcript:
-                   self.transcript_var.set(f'Reconnu : « {t} »'))
-        if sim >= 0.6: self.after(0, lambda: self._auth_success(uid, "voice"))
-        else:          self.after(0, lambda: self._auth_fail(
-                                  f"Phrase incorrecte ({int(sim*100)}% de similarité)"))
+                   self.transcript_var.set(f'« {t} »'))
+        self.after(0, lambda s=sim_pct:
+                   self.sim_var.set(f'Similarité finale : {s}%'))
+
+        if sim >= 0.6:
+            self.after(0, lambda: self.mic_indicator_var.set(
+                "🔍 Analyse anti-spoofing..."))
+            verdict, v_reason, v_score = self._check_voice_liveness(audio_frames)
+            if verdict == 'fail':
+                self.after(0, lambda r=v_reason: self._auth_fail(
+                    f"Voix rejetée : {r}"))
+            elif verdict == 'suspect':
+                self.after(0, lambda r=v_reason: self._auth_fail(
+                    f"Voix suspecte — réessayez.\n{r}"))
+            else:
+                self.after(0, lambda: self._auth_success(uid, "voice"))
+        else:
+            self.after(0, lambda s=sim_pct: self._auth_fail(
+                f"Phrase incorrecte ({s}% de similarité — seuil : 60%)"))
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Anti-spoofing vocal : détection de TTS, replays et voix IA clonées
+    # ─────────────────────────────────────────────────────────────────────────
+    @staticmethod
+    def _check_voice_liveness(audio_frames: list, sr: int = 16000) -> tuple:
+        """
+        Analyse acoustique multi-critères pour détecter les voix synthétiques,
+        les replays et les clones IA.
+
+        Retourne : ('ok'|'suspect'|'fail', raison, score 0.0–1.0)
+          score ≥ 0.55  →  'ok'       (voix humaine authentique)
+          score 0.34–0.55 → 'suspect'  (ambigu — réessayer)
+          score < 0.34   →  'fail'     (spoof probable)
+
+        Critères :
+          1. Variance d'énergie par fenêtre  — TTS : énergie trop uniforme
+          2. Spectral Flatness Measure (SFM) — replay : spectre trop plat
+          3. ZCR variance                    — TTS : zero-crossing trop régulier
+          4. Ratio silence / parole          — TTS : peu de pauses naturelles
+          5. Variation F0 (pitch)            — TTS parfait : pitch trop stable
+        """
+        if not NUMPY_OK or not audio_frames or len(audio_frames) < 4:
+            return 'suspect', 'Pas assez d\'audio pour l\'analyse anti-spoofing', 0.5
+
+        import numpy as np
+
+        raw    = b''.join(audio_frames)
+        signal = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+
+        if len(signal) < sr * 0.8:
+            return 'suspect', 'Durée insuffisante pour l\'analyse de vivacité vocale', 0.5
+
+        scores = {}
+
+        # ── 1. Variance d'énergie par fenêtre (20 ms) ─────────────────────────
+        try:
+            fsize  = int(sr * 0.02)
+            hop    = fsize // 2
+            e_arr  = np.array([
+                np.sum(signal[i:i+fsize] ** 2) / fsize
+                for i in range(0, len(signal) - fsize, hop)
+            ])
+            voiced = e_arr[e_arr > 1e-5]
+            if len(voiced) > 3:
+                e_cv = np.std(voiced) / (np.mean(voiced) + 1e-9)
+                if e_cv < 0.15:   scores['energy'] = 0.10  # trop uniforme → TTS
+                elif e_cv > 6.0:  scores['energy'] = 0.40  # trop chaotique
+                else:             scores['energy'] = min(1.0, e_cv / 0.50)
+            else:
+                scores['energy'] = 0.35
+        except Exception:
+            scores['energy'] = 0.50
+
+        # ── 2. Spectral Flatness Measure (SFM) ────────────────────────────────
+        # Voix humaine : SFM ≈ 0.001–0.10 (spectre "peaky").
+        # Replay / bruit / codec : SFM > 0.20 (spectre plat).
+        try:
+            n_fft    = min(4096, 2 ** int(np.log2(len(signal))))
+            spec     = np.abs(np.fft.rfft(signal[:n_fft])) ** 2 + 1e-10
+            sfm      = np.exp(np.mean(np.log(spec))) / (np.mean(spec) + 1e-10)
+            if sfm > 0.25:    scores['sfm'] = 0.15
+            elif sfm < 0.001: scores['sfm'] = 0.50
+            else:             scores['sfm'] = max(0.30, 1.0 - (sfm / 0.25))
+        except Exception:
+            scores['sfm'] = 0.50
+
+        # ── 3. Variance du ZCR (variabilité phonémique) ───────────────────────
+        # Voix réelle : ZCR varie fortement selon le phonème (voyelles / consonnes).
+        # TTS monotone : ZCR trop régulier.
+        try:
+            fsize_z = int(sr * 0.025)
+            zcrs    = [
+                float(np.mean(np.abs(np.diff(np.sign(signal[i:i+fsize_z])))) / 2)
+                for i in range(0, len(signal) - fsize_z, fsize_z)
+            ]
+            zcr_std = np.std(zcrs) if zcrs else 0
+            scores['zcr'] = 0.20 if zcr_std < 0.02 else min(1.0, zcr_std / 0.15)
+        except Exception:
+            scores['zcr'] = 0.50
+
+        # ── 4. Ratio silence / parole ─────────────────────────────────────────
+        # Voix réelle : 20–75 % de signal voicé (respiration, pauses).
+        # TTS / replay : souvent > 88 % de signal voicé en continu.
+        try:
+            thr          = max(0.01, float(np.max(np.abs(signal))) * 0.05)
+            voiced_ratio = float(np.mean(np.abs(signal) > thr))
+            scores['silence'] = 0.20 if (voiced_ratio > 0.88 or voiced_ratio < 0.05) \
+                                else 0.85
+        except Exception:
+            scores['silence'] = 0.50
+
+        # ── 5. Variation F0 — autocorrélation ─────────────────────────────────
+        # Voix réelle : coefficient de variation du pitch (CV_F0) 0.04–0.50.
+        # TTS parfait : CV_F0 < 0.015 (robot). Voix clonée IA : parfois trop stable.
+        try:
+            fsize_f0 = int(sr * 0.04)
+            lo, hi   = int(sr / 400), int(sr / 70)
+            f0_vals  = []
+            for i in range(0, min(len(signal) - fsize_f0, fsize_f0 * 80), fsize_f0):
+                f = signal[i:i+fsize_f0]
+                if float(np.max(np.abs(f))) < 0.01:
+                    continue
+                corr = np.correlate(f, f, mode='full')[len(f) - 1:]
+                if hi >= len(corr):
+                    continue
+                peak  = int(np.argmax(corr[lo:hi]))
+                f0_hz = sr / (lo + peak + 1e-9)
+                if 70 <= f0_hz <= 420:
+                    f0_vals.append(f0_hz)
+            if len(f0_vals) >= 4:
+                f0_cv = float(np.std(f0_vals)) / (float(np.mean(f0_vals)) + 1e-9)
+                if f0_cv < 0.015:   scores['f0'] = 0.08   # pitch robot
+                elif f0_cv > 0.55:  scores['f0'] = 0.38   # instable
+                else:               scores['f0'] = min(1.0, f0_cv / 0.12)
+            else:
+                scores['f0'] = 0.50   # données insuffisantes
+        except Exception:
+            scores['f0'] = 0.50
+
+        # ── Score global pondéré ───────────────────────────────────────────────
+        weights = {'energy': 0.25, 'sfm': 0.25, 'zcr': 0.15, 'silence': 0.15, 'f0': 0.20}
+        total   = float(sum(scores.get(k, 0.5) * w for k, w in weights.items()))
+
+        logger.debug("[anti-spoof] " +
+                     "  ".join(f"{k}={v:.2f}" for k, v in scores.items()) +
+                     f"  →  global={total:.3f}")
+
+        if total >= 0.55:
+            return 'ok', f'Voix humaine confirmée (score {int(total*100)}%)', total
+        elif total >= 0.34:
+            return 'suspect', (
+                f'Caractéristiques vocales inhabituelles (score {int(total*100)}%) — '
+                f'parlez naturellement et réessayez'
+            ), total
+        else:
+            return 'fail', (
+                f'Voix synthétique, replay ou manipulation IA détectée (score {int(total*100)}%)'
+            ), total
 
     @staticmethod
     def _sim(a: str, b: str) -> float:
+        """Similarité Jaccard sur les mots (insensible à l'ordre)."""
         if not a or not b: return 0.0
-        wa, wb = set(a.split()), set(b.split())
+        wa, wb = set(a.lower().split()), set(b.lower().split())
         return len(wa & wb) / len(wb) if wb else 0.0
 
     # ── Enregistrement ─────────────────────────────────────────────────────────

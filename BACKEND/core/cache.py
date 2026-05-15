@@ -29,9 +29,9 @@ def init_cache(app):
             app.config['REDIS_URL'],
             max_connections=app.config['REDIS_MAX_CONNECTIONS'],
             decode_responses=True,
-            socket_connect_timeout=5,
-            socket_timeout=5,
-            retry_on_timeout=True,
+            socket_connect_timeout=1,
+            socket_timeout=2,
+            retry_on_timeout=False,
             health_check_interval=30
         )
         # Tester la connexion

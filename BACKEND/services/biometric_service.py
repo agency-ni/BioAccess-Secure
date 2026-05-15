@@ -3,10 +3,13 @@ Service biométrique - Reconnaissance faciale et vocale
 Utilise face_recognition (dlib) pour la faciale, librosa MFCC pour la voix.
 """
 
-import numpy as np
-import cv2
-import face_recognition
 import io
+from core.lazy_import import lazy_module
+
+# Chargés à la première requête biométrique, pas au démarrage
+np              = lazy_module('numpy')
+cv2             = lazy_module('cv2')
+face_recognition = lazy_module('face_recognition')
 import pickle
 import logging
 from datetime import datetime
@@ -104,7 +107,7 @@ class BiometricService:
 
         Returns (is_match: bool, similarity: float, error: str|None)
         """
-        template = TemplateBiometrique.query.get(template_id)
+        template = db.session.get(TemplateBiometrique, template_id)
         if not template or template.type_biometrique != 'FACE':
             return False, 0.0, "Template facial invalide"
 
@@ -297,7 +300,7 @@ class BiometricService:
 
         Returns (is_match: bool, similarity: float, error: str|None)
         """
-        template = TemplateBiometrique.query.get(template_id)
+        template = db.session.get(TemplateBiometrique, template_id)
         if not template or template.type_biometrique != 'VOICE':
             return False, 0.0, "Template vocal invalide"
 
@@ -359,7 +362,7 @@ class BiometricService:
         Authentification multimodale.
         """
         from models.user import User
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return False, "Utilisateur inconnu"
 

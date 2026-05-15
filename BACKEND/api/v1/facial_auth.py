@@ -12,10 +12,13 @@ import base64
 import io
 import logging
 import uuid
-import numpy as np
-import cv2
-import face_recognition
-from scipy.spatial.distance import cosine as cosine_distance
+from core.lazy_import import lazy_module, lazy_func
+
+# Chargés à la première requête faciale, pas au démarrage (dlib peut prendre 10-30s)
+np               = lazy_module('numpy')
+cv2              = lazy_module('cv2')
+face_recognition = lazy_module('face_recognition')
+cosine_distance  = lazy_func('scipy.spatial.distance', 'cosine')
 
 from core.database import db
 from core.errors import AuthenticationError, ValidationError, NotFoundError
@@ -231,7 +234,7 @@ def verify_face() -> Tuple[Dict, int]:
 
         # Priorité 3: user_id UUID direct (Door-System)
         elif 'user_id' in data and data['user_id']:
-            user = User.query.get(data['user_id'])
+            user = db.session.get(User, data['user_id'])
             identifier = f"user_id:{str(data['user_id'])[:8]}"
 
         else:
@@ -616,7 +619,7 @@ def verify_voice() -> Tuple[Dict, int]:
 
         # Priorité 3: user_id UUID direct (Door-System)
         elif 'user_id' in data and data['user_id']:
-            user = User.query.get(data['user_id'])
+            user = db.session.get(User, data['user_id'])
             identifier = f"user_id:{str(data['user_id'])[:8]}"
 
         else:

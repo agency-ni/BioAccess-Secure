@@ -15,7 +15,7 @@ from services.biometric_authentication_service import BiometricAuthenticationSer
 from services.biometric_enrollment_service import BiometricEnrollmentService
 from services.audit_service import AuditService
 from models.user import User
-from models.biometric import AuthenticationAttempt, BiometricErrorLog
+from models.biometric import AuthenticationAttempt, BiometricErrorLog, TemplateBiometrique
 from core.database import db
 
 logger = logging.getLogger(__name__)
@@ -233,7 +233,7 @@ def enroll_face():
             }), 400
         
         # Vérifier que l'utilisateur existe
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return jsonify({
                 'success': False,
@@ -325,7 +325,7 @@ def enroll_voice():
             }), 400
         
         # Vérifier que l'utilisateur existe
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return jsonify({
                 'success': False,
@@ -744,7 +744,7 @@ def alert_error():
         if not error_id:
             return jsonify({'success': False, 'message': 'error_id requis'}), 400
         
-        error_log = BiometricErrorLog.query.get(error_id)
+        error_log = db.session.get(BiometricErrorLog, error_id)
         if not error_log:
             return jsonify({'success': False, 'message': 'Erreur non trouvée'}), 404
         
@@ -789,7 +789,7 @@ def resolve_error():
         if not error_id:
             return jsonify({'success': False, 'message': 'error_id requis'}), 400
         
-        error_log = BiometricErrorLog.query.get(error_id)
+        error_log = db.session.get(BiometricErrorLog, error_id)
         if not error_log:
             return jsonify({'success': False, 'message': 'Erreur non trouvée'}), 404
         
@@ -811,5 +811,36 @@ def resolve_error():
         
     except Exception as e:
         logger.error(f"Resolve error: {e}")
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_biometric_bp.route('/<user_id>/templates', methods=['DELETE'])
+@token_required
+@admin_required
+def delete_user_templates(user_id):
+    """
+    DELETE /api/v1/admin/biometric/<user_id>/templates
+    Supprime tous les templates biométriques d'un utilisateur (action admin)
+    """
+    try:
+        user = db.session.get(User, user_id)
+        if not user:
+            return jsonify({'success': False, 'message': 'Utilisateur non trouvé'}), 404
+
+        deleted = TemplateBiometrique.query.filter_by(user_id=user_id).delete()
+        db.session.commit()
+
+        log_audit('admin_delete_templates', g.user.id, request.remote_addr,
+                 {'target_user_id': user_id, 'templates_deleted': deleted})
+
+        return jsonify({
+            'success': True,
+            'message': f'{deleted} template(s) supprimé(s)',
+            'user_id': user_id
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Delete user templates: {e}")
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500

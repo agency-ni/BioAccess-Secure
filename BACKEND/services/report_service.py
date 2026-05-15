@@ -72,7 +72,7 @@ class ReportService:
         
         for log in logs:
             if log.utilisateur_id:
-                user = User.query.get(log.utilisateur_id)
+                user = db.session.get(User, log.utilisateur_id)
                 if user and user.departement:
                     dept = user.departement
                     dept_stats[dept]['total'] += 1

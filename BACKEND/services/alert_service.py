@@ -34,7 +34,7 @@ class AlertService:
         # Envoyer email si haute priorité
         if gravite == 'haute' and user_id:
             from services.email_service import EmailService
-            user = User.query.get(user_id)
+            user = db.session.get(User, user_id)
             if user:
                 EmailService.send_alert_email(alerte, user)
         
@@ -131,7 +131,7 @@ class AlertService:
     @staticmethod
     def mark_as_treated(alert_id, user_id, commentaire=None):
         """Marque une alerte comme traitée"""
-        alerte = Alerte.query.get(alert_id)
+        alerte = db.session.get(Alerte, alert_id)
         if not alerte:
             return None
         

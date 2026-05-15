@@ -20,7 +20,7 @@ from api.middlewares.auth_middleware import token_required, admin_required
 logger = logging.getLogger(__name__)
 
 # Blueprint
-biometric_bp = Blueprint('biometric', __name__, url_prefix='/api/v1/biometric')
+biometric_bp = Blueprint('biometric', __name__)  # url_prefix défini dans app.py → register_blueprint
 
 
 # ============════════════════════════════════════════════════════════════
